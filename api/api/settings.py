@@ -11,30 +11,38 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+from dotenv import load_dotenv
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+env_file = '.env'
+if os.environ.get('ENV') == 'production':
+    env_file = '.env.production'
+elif os.environ.get('ENV') == 'staging':
+    env_file = '.env.staging'
 
+load_dotenv(os.path.join(BASE_DIR, env_file))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-n3)%jo_=+95m7#hzvy=gvf^a3d86259zadc4m%nvyt7@-#-gru'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-if os.environ.get('ENV') == 'production':
-    DEBUG = False
-else:
-    DEBUG = True  # for local and staging environment
+# if os.environ.get('ENV') == 'production':
+#     DEBUG = False
+# else:
+#     DEBUG = True  # for local and staging environment
+DEBUG = os.getenv('DEBUG') == 'True'
 
-if os.environ.get('ENV') == 'production':
-    ALLOWED_HOSTS = []
-else:
-    # for local and staging
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
-
+# if os.environ.get('ENV') == 'production':
+#     ALLOWED_HOSTS = []
+# else:
+#     # for local and staging
+#     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 # Application definition
 
@@ -107,11 +115,11 @@ else:  # Local development environment
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'local_db',
-            'USER': 'root',
-            'PASSWORD': 'root_password',
-            'HOST': 'db',  # This is the name of the MySQL service in Docker Compose
-            'PORT': '3306',
+            'NAME': os.getenv('LOCAL_DB_NAME'),
+            'USER': os.getenv('LOCAL_DB_USER'),
+            'PASSWORD': os.getenv('LOCAL_DB_PASSWORD'),
+            'HOST': os.getenv('LOCAL_DB_HOST'),
+            'PORT': os.getenv('LOCAL_DB_PORT'),
         }
     }
 
