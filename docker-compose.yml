@@ -8,6 +8,13 @@ services:
       MYSQL_DATABASE: local_db
     volumes:
       - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 5s
+      retries: 10
+
   backend:
     build:
       context: ./api
@@ -18,6 +25,7 @@ services:
       - ./api:/code
     environment:
       - DJANGO_SETTINGS_MODULE=api.settings
+    command: ["./wait-for-it.sh", "db:3306", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]
     depends_on:
       - db
 
