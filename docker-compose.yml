@@ -1,6 +1,13 @@
 version: "3"
 
 services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: local_db
+    volumes:
+      - mysql-data:/var/lib/mysql
   backend:
     build:
       context: ./api
@@ -11,6 +18,8 @@ services:
       - ./api:/code
     environment:
       - DJANGO_SETTINGS_MODULE=api.settings
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -26,3 +35,4 @@ services:
 
 volumes:
   node_modules:
+  mysql-data:

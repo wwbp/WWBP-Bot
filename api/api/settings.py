@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -23,9 +24,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-n3)%jo_=+95m7#hzvy=gvf^a3d86259zadc4m%nvyt7@-#-gru'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+if os.environ.get('ENV') == 'production':
+    DEBUG = False
+else:
+    DEBUG = True  # for local and staging environment
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+if os.environ.get('ENV') == 'production':
+    ALLOWED_HOSTS = []
+else:
+    # for local and staging
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 
 # Application definition
@@ -73,12 +81,39 @@ WSGI_APPLICATION = 'api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.environ.get('ENV') == 'production':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('PRODUCTION_DB_NAME'),
+            'USER': os.environ.get('PRODUCTION_DB_USER'),
+            'PASSWORD': os.environ.get('PRODUCTION_DB_PASSWORD'),
+            'HOST': os.environ.get('PRODUCTION_DB_HOST'),
+            'PORT': os.environ.get('PRODUCTION_DB_PORT'),
+        }
     }
-}
+elif os.environ.get('ENV') == 'staging':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('STAGING_DB_NAME'),
+            'USER': os.environ.get('STAGING_DB_USER'),
+            'PASSWORD': os.environ.get('STAGING_DB_PASSWORD'),
+            'HOST': os.environ.get('STAGING_DB_HOST'),
+            'PORT': os.environ.get('STAGING_DB_PORT'),
+        }
+    }
+else:  # Local development environment
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'local_db',
+            'USER': 'root',
+            'PASSWORD': 'root_password',
+            'HOST': 'db',  # This is the name of the MySQL service in Docker Compose
+            'PORT': '3306',
+        }
+    }
 
 
 # Password validation
