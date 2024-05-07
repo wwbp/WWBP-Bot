@@ -20,4 +20,4 @@ def list_files(startpath):
                 print('{}{}'.format(subindent, f))
 
 
-list_files("/Users/aps/UPenn/WWBP-BOT")
+list_files("./")
