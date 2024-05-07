@@ -1,20 +1,28 @@
-version: "3"
-
+version: "3.8"
 services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: local_db
+      MYSQL_ROOT_PASSWORD: "root_password"
+      MYSQL_DATABASE: "local_db"
     volumes:
       - mysql-data:/var/lib/mysql
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
-      interval: 5s
-      retries: 10
-
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-proot_password",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   backend:
     build:
       context: ./api
@@ -25,10 +33,19 @@ services:
       - ./api:/code
     environment:
       - DJANGO_SETTINGS_MODULE=api.settings
-    command: ["./wait-for-it.sh", "db:3306", "--", "python", "manage.py", "runserver", "0.0.0.0:8000"]
+    command:
+      [
+        "./wait-for-it.sh",
+        "db:3306",
+        "--",
+        "python",
+        "manage.py",
+        "runserver",
+        "0.0.0.0:8000",
+      ]
     depends_on:
-      - db
-
+      db:
+        condition: service_healthy
   frontend:
     build:
       context: ./frontend
@@ -40,7 +57,6 @@ services:
       - /app/node_modules
     depends_on:
       - backend
-
 volumes:
-  node_modules:
   mysql-data:
+  node_modules:
