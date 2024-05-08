@@ -12,6 +12,7 @@ typing_extensions = "==4.11.0"
 mysqlclient = "*"
 djangorestframework = "*"
 django-cors-headers = "*"
+django-csp = "*"
 
 [dev-packages]
 

@@ -1,3 +1,8 @@
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -45,3 +50,12 @@ class UserViewSet(viewsets.ModelViewSet):
             'email': request.user.email,
             'is_authenticated': True
         }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])  # Ensure it's clear this is an API view accepting only GET
+# Explicitly allow access regardless of authentication
+@permission_classes([AllowAny])
+def test_csp(request):
+    response = HttpResponse("CSP test")
+    response['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
+    return response

@@ -14,6 +14,12 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
+# Add CORS settings to allow all domains during development
+CORS_ALLOW_ALL_ORIGINS = True  # For production, list specific origins instead
+
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'") # remove flexibility in production
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 env_file = '.env'
@@ -56,9 +62,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'users',
+    'csp',
 ]
 
 MIDDLEWARE = [
+    'csp.middleware.CSPMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -183,6 +191,3 @@ REST_FRAMEWORK = {
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
-
-# Add CORS settings to allow all domains during development
-CORS_ALLOW_ALL_ORIGINS = True  # For production, list specific origins instead
