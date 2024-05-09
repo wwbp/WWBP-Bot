@@ -1,3 +1,7 @@
-from django.shortcuts import render
+from django.http import JsonResponse
+from datetime import datetime
 
-# Create your views here.
+
+def current_time(request):
+    now = datetime.now().isoformat()
+    return JsonResponse({'current_time': now})
