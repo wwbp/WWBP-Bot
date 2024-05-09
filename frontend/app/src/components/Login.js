@@ -10,16 +10,20 @@ function Login({ setLoggedIn }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     const apiUrl = process.env.REACT_APP_API_URL;
-    const response = await postData(`${apiUrl}/login/`, {
-      username: username,
-      password: password,
-    });
+    try {
+      const response = await postData(`${apiUrl}/login/`, {
+        username,
+        password,
+      });
 
-    if (response.ok) {
-      setLoggedIn(true);
-      navigate("/profile");
-    } else {
-      alert("Failed to login!");
+      if (response.ok && response.message === "Login successful") {
+        setLoggedIn(true);
+        navigate("/");
+      } else {
+        throw new Error(response.message || "Failed to login!");
+      }
+    } catch (error) {
+      alert(error.message);
     }
   };
 

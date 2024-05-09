@@ -11,17 +11,21 @@ function Signup({ setLoggedIn }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     const apiUrl = process.env.REACT_APP_API_URL;
-    const response = await postData(`${apiUrl}/register/`, {
-      username: username,
-      email: email,
-      password: password,
-    });
+    try {
+      const response = await postData(`${apiUrl}/register/`, {
+        username,
+        email,
+        password,
+      });
 
-    if (response.ok) {
-      setLoggedIn(true);
-      navigate("/profile");
-    } else {
-      alert("Failed to register!");
+      if (response.ok && response.message === "User created successfully") {
+        setLoggedIn(true);
+        navigate("/");
+      } else {
+        throw new Error(response.message || "Failed to register!");
+      }
+    } catch (error) {
+      alert(error.message);
     }
   };
 

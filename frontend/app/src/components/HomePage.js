@@ -1,10 +1,11 @@
 import React from "react";
 import CurrentTime from "./CurrentTime";
-function HomePage() {
+
+function HomePage({ isLoggedIn }) {
   return (
     <div>
       <h1>Welcome to the Home</h1>
-      <CurrentTime />
+      {isLoggedIn && <CurrentTime />}
     </div>
   );
 }
