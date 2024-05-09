@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { fetchData } from "../utils/api";
 
 function CurrentTime() {
   const [time, setTime] = useState("");
@@ -8,8 +8,8 @@ function CurrentTime() {
   useEffect(() => {
     const fetchTime = async () => {
       try {
-        const response = await axios.get(`${apiUrl}/time/`);
-        setTime(response.data.current_time);
+        const response = await fetchData(`${apiUrl}/time/`);
+        setTime(response.current_time);
       } catch (error) {
         console.error("Error fetching time:", error);
       }

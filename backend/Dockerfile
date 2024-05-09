@@ -10,11 +10,11 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install pipenv
 
-COPY Pipfile Pipfile.lock /app/
+COPY . /app
 
 RUN pipenv install --system --deploy
 
-COPY . /app
+EXPOSE 8000
 
 RUN chmod +x /app/wait-for-it.sh
 

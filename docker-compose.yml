@@ -15,9 +15,9 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
   backend:
     build: ./backend
-    command: python manage.py runserver 0.0.0.0:8000
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
-      - ./backend:/code
+      - ./backend:/app
     ports:
       - "8000:8000"
     depends_on:
@@ -32,12 +32,14 @@ services:
       - DATABASE_HOST=${DATABASE_HOST}
       - DATABASE_PORT=${DATABASE_PORT}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
-      - CORS_ORIGIN_WHITELIST=${CORS_ORIGIN_WHITELIST}
+      - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS}
   frontend:
     build:
       context: ./frontend/app
       args:
         - REACT_APP_API_URL=${REACT_APP_API_URL}
+    volumes:
+      - ./frontend/app/src:/app/src
     ports:
       - "3000:80"
     depends_on:

@@ -2,16 +2,18 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { postData } from "../utils/api";
 
-function Login({ setLoggedIn }) {
+function Signup({ setLoggedIn }) {
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     const apiUrl = process.env.REACT_APP_API_URL;
-    const response = await postData(`${apiUrl}/login/`, {
+    const response = await postData(`${apiUrl}/register/`, {
       username: username,
+      email: email,
       password: password,
     });
 
@@ -19,7 +21,7 @@ function Login({ setLoggedIn }) {
       setLoggedIn(true);
       navigate("/profile");
     } else {
-      alert("Failed to login!");
+      alert("Failed to register!");
     }
   };
 
@@ -34,6 +36,14 @@ function Login({ setLoggedIn }) {
         />
       </label>
       <label>
+        Email:
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </label>
+      <label>
         Password:
         <input
           type="password"
@@ -41,9 +51,9 @@ function Login({ setLoggedIn }) {
           onChange={(e) => setPassword(e.target.value)}
         />
       </label>
-      <button type="submit">Login</button>
+      <button type="submit">Sign Up</button>
     </form>
   );
 }
 
-export default Login;
+export default Signup;
