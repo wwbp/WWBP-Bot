@@ -1,24 +1,23 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+FROM python:3.9
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+WORKDIR /app
 
-# Set work directory
-WORKDIR /code
+RUN apt-get update && apt-get install -y \
+    default-libmysqlclient-dev \
+    gcc \
+    pkg-config \
+    python3-dev
 
-# Install pipenv
 RUN pip install pipenv
 
-# Copy Pipfile and Pipfile.lock to the container at /code
-COPY Pipfile Pipfile.lock /code/
+COPY Pipfile Pipfile.lock /app/
 
-# Install dependencies
 RUN pipenv install --system --deploy
 
-# Copy the current directory contents into the container at /code
-COPY . /code/
+COPY . /app
 
-# Run the command to start uWSGI
-CMD ["pipenv", "run", "python", "manage.py", "runserver", "0.0.0.0:8000"]
+RUN chmod +x /app/wait-for-it.sh
+
+ENTRYPOINT ["./wait-for-it.sh", "db:3306", "--"]
+
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
