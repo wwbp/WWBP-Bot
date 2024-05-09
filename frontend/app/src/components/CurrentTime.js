@@ -4,7 +4,7 @@ import axios from "axios";
 function CurrentTime() {
   const [time, setTime] = useState("");
   const apiUrl = process.env.REACT_APP_API_URL;
-  console.log(`@@@@url: ${apiUrl}`);
+
   useEffect(() => {
     const fetchTime = async () => {
       try {
