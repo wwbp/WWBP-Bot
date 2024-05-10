@@ -70,13 +70,6 @@ For now, manual testing is done by accessing the frontend and backend via browse
 
 ### Next Steps
 
-#### Milestone 1: Basic Interface and User Management
-
-- Backend: Set up user models and authentication endpoints.
-- Frontend: Create a basic homepage with navigation bar including links to user profile, login, and logout.
-- Database: Ensure user data structures are correctly implemented and integrated.
-- Task: Confirm that user authentication works seamlessly across the frontend and backend.
-
 #### Milestone 2: Initial Deployment Setup
 
 - DevOps: Set up a staging environment on AWS using EC2 and RDS to mimic the production environment.
