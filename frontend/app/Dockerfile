@@ -1,9 +1,9 @@
 # Build environment
 FROM node:14 as builder
 WORKDIR /app
-COPY ./frontend/app/package.json ./frontend/app/package-lock.json ./
+COPY ./package.json ./package-lock.json ./
 RUN npm ci --only=production
-COPY ./frontend/app/ ./
+COPY . ./
 ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 RUN npm run build
