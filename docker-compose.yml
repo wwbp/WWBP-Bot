@@ -14,7 +14,9 @@ services:
       - mysql-data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.local
     command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/app
@@ -36,6 +38,7 @@ services:
   frontend:
     build:
       context: ./frontend/app
+      dockerfile: Dockerfile.local
       args:
         - REACT_APP_API_URL=${REACT_APP_API_URL}
     volumes:
