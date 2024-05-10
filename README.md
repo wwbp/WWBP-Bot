@@ -10,7 +10,7 @@
 
 - `backend/`: Contains all Django application files and REST API configurations.
 - `frontend/`: Contains all React application files.
-- `docker/`: Includes Dockerfiles and docker-compose configurations.
+- `scripts/`: Internal tooling
 
 ## Tech Stack
 
