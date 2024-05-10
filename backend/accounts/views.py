@@ -1,3 +1,4 @@
+from rest_framework.authtoken.models import Token
 from django.middleware.csrf import get_token
 import logging
 from .models import User
@@ -25,13 +26,13 @@ def current_time(request):
 def login_view(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        print(data)
         username = data.get('username')
         password = data.get('password')
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            return JsonResponse({"message": "Login successful", "user_id": user.id}, status=200)
+            token, _ = Token.objects.get_or_create(user=user)
+            return JsonResponse({"token": token.key, "message": "Login successful", "user_id": user.id}, status=200)
         else:
             return JsonResponse({"message": "Invalid credentials"}, status=401)
 

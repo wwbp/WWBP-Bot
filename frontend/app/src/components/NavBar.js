@@ -1,7 +1,14 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function NavBar({ isLoggedIn, handleLogout }) {
+  const navigate = useNavigate();
+
+  const onLogout = () => {
+    handleLogout();
+    navigate("/login");
+  };
+
   return (
     <nav
       style={{
@@ -14,12 +21,12 @@ function NavBar({ isLoggedIn, handleLogout }) {
       {isLoggedIn ? (
         <>
           <Link to="/profile">Profile</Link>
-          <button onClick={handleLogout}>Logout</button>
+          <button onClick={onLogout}>Logout</button> {/* Use onLogout here */}
         </>
       ) : (
         <>
           <Link to="/login">Login</Link>
-          <Link to="/signup">Sign Up</Link> 
+          <Link to="/signup">Sign Up</Link>
         </>
       )}
     </nav>

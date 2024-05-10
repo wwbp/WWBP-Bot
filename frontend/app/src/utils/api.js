@@ -16,14 +16,28 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// Create an axios instance with default configurations
+// Creating an Axios instance
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL.replace("/v1", ""),
-  withCredentials: true, // Ensure credentials are sent with each request
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+// Interceptor to add token to each request
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token"); // Get the token from localStorage
+    if (token) {
+      config.headers["Authorization"] = `Token ${token}`; // Append token to headers
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Interceptor to add CSRF token to each request
 api.interceptors.request.use(
@@ -71,3 +85,5 @@ export async function postData(url = "", body = {}) {
     throw error;
   }
 }
+
+export default api;

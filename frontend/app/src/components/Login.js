@@ -15,8 +15,8 @@ function Login({ setLoggedIn }) {
         username,
         password,
       });
-
-      if (response.ok && response.message === "Login successful") {
+      if (response.message === "Login successful") {
+        localStorage.setItem("token", response.token);
         setLoggedIn(true);
         navigate("/");
       } else {

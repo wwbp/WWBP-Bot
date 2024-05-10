@@ -5,7 +5,7 @@ function HomePage({ isLoggedIn }) {
   return (
     <div>
       <h1>Welcome to the Home</h1>
-      {isLoggedIn && <CurrentTime />}
+      {isLoggedIn ? <CurrentTime /> : <p>You are not logged in</p>}
     </div>
   );
 }

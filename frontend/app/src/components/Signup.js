@@ -17,8 +17,8 @@ function Signup({ setLoggedIn }) {
         email,
         password,
       });
-
       if (response.ok && response.message === "User created successfully") {
+        localStorage.setItem("token", response.token);
         setLoggedIn(true);
         navigate("/");
       } else {
