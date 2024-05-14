@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { postData } from "../utils/api";
 
-function Login({ setLoggedIn }) {
+function Login({ setLoggedIn, setRole }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
@@ -18,6 +18,7 @@ function Login({ setLoggedIn }) {
         localStorage.setItem("token", response.token);
         localStorage.setItem("role", response.role);
         setLoggedIn(true);
+        setRole(response.role);
         navigate("/");
       } else {
         throw new Error(response.message || "Failed to login!");

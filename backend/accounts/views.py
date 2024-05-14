@@ -97,12 +97,19 @@ def register(request):
             user = get_user_model().objects.create_user(
                 username=username, email=email, password=password, role=role)
             user.save()
-            token, _ = Token.objects.get_or_create(user=user)
-            return JsonResponse({
-                'message': 'User created successfully',
-                'token': token.key,
-                'role': role
-            }, status=201)
+
+            # Log the user in after registration
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                token, _ = Token.objects.get_or_create(user=user)
+                return JsonResponse({
+                    'message': 'User created successfully',
+                    'token': token.key,
+                    'role': role  # Include role in response
+                }, status=201)
+            else:
+                return JsonResponse({'error': 'Authentication failed'}, status=401)
 
         except Exception as e:
             logger.error("Error during registration", exc_info=True)

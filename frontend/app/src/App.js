@@ -11,28 +11,37 @@ import CreateTask from "./components/CreateTask";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [role, setRole] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    const userRole = localStorage.getItem("role");
     setIsLoggedIn(!!token);
+    setRole(userRole);
   }, []);
 
   return (
     <Router>
       <NavBar
         isLoggedIn={isLoggedIn}
+        role={role}
         handleLogout={() => {
           localStorage.removeItem("token");
+          localStorage.removeItem("role");
           setIsLoggedIn(false);
+          setRole("");
         }}
       />
       <Routes>
         <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} />} />
-        <Route path="/login" element={<Login setLoggedIn={setIsLoggedIn} />} />
+        <Route
+          path="/login"
+          element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+        />
         <Route path="/profile" element={<UserProfile />} />
         <Route
           path="/signup"
-          element={<Signup setLoggedIn={setIsLoggedIn} />}
+          element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
         />
         <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
         <Route path="/create-module" element={<CreateModule />} />
