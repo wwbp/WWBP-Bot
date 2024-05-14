@@ -1,16 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, postData, putData } from "../utils/api"; // Import putData
+import { fetchData, putData } from "../utils/api";
 
 function UserProfile() {
-  const [user, setUser] = useState({
-    username: "",
-    email: "",
-    role: "",
-    grade: "",
-    preferred_language: "",
-  });
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchData("/profile/")
@@ -19,7 +12,7 @@ function UserProfile() {
         setLoading(false);
       })
       .catch((error) => {
-        setError("Error loading user data");
+        console.error("There was an error fetching the user data!", error);
         setLoading(false);
       });
   }, []);
@@ -33,7 +26,7 @@ function UserProfile() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    putData("/profile/", user) // Use putData instead of postData
+    putData("/profile/", user)
       .then(() => {
         alert("Profile updated successfully!");
       })
@@ -46,8 +39,8 @@ function UserProfile() {
     return <div>Loading...</div>;
   }
 
-  if (error) {
-    return <div>{error}</div>;
+  if (!user) {
+    return <div>Error loading user data</div>;
   }
 
   return (
