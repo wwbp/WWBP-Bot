@@ -86,4 +86,15 @@ export async function postData(url = "", body = {}) {
   }
 }
 
+// Function to send data using PUT method
+export async function putData(url = "", body = {}) {
+  try {
+    const response = await api.put(url, body);
+    return response.data;
+  } catch (error) {
+    console.error("Error putting data:", error);
+    throw error;
+  }
+}
+
 export default api;

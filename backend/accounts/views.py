@@ -1,13 +1,15 @@
+from rest_framework import viewsets, permissions
 from rest_framework.authtoken.models import Token
 from django.middleware.csrf import get_token
 import logging
-from .models import User
+from .models import User, Task, Module
+from .serializers import UserSerializer, TaskSerializer, ModuleSerializer
 from django.contrib.auth import get_user_model
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
-from django.http import JsonResponse
+from django.http import HttpResponseNotAllowed, JsonResponse
 from datetime import datetime
 
 logger = logging.getLogger(__name__)  # Setup logger
@@ -45,15 +47,31 @@ def logout_view(request):
 @login_required
 def user_profile(request):
     if request.method == 'GET':
-        return JsonResponse({"username": request.user.username, "email": request.user.email}, status=200)
+        user_data = {
+            "username": request.user.username,
+            "email": request.user.email,
+            "role": request.user.role,
+            "grade": request.user.grade if request.user.role == 'student' else None,
+            "preferred_language": request.user.preferred_language if request.user.role == 'student' else None,
+        }
+        return JsonResponse(user_data, status=200)
 
     elif request.method == 'PUT':
-        # Assuming JSON payload with 'username' and 'email'
-        request.user.username = request.json.get(
-            'username', request.user.username)
-        request.user.email = request.json.get('email', request.user.email)
-        request.user.save()
-        return JsonResponse({"message": "Profile updated"}, status=200)
+        try:
+            data = json.loads(request.body)
+            request.user.username = data.get('username', request.user.username)
+            request.user.email = data.get('email', request.user.email)
+            if request.user.role == 'student':
+                request.user.grade = data.get('grade', request.user.grade)
+                request.user.preferred_language = data.get(
+                    'preferred_language', request.user.preferred_language)
+            request.user.save()
+            return JsonResponse({"message": "Profile updated"}, status=200)
+        except Exception as e:
+            logger.error("Error updating profile", exc_info=True)
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return HttpResponseNotAllowed(['GET', 'PUT'])
 
 
 @csrf_exempt
@@ -61,7 +79,6 @@ def register(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            # Log the received data
             logger.debug(f"Registration data received: {data}")
 
             username = data.get('username')
@@ -78,8 +95,29 @@ def register(request):
             return JsonResponse({'message': 'User created successfully'}, status=201)
 
         except Exception as e:
-            # Log the exception with traceback
             logger.error("Error during registration", exc_info=True)
             return JsonResponse({'error': str(e)}, status=500)
     else:
         return JsonResponse({'error': 'Invalid HTTP method'}, status=405)
+
+
+class IsTeacher(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.role == 'teacher'
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+
+class ModuleViewSet(viewsets.ModelViewSet):
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+    permission_classes = [permissions.IsAuthenticated, IsTeacher]
+
+
+class TaskViewSet(viewsets.ModelViewSet):
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
+    permission_classes = [permissions.IsAuthenticated, IsTeacher]
