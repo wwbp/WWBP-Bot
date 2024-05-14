@@ -13,6 +13,12 @@ class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Module
         fields = ['id', 'name', 'description', 'created_by']
+        read_only_fields = ['created_by']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        validated_data['created_by'] = request.user
+        return super().create(validated_data)
 
 
 class TaskSerializer(serializers.ModelSerializer):

@@ -5,8 +5,6 @@ function CreateModule() {
   const [module, setModule] = useState({
     name: "",
     description: "",
-    start_time: "",
-    end_time: "",
   });
 
   const handleChange = (e) => {
@@ -18,7 +16,7 @@ function CreateModule() {
     try {
       await postData("/modules/", module);
       alert("Module created successfully!");
-      setModule({ name: "", description: "", start_time: "", end_time: "" });
+      setModule({ name: "", description: "" });
     } catch (error) {
       alert("Error creating module");
     }
@@ -44,24 +42,6 @@ function CreateModule() {
             value={module.description}
             onChange={handleChange}
           ></textarea>
-        </div>
-        <div>
-          <label>Start Time:</label>
-          <input
-            type="datetime-local"
-            name="start_time"
-            value={module.start_time}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label>End Time:</label>
-          <input
-            type="datetime-local"
-            name="end_time"
-            value={module.end_time}
-            onChange={handleChange}
-          />
         </div>
         <button type="submit">Create Module</button>
       </form>
