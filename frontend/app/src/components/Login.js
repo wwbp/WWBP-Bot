@@ -9,14 +9,14 @@ function Login({ setLoggedIn }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const apiUrl = process.env.REACT_APP_API_URL;
     try {
-      const response = await postData(`${apiUrl}/login/`, {
+      const response = await postData("/login/", {
         username,
         password,
       });
       if (response.message === "Login successful") {
         localStorage.setItem("token", response.token);
+        localStorage.setItem("role", response.role);
         setLoggedIn(true);
         navigate("/");
       } else {

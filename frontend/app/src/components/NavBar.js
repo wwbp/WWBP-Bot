@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 function NavBar({ isLoggedIn, handleLogout }) {
   const navigate = useNavigate();
+  const role = localStorage.getItem("role");
 
   const onLogout = () => {
     handleLogout();
@@ -21,7 +22,14 @@ function NavBar({ isLoggedIn, handleLogout }) {
       {isLoggedIn ? (
         <>
           <Link to="/profile">Profile</Link>
-          <button onClick={onLogout}>Logout</button> {/* Use onLogout here */}
+          {role === "teacher" && (
+            <>
+              <Link to="/teacher-dashboard">Teacher Dashboard</Link>
+              <Link to="/create-module">Create Module</Link>
+              <Link to="/create-task">Create Task</Link>
+            </>
+          )}
+          <button onClick={onLogout}>Logout</button>
         </>
       ) : (
         <>

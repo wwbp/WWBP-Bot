@@ -17,10 +17,11 @@ function Signup({ setLoggedIn }) {
         username,
         email,
         password,
-        role, // Include role in the registration data
+        role,
       });
-      if (response.ok && response.message === "User created successfully") {
+      if (response.message === "User created successfully") {
         localStorage.setItem("token", response.token);
+        localStorage.setItem("role", role);
         setLoggedIn(true);
         navigate("/");
       } else {

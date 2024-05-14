@@ -34,7 +34,12 @@ def login_view(request):
         if user is not None:
             login(request, user)
             token, _ = Token.objects.get_or_create(user=user)
-            return JsonResponse({"token": token.key, "message": "Login successful", "user_id": user.id}, status=200)
+            return JsonResponse({
+                "token": token.key,
+                "message": "Login successful",
+                "user_id": user.id,
+                "role": user.role
+            }, status=200)
         else:
             return JsonResponse({"message": "Invalid credentials"}, status=401)
 
@@ -92,7 +97,12 @@ def register(request):
             user = get_user_model().objects.create_user(
                 username=username, email=email, password=password, role=role)
             user.save()
-            return JsonResponse({'message': 'User created successfully'}, status=201)
+            token, _ = Token.objects.get_or_create(user=user)
+            return JsonResponse({
+                'message': 'User created successfully',
+                'token': token.key,
+                'role': role
+            }, status=201)
 
         except Exception as e:
             logger.error("Error during registration", exc_info=True)
