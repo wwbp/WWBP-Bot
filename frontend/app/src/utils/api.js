@@ -18,7 +18,7 @@ function getCookie(name) {
 
 // Creating an Axios instance
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL.replace("/v1", ""),
+  baseURL: process.env.REACT_APP_API_URL,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

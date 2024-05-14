@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import current_time, login_view, logout_view, user_profile, register
+from .views import current_time, login_view, logout_view, user_profile, register, csrf
 
 urlpatterns = [
+    path('csrf/', csrf, name='csrf'),
     path('time/', current_time, name='current-time'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
