@@ -18,7 +18,7 @@ function getCookie(name) {
 
 // Creating an Axios instance
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL.replace("/v1", ""),
+  baseURL: process.env.REACT_APP_API_URL,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -82,6 +82,17 @@ export async function postData(url = "", body = {}) {
     return response.data;
   } catch (error) {
     console.error("Error posting data:", error);
+    throw error;
+  }
+}
+
+// Function to send data using PUT method
+export async function putData(url = "", body = {}) {
+  try {
+    const response = await api.put(url, body);
+    return response.data;
+  } catch (error) {
+    console.error("Error putting data:", error);
     throw error;
   }
 }
