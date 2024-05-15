@@ -27,7 +27,6 @@ function ModuleInteraction() {
 
   useEffect(() => {
     if (selectedTask) {
-      console.log("Selected Task:", selectedTask);
       startChatSession(selectedTask.id);
     }
   }, [selectedTask]);
@@ -35,9 +34,9 @@ function ModuleInteraction() {
   const startChatSession = async (taskId) => {
     try {
       const session = await createChatSession(moduleId, taskId);
-      console.log("Chat Session Created:", session);
       setChatSession(session);
     } catch (error) {
+      console.error("Error creating chat session:", error.message);
       setError(error.message);
     }
   };
@@ -109,9 +108,7 @@ function ModuleInteraction() {
                 </button>
               </div>
             ) : (
-              <button onClick={() => startChatSession(selectedTask.id)}>
-                Start Chat Session
-              </button>
+              <div>Loading chat session...</div>
             )}
           </>
         )}

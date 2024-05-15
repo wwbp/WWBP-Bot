@@ -115,10 +115,9 @@ export async function createChatSession(moduleId, taskId) {
       module: moduleId,
       task: taskId,
     });
-    console.log("createChatSession response:", response); // Add a log to check the response
     return response;
   } catch (error) {
-    console.error("Error creating chat session:", error);
+    console.error("Error creating chat session:", error.message);
     throw error;
   }
 }
@@ -131,9 +130,9 @@ export async function sendMessage(sessionId, message, sender) {
       message,
       sender,
     });
-    return response.data;
+    return response;
   } catch (error) {
-    console.error("Error sending message:", error);
+    console.error("Error sending message:", error.message);
     throw error;
   }
 }

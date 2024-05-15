@@ -10,7 +10,7 @@ function ChatInterface({ session }) {
   useEffect(() => {
     fetchChatMessages(session.id)
       .then((data) => {
-        setMessages(data);
+        setMessages(data || []);
         setLoading(false);
       })
       .catch((error) => {
@@ -29,6 +29,7 @@ function ChatInterface({ session }) {
       ]);
       setMessage("");
     } catch (error) {
+      console.error("Error sending message:", error.message);
       setError(error.message);
     }
   };
@@ -43,21 +44,23 @@ function ChatInterface({ session }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ flexGrow: 1, overflowY: "auto" }}>
+      <div style={{ flexGrow: 1, overflowY: "auto", padding: "10px" }}>
         {messages.map((msg) => (
-          <div key={msg.id}>
+          <div key={msg.id} style={{ marginBottom: "10px" }}>
             <strong>{msg.sender}:</strong> {msg.message}
           </div>
         ))}
       </div>
-      <div style={{ display: "flex" }}>
+      <div style={{ display: "flex", padding: "10px" }}>
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          style={{ flexGrow: 1 }}
+          style={{ flexGrow: 1, marginRight: "10px", padding: "10px" }}
         />
-        <button onClick={handleSendMessage}>Send</button>
+        <button onClick={handleSendMessage} style={{ padding: "10px" }}>
+          Send
+        </button>
       </div>
     </div>
   );

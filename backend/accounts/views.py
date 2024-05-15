@@ -1,3 +1,11 @@
+from .serializers import ChatSessionSerializer, ChatMessageSerializer
+from .models import ChatSession, ChatMessage
+from .serializers import ChatMessageSerializer, ChatSessionSerializer
+from .models import ChatMessage, ChatSession
+from rest_framework import status, viewsets
+from .serializers import ChatMessageSerializer
+from .models import ChatMessage
+from rest_framework import viewsets, status
 import os
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -190,26 +198,49 @@ class TaskViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
 
 
+# Initialize OpenAI client
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def generate_gpt_response(user_message):
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": user_message}
+        ]
+    )
+    return response.choices[0].message.content
+
+
 class ChatSessionViewSet(viewsets.ModelViewSet):
     queryset = ChatSession.objects.all()
     serializer_class = ChatSessionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data
         data['user'] = request.user.id
-        data['task'] = request.data.get('task')  # Ensure task is included
         serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def messages(self, request, pk=None):
+        session = self.get_object()
+        messages = ChatMessage.objects.filter(session=session)
+        serializer = ChatMessageSerializer(messages, many=True)
+        return Response(serializer.data)
 
 
 class ChatMessageViewSet(viewsets.ModelViewSet):
     queryset = ChatMessage.objects.all()
     serializer_class = ChatMessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data
@@ -218,10 +249,8 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
 
-        # Integrate with GPT-4
-        response_text = self.generate_gpt_response(data['message'])
+        response_text = generate_gpt_response(data['message'])
 
-        # Save the bot's response to the ChatMessage model
         bot_response = ChatMessage.objects.create(
             session_id=data['session'],
             message=response_text,
@@ -233,13 +262,3 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             'user_message': serializer.data,
             'bot_message': bot_serializer.data
         }, status=status.HTTP_201_CREATED)
-
-    def generate_gpt_response(self, user_message):
-        # Replace with your actual OpenAI API key
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        response = openai.Completion.create(
-            engine="davinci-codex",
-            prompt=user_message,
-            max_tokens=150
-        )
-        return response.choices[0].text.strip()
