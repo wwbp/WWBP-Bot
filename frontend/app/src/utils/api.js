@@ -97,4 +97,55 @@ export async function putData(url = "", body = {}) {
   }
 }
 
+// Function to delete data using DELETE method
+export async function deleteData(url = "") {
+  try {
+    const response = await api.delete(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting data:", error);
+    throw error;
+  }
+}
+
+// Function to create a chat session
+export async function createChatSession(moduleId, taskId) {
+  try {
+    const response = await postData("/chat_sessions/", {
+      module: moduleId,
+      task: taskId,
+    });
+    return response;
+  } catch (error) {
+    console.error("Error creating chat session:", error.message);
+    throw error;
+  }
+}
+
+// Function to send a chat message and receive a response
+export async function sendMessage(sessionId, message, sender) {
+  try {
+    const response = await postData("/chat_messages/", {
+      session: sessionId,
+      message,
+      sender,
+    });
+    return response;
+  } catch (error) {
+    console.error("Error sending message:", error.message);
+    throw error;
+  }
+}
+
+// Function to fetch chat messages for a session
+export async function fetchChatMessages(sessionId) {
+  try {
+    const response = await fetchData(`/chat_sessions/${sessionId}/messages/`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching chat messages:", error);
+    throw error;
+  }
+}
+
 export default api;

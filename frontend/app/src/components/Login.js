@@ -2,22 +2,23 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { postData } from "../utils/api";
 
-function Login({ setLoggedIn }) {
+function Login({ setLoggedIn, setRole }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const apiUrl = process.env.REACT_APP_API_URL;
     try {
-      const response = await postData(`${apiUrl}/login/`, {
+      const response = await postData("/login/", {
         username,
         password,
       });
       if (response.message === "Login successful") {
         localStorage.setItem("token", response.token);
+        localStorage.setItem("role", response.role);
         setLoggedIn(true);
+        setRole(response.role);
         navigate("/");
       } else {
         throw new Error(response.message || "Failed to login!");

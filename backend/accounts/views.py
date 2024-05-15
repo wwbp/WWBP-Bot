@@ -1,9 +1,22 @@
+from .serializers import ChatSessionSerializer, ChatMessageSerializer
+from .models import ChatSession, ChatMessage
+from .serializers import ChatMessageSerializer, ChatSessionSerializer
+from .models import ChatMessage, ChatSession
+from rest_framework import status, viewsets
+from .serializers import ChatMessageSerializer
+from .models import ChatMessage
+from rest_framework import viewsets, status
+import os
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from rest_framework.response import Response
 from rest_framework import viewsets, permissions
 from rest_framework.authtoken.models import Token
 from django.middleware.csrf import get_token
 import logging
-from .models import User, Task, Module
-from .serializers import UserSerializer, TaskSerializer, ModuleSerializer
+from .models import User, Task, Module, ChatSession, ChatMessage
+from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer
 from django.contrib.auth import get_user_model
 import json
 from django.views.decorators.csrf import csrf_exempt
@@ -11,8 +24,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseNotAllowed, JsonResponse
 from datetime import datetime
+import openai
 
-logger = logging.getLogger(__name__)  # Setup logger
+logger = logging.getLogger(__name__)
 
 
 def csrf(request):
@@ -34,7 +48,12 @@ def login_view(request):
         if user is not None:
             login(request, user)
             token, _ = Token.objects.get_or_create(user=user)
-            return JsonResponse({"token": token.key, "message": "Login successful", "user_id": user.id}, status=200)
+            return JsonResponse({
+                "token": token.key,
+                "message": "Login successful",
+                "user_id": user.id,
+                "role": user.role
+            }, status=200)
         else:
             return JsonResponse({"message": "Invalid credentials"}, status=401)
 
@@ -92,7 +111,19 @@ def register(request):
             user = get_user_model().objects.create_user(
                 username=username, email=email, password=password, role=role)
             user.save()
-            return JsonResponse({'message': 'User created successfully'}, status=201)
+
+            # Log the user in after registration
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                token, _ = Token.objects.get_or_create(user=user)
+                return JsonResponse({
+                    'message': 'User created successfully',
+                    'token': token.key,
+                    'role': role  # Include role in response
+                }, status=201)
+            else:
+                return JsonResponse({'error': 'Authentication failed'}, status=401)
 
         except Exception as e:
             logger.error("Error during registration", exc_info=True)
@@ -114,10 +145,120 @@ class UserViewSet(viewsets.ModelViewSet):
 class ModuleViewSet(viewsets.ModelViewSet):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
-    permission_classes = [permissions.IsAuthenticated, IsTeacher]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        logger.debug(f"Module creation request data: {request.data}")
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            logger.error(f"Error creating module: {e}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error updating module: {e}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def assigned(self, request):
+        if request.user.role == 'student':
+            modules = Module.objects.filter(assigned_students=request.user)
+            serializer = self.get_serializer(modules, many=True)
+            return Response(serializer.data)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
+
+
+# Initialize OpenAI client
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def generate_gpt_response(user_message):
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": user_message}
+        ]
+    )
+    return response.choices[0].message.content
+
+
+class ChatSessionViewSet(viewsets.ModelViewSet):
+    queryset = ChatSession.objects.all()
+    serializer_class = ChatSessionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        data['user'] = request.user.id
+        serializer = self.get_serializer(data=data)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def messages(self, request, pk=None):
+        session = self.get_object()
+        messages = ChatMessage.objects.filter(session=session)
+        serializer = ChatMessageSerializer(messages, many=True)
+        return Response(serializer.data)
+
+
+class ChatMessageViewSet(viewsets.ModelViewSet):
+    queryset = ChatMessage.objects.all()
+    serializer_class = ChatMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        data['user'] = request.user.id
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        response_text = generate_gpt_response(data['message'])
+
+        bot_response = ChatMessage.objects.create(
+            session_id=data['session'],
+            message=response_text,
+            sender='bot'
+        )
+        bot_serializer = self.get_serializer(bot_response)
+
+        return Response({
+            'user_message': serializer.data,
+            'bot_message': bot_serializer.data
+        }, status=status.HTTP_201_CREATED)

@@ -19,6 +19,10 @@ class Module(models.Model):
     description = models.TextField()
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='modules')
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    assigned_students = models.ManyToManyField(
+        User, related_name='assigned_modules')
 
 
 class Task(models.Model):
@@ -26,6 +30,21 @@ class Task(models.Model):
     content = models.TextField()
     module = models.ForeignKey(
         Module, on_delete=models.CASCADE, related_name='tasks')
-    assigned_to = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='tasks')
-    due_date = models.DateField()
+
+
+class ChatSession(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='chat_sessions')
+    module = models.ForeignKey(
+        Module, on_delete=models.CASCADE, related_name='chat_sessions')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class ChatMessage(models.Model):
+    session = models.ForeignKey(
+        ChatSession, on_delete=models.CASCADE, related_name='messages')
+    message = models.TextField()
+    sender = models.CharField(max_length=10, choices=(
+        ('student', 'Student'), ('bot', 'Bot')))
+    created_at = models.DateTimeField(auto_now_add=True)
