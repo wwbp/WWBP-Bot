@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { postData } from "../utils/api";
 
-function CreateModule() {
+function ModuleForm({ onModuleCreated }) {
   const [module, setModule] = useState({
     name: "",
     description: "",
+    start_time: "",
+    end_time: "",
   });
+  const [error, setError] = useState(null);
 
   const handleChange = (e) => {
     setModule({ ...module, [e.target.name]: e.target.value });
@@ -16,15 +19,17 @@ function CreateModule() {
     try {
       await postData("/modules/", module);
       alert("Module created successfully!");
-      setModule({ name: "", description: "" });
+      setModule({ name: "", description: "", start_time: "", end_time: "" });
+      onModuleCreated(); 
     } catch (error) {
-      alert("Error creating module");
+      setError(error.message);
     }
   };
 
   return (
     <div>
       <h1>Create Module</h1>
+      {error && <p style={{ color: "red" }}>Error: {error}</p>}
       <form onSubmit={handleSubmit}>
         <div>
           <label>Name:</label>
@@ -43,10 +48,28 @@ function CreateModule() {
             onChange={handleChange}
           ></textarea>
         </div>
+        <div>
+          <label>Start Time:</label>
+          <input
+            type="datetime-local"
+            name="start_time"
+            value={module.start_time}
+            onChange={handleChange}
+          />
+        </div>
+        <div>
+          <label>End Time:</label>
+          <input
+            type="datetime-local"
+            name="end_time"
+            value={module.end_time}
+            onChange={handleChange}
+          />
+        </div>
         <button type="submit">Create Module</button>
       </form>
     </div>
   );
 }
 
-export default CreateModule;
+export default ModuleForm;

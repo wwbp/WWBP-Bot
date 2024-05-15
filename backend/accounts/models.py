@@ -19,6 +19,8 @@ class Module(models.Model):
     description = models.TextField()
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='modules')
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
 
 
 class Task(models.Model):
@@ -28,4 +30,3 @@ class Task(models.Model):
         Module, on_delete=models.CASCADE, related_name='tasks')
     assigned_to = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='tasks')
-    due_date = models.DateField()

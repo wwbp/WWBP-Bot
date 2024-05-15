@@ -1,26 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, postData } from "../utils/api";
+import { fetchData, postData, putData } from "../utils/api";
 
-function CreateTask() {
+function TaskForm({ module, onClose, editingTask }) {
   const [task, setTask] = useState({
-    title: "",
-    content: "",
-    module: "",
-    assigned_to: "",
-    due_date: "",
+    title: editingTask ? editingTask.title : "",
+    content: editingTask ? editingTask.content : "",
+    module: module.id,
+    assigned_to: editingTask ? editingTask.assigned_to : "",
   });
-  const [modules, setModules] = useState([]);
   const [students, setStudents] = useState([]);
 
   useEffect(() => {
-    fetchData("/modules/")
-      .then((data) => {
-        setModules(data);
-      })
-      .catch((error) => {
-        alert("Error loading modules");
-      });
-
     fetchData("/users/")
       .then((data) => {
         const studentUsers = data.filter((user) => user.role === "student");
@@ -38,23 +28,21 @@ function CreateTask() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postData("/tasks/", task);
-      alert("Task created successfully!");
-      setTask({
-        title: "",
-        content: "",
-        module: "",
-        assigned_to: "",
-        due_date: "",
-      });
+      if (editingTask) {
+        await putData(`/tasks/${editingTask.id}/`, task);
+      } else {
+        await postData("/tasks/", task);
+      }
+      alert("Task saved successfully!");
+      onClose();
     } catch (error) {
-      alert("Error creating task");
+      alert("Error saving task");
     }
   };
 
   return (
     <div>
-      <h1>Create Task</h1>
+      <h2>{editingTask ? "Edit Task" : "Create Task"}</h2>
       <form onSubmit={handleSubmit}>
         <div>
           <label>Title:</label>
@@ -74,17 +62,6 @@ function CreateTask() {
           ></textarea>
         </div>
         <div>
-          <label>Module:</label>
-          <select name="module" value={task.module} onChange={handleChange}>
-            <option value="">Select Module</option>
-            {modules.map((mod) => (
-              <option key={mod.id} value={mod.id}>
-                {mod.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
           <label>Assign To:</label>
           <select
             name="assigned_to"
@@ -99,19 +76,10 @@ function CreateTask() {
             ))}
           </select>
         </div>
-        <div>
-          <label>Due Date:</label>
-          <input
-            type="date"
-            name="due_date"
-            value={task.due_date}
-            onChange={handleChange}
-          />
-        </div>
-        <button type="submit">Create Task</button>
+        <button type="submit">Save Task</button>
       </form>
     </div>
   );
 }
 
-export default CreateTask;
+export default TaskForm;

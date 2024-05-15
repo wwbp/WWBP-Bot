@@ -97,4 +97,15 @@ export async function putData(url = "", body = {}) {
   }
 }
 
+// Function to delete data using DELETE method
+export async function deleteData(url = "") {
+  try {
+    const response = await api.delete(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting data:", error);
+    throw error;
+  }
+}
+
 export default api;

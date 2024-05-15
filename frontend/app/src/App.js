@@ -6,8 +6,6 @@ import UserProfile from "./components/UserProfile";
 import NavBar from "./components/NavBar";
 import Signup from "./components/Signup";
 import TeacherDashboard from "./components/TeacherDashboard";
-import CreateModule from "./components/CreateModule";
-import CreateTask from "./components/CreateTask";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -44,8 +42,6 @@ function App() {
           element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
         />
         <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-        <Route path="/create-module" element={<CreateModule />} />
-        <Route path="/create-task" element={<CreateTask />} />
       </Routes>
     </Router>
   );

@@ -1,3 +1,4 @@
+from rest_framework.exceptions import ValidationError
 from rest_framework import serializers
 from .models import User, Module, Task
 
@@ -12,8 +13,14 @@ class UserSerializer(serializers.ModelSerializer):
 class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Module
-        fields = ['id', 'name', 'description', 'created_by']
+        fields = ['id', 'name', 'description',
+                  'created_by', 'start_time', 'end_time']
         read_only_fields = ['created_by']
+
+    def validate(self, data):
+        if data['start_time'] >= data['end_time']:
+            raise ValidationError("End time must be after start time")
+        return data
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -24,5 +31,4 @@ class ModuleSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'title', 'content',
-                  'module', 'assigned_to', 'due_date']
+        fields = ['id', 'title', 'content', 'module', 'assigned_to']

@@ -23,11 +23,7 @@ function NavBar({ isLoggedIn, handleLogout }) {
         <>
           <Link to="/profile">Profile</Link>
           {role === "teacher" && (
-            <>
-              <Link to="/teacher-dashboard">Teacher Dashboard</Link>
-              <Link to="/create-module">Create Module</Link>
-              <Link to="/create-task">Create Task</Link>
-            </>
+            <Link to="/teacher-dashboard">Teacher Dashboard</Link>
           )}
           <button onClick={onLogout}>Logout</button>
         </>
