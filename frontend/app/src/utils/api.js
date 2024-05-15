@@ -109,17 +109,21 @@ export async function deleteData(url = "") {
 }
 
 // Function to create a chat session
-export async function createChatSession(moduleId) {
+export async function createChatSession(moduleId, taskId) {
   try {
-    const response = await postData("/chat_sessions/", { module: moduleId });
-    return response.data;
+    const response = await postData("/chat_sessions/", {
+      module: moduleId,
+      task: taskId,
+    });
+    console.log("createChatSession response:", response); // Add a log to check the response
+    return response;
   } catch (error) {
     console.error("Error creating chat session:", error);
     throw error;
   }
 }
 
-// Function to send a chat message
+// Function to send a chat message and receive a response
 export async function sendMessage(sessionId, message, sender) {
   try {
     const response = await postData("/chat_messages/", {

@@ -35,6 +35,7 @@ services:
       - DATABASE_PORT=${DATABASE_PORT}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
   frontend:
     build:
       context: ./frontend/app

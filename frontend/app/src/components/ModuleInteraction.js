@@ -25,9 +25,17 @@ function ModuleInteraction() {
       });
   }, [moduleId]);
 
+  useEffect(() => {
+    if (selectedTask) {
+      console.log("Selected Task:", selectedTask);
+      startChatSession(selectedTask.id);
+    }
+  }, [selectedTask]);
+
   const startChatSession = async (taskId) => {
     try {
       const session = await createChatSession(moduleId, taskId);
+      console.log("Chat Session Created:", session);
       setChatSession(session);
     } catch (error) {
       setError(error.message);
@@ -42,8 +50,12 @@ function ModuleInteraction() {
     return <div>Error: {error}</div>;
   }
 
+  if (!module) {
+    return <div>No module data available</div>;
+  }
+
   return (
-    <div style={{ display: "flex" }}>
+    <div style={{ display: "flex", height: "100%" }}>
       <div
         style={{ width: "30%", borderRight: "1px solid #ddd", padding: "10px" }}
       >
@@ -60,15 +72,47 @@ function ModuleInteraction() {
           ))}
         </ul>
       </div>
-      <div style={{ width: "70%", padding: "10px" }}>
+      <div
+        style={{
+          width: "70%",
+          padding: "10px",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+        }}
+      >
         {selectedTask && (
           <>
             <h3>{selectedTask.title}</h3>
             <p>{selectedTask.content}</p>
-            <button onClick={() => startChatSession(selectedTask.id)}>
-              Start Chat Session
-            </button>
-            {chatSession && <ChatInterface session={chatSession} />}
+            {chatSession ? (
+              <div
+                style={{
+                  flexGrow: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <ChatInterface session={chatSession} />
+                <button
+                  onClick={() => alert("Task completed!")}
+                  style={{
+                    marginTop: "10px",
+                    padding: "10px",
+                    borderRadius: "5px",
+                    border: "none",
+                    background: "#28a745",
+                    color: "#fff",
+                  }}
+                >
+                  Complete Task
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => startChatSession(selectedTask.id)}>
+                Start Chat Session
+              </button>
+            )}
           </>
         )}
       </div>

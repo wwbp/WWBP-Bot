@@ -1,3 +1,4 @@
+import os
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
@@ -15,6 +16,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseNotAllowed, JsonResponse
 from datetime import datetime
+import openai
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +198,7 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data
         data['user'] = request.user.id
+        data['task'] = request.data.get('task')  # Ensure task is included
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -207,3 +210,36 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
     queryset = ChatMessage.objects.all()
     serializer_class = ChatMessageSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        data['user'] = request.user.id
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # Integrate with GPT-4
+        response_text = self.generate_gpt_response(data['message'])
+
+        # Save the bot's response to the ChatMessage model
+        bot_response = ChatMessage.objects.create(
+            session_id=data['session'],
+            message=response_text,
+            sender='bot'
+        )
+        bot_serializer = self.get_serializer(bot_response)
+
+        return Response({
+            'user_message': serializer.data,
+            'bot_message': bot_serializer.data
+        }, status=status.HTTP_201_CREATED)
+
+    def generate_gpt_response(self, user_message):
+        # Replace with your actual OpenAI API key
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        response = openai.Completion.create(
+            engine="davinci-codex",
+            prompt=user_message,
+            max_tokens=150
+        )
+        return response.choices[0].text.strip()

@@ -22,7 +22,11 @@ function ChatInterface({ session }) {
   const handleSendMessage = async () => {
     try {
       const newMessage = await sendMessage(session.id, message, "student");
-      setMessages([...messages, newMessage]);
+      setMessages([
+        ...messages,
+        newMessage.user_message,
+        newMessage.bot_message,
+      ]);
       setMessage("");
     } catch (error) {
       setError(error.message);
@@ -38,21 +42,23 @@ function ChatInterface({ session }) {
   }
 
   return (
-    <div>
-      <h2>Chat Session</h2>
-      <div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ flexGrow: 1, overflowY: "auto" }}>
         {messages.map((msg) => (
           <div key={msg.id}>
             <strong>{msg.sender}:</strong> {msg.message}
           </div>
         ))}
       </div>
-      <input
-        type="text"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-      />
-      <button onClick={handleSendMessage}>Send</button>
+      <div style={{ display: "flex" }}>
+        <input
+          type="text"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          style={{ flexGrow: 1 }}
+        />
+        <button onClick={handleSendMessage}>Send</button>
+      </div>
     </div>
   );
 }
