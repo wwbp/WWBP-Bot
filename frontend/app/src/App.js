@@ -7,6 +7,7 @@ import NavBar from "./components/NavBar";
 import Signup from "./components/Signup";
 import TeacherDashboard from "./components/TeacherDashboard";
 import StudentDashboard from "./components/StudentDashboard";
+import ModuleInteraction from "./components/ModuleInteraction";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -44,6 +45,7 @@ function App() {
         />
         <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
         <Route path="/student-dashboard" element={<StudentDashboard />} />
+        <Route path="/modules/:moduleId" element={<ModuleInteraction />} />{" "}
       </Routes>
     </Router>
   );
