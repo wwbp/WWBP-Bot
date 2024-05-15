@@ -1,6 +1,6 @@
-from rest_framework.exceptions import ValidationError
+from django.forms import ValidationError
 from rest_framework import serializers
-from .models import User, Module, Task
+from .models import User, Module, Task, ChatSession, ChatMessage
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -67,3 +67,15 @@ class ModuleSerializer(serializers.ModelSerializer):
 
         instance.tasks.exclude(id__in=keep_tasks).delete()
         return instance
+
+
+class ChatSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatSession
+        fields = ['id', 'user', 'module', 'created_at', 'updated_at']
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = ['id', 'session', 'message', 'sender', 'created_at']

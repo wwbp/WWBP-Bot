@@ -1,11 +1,13 @@
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions
 from rest_framework.authtoken.models import Token
 from django.middleware.csrf import get_token
 import logging
-from .models import User, Task, Module
-from .serializers import UserSerializer, TaskSerializer, ModuleSerializer
+from .models import User, Task, Module, ChatSession, ChatMessage
+from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer
 from django.contrib.auth import get_user_model
 import json
 from django.views.decorators.csrf import csrf_exempt
@@ -166,8 +168,28 @@ class ModuleViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save()
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def assigned(self, request):
+        if request.user.role == 'student':
+            modules = Module.objects.filter(assigned_students=request.user)
+            serializer = self.get_serializer(modules, many=True)
+            return Response(serializer.data)
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
+
+
+class ChatSessionViewSet(viewsets.ModelViewSet):
+    queryset = ChatSession.objects.all()
+    serializer_class = ChatSessionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class ChatMessageViewSet(viewsets.ModelViewSet):
+    queryset = ChatMessage.objects.all()
+    serializer_class = ChatMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]

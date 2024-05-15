@@ -25,6 +25,9 @@ function NavBar({ isLoggedIn, handleLogout }) {
           {role === "teacher" && (
             <Link to="/teacher-dashboard">Teacher Dashboard</Link>
           )}
+          {role === "student" && (
+            <Link to="/student-dashboard">Student Dashboard</Link>
+          )}
           <button onClick={onLogout}>Logout</button>
         </>
       ) : (
