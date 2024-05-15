@@ -14,7 +14,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseNotAllowed, JsonResponse
 from datetime import datetime
 
-logger = logging.getLogger(__name__)  # Setup logger
+logger = logging.getLogger(__name__)
 
 
 def csrf(request):
@@ -149,6 +149,22 @@ class ModuleViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error updating module: {e}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def perform_update(self, serializer):
+        serializer.save()
 
 
 class TaskViewSet(viewsets.ModelViewSet):
