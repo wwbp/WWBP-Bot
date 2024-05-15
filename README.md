@@ -75,18 +75,6 @@ For now, manual testing is done by accessing the frontend and backend via browse
 - DevOps: Set up a staging environment on AWS using EC2 and RDS to mimic the production environment.
 - Task: Deploy the current state of the application to the staging environment and ensure all components are functioning as expected.
 
-#### Milestone 3: Course Structure Implementation
-
-- Backend: Develop APIs for managing syllabi, modules, and tasks.
-- Frontend: Implement interfaces for viewing and managing syllabi, modules, and tasks.
-- Database: Design and implement schemas to support the course structure.
-
-#### Milestone 4: Chatbot Integration
-
-- Backend: Integrate with an LLM API for generating chatbot responses.
-- Frontend: Create a chat interface that allows users to interact with the chatbot.
-- Task: Ensure the chatbot can dynamically use course content to interact with users.
-
 #### Milestone 5: Advanced Chatbot Features
 
 - Backend: Implement voice capabilities alongside text-based chat.
