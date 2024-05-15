@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { fetchData } from "../utils/api";
+import { fetchData, deleteData } from "../utils/api";
 import ModuleForm from "./ModuleForm";
 
 function TeacherDashboard() {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showModuleForm, setShowModuleForm] = useState(false);
+  const [editingModule, setEditingModule] = useState(null);
 
   useEffect(() => {
     fetchData("/modules/")
@@ -20,37 +20,49 @@ function TeacherDashboard() {
       });
   }, []);
 
-  const toggleModuleForm = () => {
-    setShowModuleForm(!showModuleForm);
+  const handleModuleCreated = () => {
+    fetchData("/modules/").then(setModules);
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  const handleEditClick = (module) => {
+    setEditingModule(module);
+  };
 
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
+  const handleDeleteClick = async (moduleId) => {
+    try {
+      await deleteData(`/modules/${moduleId}/`);
+      handleModuleCreated(); // Refresh the module list after deletion
+    } catch (error) {
+      setError(error.message);
+    }
+  };
 
   return (
     <div>
       <h1>Teacher Dashboard</h1>
-      <button onClick={toggleModuleForm}>
-        {showModuleForm ? "Hide Module Form" : "Add Module"}
-      </button>
-      {showModuleForm && (
+      {error && <p style={{ color: "red" }}>Error: {error}</p>}
+      <button onClick={() => setEditingModule({})}>Add Module</button>
+      {editingModule && (
         <ModuleForm
-          onModuleCreated={() => fetchData("/modules/").then(setModules)}
+          module={editingModule}
+          onModuleCreated={handleModuleCreated}
+          onClose={() => setEditingModule(null)}
         />
       )}
       <h2>Modules</h2>
-      {modules.length === 0 ? (
+      {loading ? (
+        <div>Loading...</div>
+      ) : modules.length === 0 ? (
         <p>No modules available</p>
       ) : (
         <ul>
           {modules.map((module) => (
             <li key={module.id}>
               {module.name} - {module.description}
+              <button onClick={() => handleEditClick(module)}>Edit</button>
+              <button onClick={() => handleDeleteClick(module.id)}>
+                Delete
+              </button>
             </li>
           ))}
         </ul>

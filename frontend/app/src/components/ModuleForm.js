@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, postData } from "../utils/api";
+import { fetchData, postData, putData } from "../utils/api";
+import TaskForm from "./TaskForm";
 
-function ModuleForm({ onModuleCreated }) {
-  const [module, setModule] = useState({
-    name: "",
-    description: "",
-    start_time: "",
-    end_time: "",
-    assigned_students: [],
+function ModuleForm({ module, onModuleCreated, onClose }) {
+  const [moduleData, setModuleData] = useState({
+    name: module.name || "",
+    description: module.description || "",
+    start_time: module.start_time || "",
+    end_time: module.end_time || "",
+    assigned_students: module.assigned_students || [],
   });
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(module.tasks || []);
   const [students, setStudents] = useState([]);
   const [error, setError] = useState(null);
 
@@ -24,40 +25,47 @@ function ModuleForm({ onModuleCreated }) {
       });
   }, []);
 
-  const handleChange = (e) => {
-    setModule({ ...module, [e.target.name]: e.target.value });
+  const handleModuleChange = (e) => {
+    setModuleData({ ...moduleData, [e.target.name]: e.target.value });
   };
 
-  const handleTaskChange = (index, e) => {
-    const newTasks = tasks.slice();
-    newTasks[index] = { ...newTasks[index], [e.target.name]: e.target.value };
+  const handleStudentChange = (e) => {
+    const selectedOptions = Array.from(
+      e.target.selectedOptions,
+      (option) => option.value
+    );
+    setModuleData({ ...moduleData, assigned_students: selectedOptions });
+  };
+
+  const handleTaskChange = (index, updatedTask) => {
+    const newTasks = tasks.map((task, i) => (i === index ? updatedTask : task));
     setTasks(newTasks);
   };
 
-  const addTask = () => {
+  const handleAddTask = () => {
     setTasks([...tasks, { title: "", content: "" }]);
   };
 
-  const removeTask = (index) => {
-    const newTasks = tasks.slice();
-    newTasks.splice(index, 1);
-    setTasks(newTasks);
+  const handleRemoveTask = (index) => {
+    setTasks(tasks.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await postData("/modules/", { ...module, tasks });
-      alert("Module created successfully!");
-      setModule({
-        name: "",
-        description: "",
-        start_time: "",
-        end_time: "",
-        assigned_students: [],
-      });
-      setTasks([]);
+      if (module.id) {
+        await putData(`/modules/${module.id}/`, {
+          ...moduleData,
+          tasks,
+        });
+      } else {
+        await postData("/modules/", {
+          ...moduleData,
+          tasks,
+        });
+      }
       onModuleCreated();
+      onClose();
     } catch (error) {
       setError(error.message);
     }
@@ -65,7 +73,7 @@ function ModuleForm({ onModuleCreated }) {
 
   return (
     <div>
-      <h1>Create Module</h1>
+      <h1>{module.id ? "Edit Module" : "Create Module"}</h1>
       {error && <p style={{ color: "red" }}>Error: {error}</p>}
       <form onSubmit={handleSubmit}>
         <div>
@@ -73,16 +81,16 @@ function ModuleForm({ onModuleCreated }) {
           <input
             type="text"
             name="name"
-            value={module.name}
-            onChange={handleChange}
+            value={moduleData.name}
+            onChange={handleModuleChange}
           />
         </div>
         <div>
           <label>Description:</label>
           <textarea
             name="description"
-            value={module.description}
-            onChange={handleChange}
+            value={moduleData.description}
+            onChange={handleModuleChange}
           ></textarea>
         </div>
         <div>
@@ -90,8 +98,8 @@ function ModuleForm({ onModuleCreated }) {
           <input
             type="datetime-local"
             name="start_time"
-            value={module.start_time}
-            onChange={handleChange}
+            value={moduleData.start_time}
+            onChange={handleModuleChange}
           />
         </div>
         <div>
@@ -99,8 +107,8 @@ function ModuleForm({ onModuleCreated }) {
           <input
             type="datetime-local"
             name="end_time"
-            value={module.end_time}
-            onChange={handleChange}
+            value={moduleData.end_time}
+            onChange={handleModuleChange}
           />
         </div>
         <div>
@@ -108,15 +116,8 @@ function ModuleForm({ onModuleCreated }) {
           <select
             multiple
             name="assigned_students"
-            value={module.assigned_students}
-            onChange={(e) =>
-              setModule({
-                ...module,
-                assigned_students: [...e.target.selectedOptions].map(
-                  (o) => o.value
-                ),
-              })
-            }
+            value={moduleData.assigned_students}
+            onChange={handleStudentChange}
           >
             {students.map((student) => (
               <option key={student.id} value={student.id}>
@@ -125,36 +126,29 @@ function ModuleForm({ onModuleCreated }) {
             ))}
           </select>
         </div>
-        <h3>Tasks</h3>
-        {tasks.map((task, index) => (
-          <div key={index}>
-            <h4>Task {index + 1}</h4>
-            <div>
-              <label>Title:</label>
-              <input
-                type="text"
-                name="title"
-                value={task.title}
-                onChange={(e) => handleTaskChange(index, e)}
+        <div>
+          <label>Tasks:</label>
+          {tasks.map((task, index) => (
+            <div key={index}>
+              <TaskForm
+                task={task}
+                onChange={(updatedTask) => handleTaskChange(index, updatedTask)}
               />
+              <button type="button" onClick={() => handleRemoveTask(index)}>
+                Remove Task
+              </button>
             </div>
-            <div>
-              <label>Content:</label>
-              <textarea
-                name="content"
-                value={task.content}
-                onChange={(e) => handleTaskChange(index, e)}
-              ></textarea>
-            </div>
-            <button type="button" onClick={() => removeTask(index)}>
-              Remove Task
-            </button>
-          </div>
-        ))}
-        <button type="button" onClick={addTask}>
-          Add Task
+          ))}
+          <button type="button" onClick={handleAddTask}>
+            Add Task
+          </button>
+        </div>
+        <button type="submit">
+          {module.id ? "Update Module" : "Create Module"}
         </button>
-        <button type="submit">Create Module</button>
+        <button type="button" onClick={onClose}>
+          Cancel
+        </button>
       </form>
     </div>
   );
