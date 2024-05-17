@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { fetchData } from "./utils/api";
 import HomePage from "./components/HomePage";
 import Login from "./components/Login";
 import UserProfile from "./components/UserProfile";
@@ -12,12 +13,27 @@ import ModuleInteraction from "./components/ModuleInteraction";
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [role, setRole] = useState("");
+  const [isStudentView, setIsStudentView] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userRole = localStorage.getItem("role");
     setIsLoggedIn(!!token);
     setRole(userRole);
+
+    if (userRole === "teacher") {
+      const fetchViewMode = async () => {
+        try {
+          const response = await fetchData("/get_view_mode/");
+          setIsStudentView(response.student_view);
+        } catch (error) {
+          console.error("Error fetching view mode", error);
+        }
+      };
+      if (token) {
+        fetchViewMode();
+      }
+    }
   }, []);
 
   return (
@@ -25,6 +41,8 @@ function App() {
       <NavBar
         isLoggedIn={isLoggedIn}
         role={role}
+        isStudentView={isStudentView}
+        setIsStudentView={setIsStudentView}
         handleLogout={() => {
           localStorage.removeItem("token");
           localStorage.removeItem("role");
@@ -43,9 +61,13 @@ function App() {
           path="/signup"
           element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
         />
-        <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
-        <Route path="/modules/:moduleId" element={<ModuleInteraction />} />{" "}
+        {role === "teacher" && !isStudentView && (
+          <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
+        )}
+        {(role === "student" || isStudentView) && (
+          <Route path="/student-dashboard" element={<StudentDashboard />} />
+        )}
+        <Route path="/modules/:moduleId" element={<ModuleInteraction />} />
       </Routes>
     </Router>
   );
