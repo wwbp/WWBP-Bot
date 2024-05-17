@@ -7,11 +7,10 @@ from .serializers import ChatMessageSerializer
 from .models import ChatMessage
 from rest_framework import viewsets, status
 import os
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
 from rest_framework.response import Response
-from rest_framework import viewsets, permissions
+from rest_framework import permissions
 from rest_framework.authtoken.models import Token
 from django.middleware.csrf import get_token
 import logging
@@ -137,15 +136,54 @@ class IsTeacher(permissions.BasePermission):
         return request.user.role == 'teacher'
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsTeacher])
+def switch_to_student_view(request):
+    if request.user.is_authenticated and request.user.role == 'teacher':
+        request.session['student_view'] = True
+        return Response({"message": "Switched to student view"}, status=status.HTTP_200_OK)
+    return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsTeacher])
+def switch_to_teacher_view(request):
+    if request.user.is_authenticated and request.user.role == 'teacher':
+        request.session['student_view'] = False
+        return Response({"message": "Switched to teacher view"}, status=status.HTTP_200_OK)
+    return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsTeacher])
+def get_view_mode(request):
+    if request.user.is_authenticated:
+        student_view = request.session.get('student_view', False)
+        return Response({"student_view": student_view}, status=status.HTTP_200_OK)
+    return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
+logger = logging.getLogger(__name__)
+
+
 class ModuleViewSet(viewsets.ModelViewSet):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def assigned(self, request):
+        if request.user.role == 'student' or request.session.get('student_view', False):
+            modules = Module.objects.filter(
+                assigned_students=request.user) | Module.objects.filter(created_by=request.user)
+            serializer = self.get_serializer(modules, many=True)
+            return Response(serializer.data)
+        return Response(status=status.HTTP_403_FORBIDDEN)
 
     def create(self, request, *args, **kwargs):
         logger.debug(f"Module creation request data: {request.data}")
@@ -177,14 +215,6 @@ class ModuleViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save()
-
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def assigned(self, request):
-        if request.user.role == 'student':
-            modules = Module.objects.filter(assigned_students=request.user)
-            serializer = self.get_serializer(modules, many=True)
-            return Response(serializer.data)
-        return Response(status=status.HTTP_403_FORBIDDEN)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
