@@ -10,6 +10,7 @@ django-cors-headers = "*"
 mysqlclient = "*"
 gunicorn = "*"
 openai = "*"
+requests = "*"
 
 [dev-packages]
 
