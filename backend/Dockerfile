@@ -30,3 +30,5 @@ RUN python manage.py collectstatic --noinput
 
 # Start Gunicorn with the module for WSGI located in your 'config' directory
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+
+EXPOSE 8000
