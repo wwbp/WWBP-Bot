@@ -19,14 +19,20 @@ function ChatInterface({ session }) {
         setLoading(false);
       });
 
-    // Establish WebSocket connection
     const ws = createWebSocket(session.id);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { id: new Date().getTime(), sender: "bot", message: data.message },
-      ]);
+      setMessages((prevMessages) => {
+        const lastMessage = prevMessages[prevMessages.length - 1];
+        if (lastMessage && lastMessage.sender === "bot") {
+          lastMessage.message += data.message;
+          return [...prevMessages];
+        }
+        return [
+          ...prevMessages,
+          { id: new Date().getTime(), sender: "bot", message: data.message },
+        ];
+      });
     };
     ws.onerror = (event) => {
       console.error("WebSocket error observed:", event);

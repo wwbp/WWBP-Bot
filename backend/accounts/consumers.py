@@ -17,21 +17,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
         text_data_json = json.loads(text_data)
         message = text_data_json['message']
 
-        await self.send(text_data=json.dumps({
-            'message': 'Generating response...'
-        }))
+        async for response_chunk in self.stream_gpt_response(message):
+            await self.send(text_data=json.dumps({
+                'message': response_chunk
+            }))
 
-        response = await self.generate_gpt_response(message)
-        await self.send(text_data=json.dumps({
-            'message': response
-        }))
-
-    async def generate_gpt_response(self, user_message):
+    async def stream_gpt_response(self, user_message):
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message}
-            ]
+            ],
+            stream=True
         )
-        return response.choices[0].message.content
+
+        for chunk in response:
+            chunk_message = chunk.choices[0].delta.content
+            if chunk_message:
+                yield chunk_message
