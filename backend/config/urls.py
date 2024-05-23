@@ -4,4 +4,5 @@ from django.urls import include, path
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('accounts.urls')),
+    # WebSocket URLs are handled in routing.py
 ]

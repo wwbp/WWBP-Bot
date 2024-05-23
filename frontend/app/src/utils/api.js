@@ -148,4 +148,12 @@ export async function fetchChatMessages(sessionId) {
   }
 }
 
+export function createWebSocket(sessionId) {
+  const wsUrl = process.env.REACT_APP_API_URL.replace("http", "ws").replace(
+    "/api/v1",
+    ""
+  );
+  return new WebSocket(`${wsUrl}/ws/chat/`);
+}
+
 export default api;

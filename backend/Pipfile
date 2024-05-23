@@ -11,6 +11,8 @@ mysqlclient = "*"
 gunicorn = "*"
 openai = "*"
 requests = "*"
+channels = "*"
+daphne = "*"
 
 [dev-packages]
 

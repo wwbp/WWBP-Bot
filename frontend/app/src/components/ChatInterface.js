@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { fetchChatMessages, sendMessage } from "../utils/api";
+import { fetchChatMessages, createWebSocket } from "../utils/api";
 
 function ChatInterface({ session }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     fetchChatMessages(session.id)
@@ -17,20 +18,39 @@ function ChatInterface({ session }) {
         setError(error.message);
         setLoading(false);
       });
+
+    // Establish WebSocket connection
+    const ws = createWebSocket(session.id);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { id: new Date().getTime(), sender: "bot", message: data.message },
+      ]);
+    };
+    ws.onerror = (event) => {
+      console.error("WebSocket error observed:", event);
+      setError("WebSocket connection error");
+    };
+    setSocket(ws);
+
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
   }, [session.id]);
 
-  const handleSendMessage = async () => {
-    try {
-      const newMessage = await sendMessage(session.id, message, "student");
-      setMessages([
-        ...messages,
-        newMessage.user_message,
-        newMessage.bot_message,
+  const handleSendMessage = () => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ message }));
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { id: new Date().getTime(), sender: "student", message },
       ]);
       setMessage("");
-    } catch (error) {
-      console.error("Error sending message:", error.message);
-      setError(error.message);
+    } else {
+      setError("WebSocket connection is not open");
     }
   };
 
