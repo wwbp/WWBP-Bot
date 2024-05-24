@@ -229,7 +229,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 
 # Initialize OpenAI client
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 
 
 def generate_gpt_response(user_message):

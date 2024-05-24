@@ -28,6 +28,9 @@ COPY . /app
 # Run Django collectstatic, using your production settings
 RUN python manage.py collectstatic --noinput
 
+# Run migrations for the database
+RUN python manage.py migrate
+
 # Start Gunicorn with the module for WSGI located in your 'config' directory
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
 
