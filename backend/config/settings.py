@@ -22,7 +22,8 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Append Elastic Beanstalk Load Balancer Health Check requests since the source host IP address keeps changing
 try:
-    internal_ip = requests.get('http://169.254.169.254/latest/meta-data/local-ipv4').text
+    internal_ip = requests.get(
+        'http://169.254.169.254/latest/meta-data/local-ipv4').text
 except requests.exceptions.ConnectionError:
     pass
 else:
@@ -36,11 +37,13 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'daphne',
     'django.contrib.staticfiles',
     'accounts',
     'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
+    'langchain_stream',
 ]
 
 MIDDLEWARE = [
@@ -88,6 +91,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 # Database configuration from environment
 DATABASES = {
