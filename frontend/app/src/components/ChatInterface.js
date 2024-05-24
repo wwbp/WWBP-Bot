@@ -22,17 +22,22 @@ function ChatInterface({ session }) {
     const ws = createWebSocket(session.id);
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setMessages((prevMessages) => {
-        const lastMessage = prevMessages[prevMessages.length - 1];
-        if (lastMessage && lastMessage.sender === "bot") {
-          lastMessage.message += data.message;
-          return [...prevMessages];
-        }
-        return [
-          ...prevMessages,
-          { id: new Date().getTime(), sender: "bot", message: data.message },
-        ];
-      });
+      console.log("WebSocket message received:", data); // Log for debugging
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setMessages((prevMessages) => {
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          if (lastMessage && lastMessage.sender === "bot") {
+            lastMessage.message += data.message;
+            return [...prevMessages];
+          }
+          return [
+            ...prevMessages,
+            { id: new Date().getTime(), sender: "bot", message: data.message },
+          ];
+        });
+      }
     };
     ws.onerror = (event) => {
       console.error("WebSocket error observed:", event);
