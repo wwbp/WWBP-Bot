@@ -58,9 +58,14 @@ function NavBar({
       <Toolbar>
         <Typography
           variant="h6"
-          style={{ flexGrow: 1 }}
           component={Link}
           to="/"
+          style={{
+            flexGrow: 1,
+            color: "white",
+            textDecoration: "none",
+            fontWeight: "bold",
+          }}
         >
           GritCoach
         </Typography>
