@@ -1,5 +1,5 @@
 
-# Contributing to Monorepo Project
+# Contributing to WWBP-Bot Project
 
 ## Introduction
 
