@@ -32,7 +32,7 @@ monorepo/
 
     ```bash
     git clone <repository_url>
-    cd monorepo
+    cd WWBP-Bot
     ```
 
 2. Build and run the containers:
@@ -55,8 +55,8 @@ Navigate to the [frontend README](./frontend/README.md) for detailed instruction
 
 ## Contributing
 
-Please read `CONTRIBUTING.md` for details on our code of conduct, and the process for submitting pull requests.
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
 
 ## License
 
-This project is licensed under the MIT License - see the `LICENSE.md` file for details.
+This project is licensed under the MIT License - see the [LICENSE.md](./LICENSE.md) file for details.
