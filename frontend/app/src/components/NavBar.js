@@ -1,6 +1,15 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AppBar, Toolbar, Typography, Button } from "@mui/material";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Menu,
+  MenuItem,
+  IconButton,
+  Avatar,
+} from "@mui/material";
 import { postData } from "../utils/api";
 
 function NavBar({
@@ -11,6 +20,7 @@ function NavBar({
   handleLogout,
 }) {
   const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = React.useState(null);
 
   const onLogout = () => {
     handleLogout();
@@ -35,20 +45,27 @@ function NavBar({
     }
   };
 
+  const handleMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
   return (
     <AppBar position="static">
       <Toolbar>
-        <Typography variant="h6" style={{ flexGrow: 1 }}>
-          My Web App
+        <Typography
+          variant="h6"
+          style={{ flexGrow: 1 }}
+          component={Link}
+          to="/"
+        >
+          GritCoach
         </Typography>
-        <Button color="inherit" component={Link} to="/">
-          Home
-        </Button>
         {isLoggedIn ? (
           <>
-            <Button color="inherit" component={Link} to="/profile">
-              Profile
-            </Button>
             {role === "teacher" && (
               <>
                 <Button
@@ -70,19 +87,33 @@ function NavBar({
                 Student Dashboard
               </Button>
             )}
-            <Button color="inherit" onClick={onLogout}>
-              Logout
-            </Button>
+            <IconButton edge="end" color="inherit" onClick={handleMenu}>
+              <Avatar />
+            </IconButton>
+            <Menu
+              anchorEl={anchorEl}
+              anchorOrigin={{
+                vertical: "top",
+                horizontal: "right",
+              }}
+              keepMounted
+              transformOrigin={{
+                vertical: "top",
+                horizontal: "right",
+              }}
+              open={Boolean(anchorEl)}
+              onClose={handleClose}
+            >
+              <MenuItem component={Link} to="/profile">
+                Profile
+              </MenuItem>
+              <MenuItem onClick={onLogout}>Logout</MenuItem>
+            </Menu>
           </>
         ) : (
-          <>
-            <Button color="inherit" component={Link} to="/login">
-              Login
-            </Button>
-            <Button color="inherit" component={Link} to="/signup">
-              Sign Up
-            </Button>
-          </>
+          <Button color="inherit" component={Link} to="/login">
+            Login
+          </Button>
         )}
       </Toolbar>
     </AppBar>
