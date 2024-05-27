@@ -22,8 +22,8 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Append Elastic Beanstalk Load Balancer Health Check requests since the source host IP address keeps changing
 try:
-    internal_ip = requests.get(
-        'http://169.254.169.254/latest/meta-data/local-ipv4').text
+    token = requests.put('http://169.254.169.254/latest/api/token', headers={'X-aws-ec2-metadata-token-ttl-seconds': '60'}).text
+    internal_ip = requests.get('http://169.254.169.254/latest/meta-data/local-ipv4', headers={'X-aws-ec2-metadata-token': token}).text
 except requests.exceptions.ConnectionError:
     pass
 else:
