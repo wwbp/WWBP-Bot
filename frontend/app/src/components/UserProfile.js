@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { fetchData, putData } from "../utils/api";
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
 
 function UserProfile() {
   const [user, setUser] = useState(null);
@@ -36,64 +43,76 @@ function UserProfile() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <Box textAlign="center" py={5}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   if (!user) {
-    return <div>Error loading user data</div>;
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography color="error">Error loading user data</Typography>
+      </Box>
+    );
   }
 
   return (
-    <div>
-      <h1>User Profile</h1>
+    <Box py={5}>
+      <Typography variant="h4" gutterBottom>
+        User Profile
+      </Typography>
       <form onSubmit={handleSubmit}>
-        <div>
-          <label>Username:</label>
-          <input
-            type="text"
-            name="username"
-            value={user.username}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label>Email:</label>
-          <input
-            type="email"
-            name="email"
-            value={user.email}
-            onChange={handleChange}
-          />
-        </div>
-        <div>
-          <label>Role:</label>
-          <input type="text" name="role" value={user.role} disabled />
-        </div>
+        <TextField
+          fullWidth
+          label="Username"
+          name="username"
+          value={user.username}
+          onChange={handleChange}
+          margin="normal"
+        />
+        <TextField
+          fullWidth
+          label="Email"
+          name="email"
+          value={user.email}
+          onChange={handleChange}
+          margin="normal"
+        />
+        <TextField
+          fullWidth
+          label="Role"
+          name="role"
+          value={user.role}
+          disabled
+          margin="normal"
+        />
         {user.role === "student" && (
           <>
-            <div>
-              <label>Grade:</label>
-              <input
-                type="text"
-                name="grade"
-                value={user.grade}
-                onChange={handleChange}
-              />
-            </div>
-            <div>
-              <label>Preferred Language:</label>
-              <input
-                type="text"
-                name="preferred_language"
-                value={user.preferred_language}
-                onChange={handleChange}
-              />
-            </div>
+            <TextField
+              fullWidth
+              label="Grade"
+              name="grade"
+              value={user.grade}
+              onChange={handleChange}
+              margin="normal"
+            />
+            <TextField
+              fullWidth
+              label="Preferred Language"
+              name="preferred_language"
+              value={user.preferred_language}
+              onChange={handleChange}
+              margin="normal"
+            />
           </>
         )}
-        <button type="submit">Update Profile</button>
+        <Button variant="contained" color="primary" type="submit">
+          Update Profile
+        </Button>
       </form>
-    </div>
+    </Box>
   );
 }
 

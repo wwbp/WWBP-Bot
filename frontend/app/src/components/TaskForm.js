@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { TextField, Box, Button } from "@mui/material";
 
 function TaskForm({ task, onChange }) {
   const [taskData, setTaskData] = useState(task);
@@ -11,25 +12,26 @@ function TaskForm({ task, onChange }) {
   };
 
   return (
-    <div>
-      <div>
-        <label>Title:</label>
-        <input
-          type="text"
-          name="title"
-          value={taskData.title}
-          onChange={handleChange}
-        />
-      </div>
-      <div>
-        <label>Content:</label>
-        <textarea
-          name="content"
-          value={taskData.content}
-          onChange={handleChange}
-        ></textarea>
-      </div>
-    </div>
+    <Box mb={2}>
+      <TextField
+        fullWidth
+        label="Title"
+        name="title"
+        value={taskData.title}
+        onChange={handleChange}
+        margin="normal"
+      />
+      <TextField
+        fullWidth
+        label="Content"
+        name="content"
+        value={taskData.content}
+        onChange={handleChange}
+        margin="normal"
+        multiline
+        rows={4}
+      />
+    </Box>
   );
 }
 
