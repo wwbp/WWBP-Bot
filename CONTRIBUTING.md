@@ -15,8 +15,8 @@ Please note that this project is released with a Contributor Code of Conduct. By
 2. **Clone your forked repository** to your local machine:
 
     ```bash
-    git clone https://github.com/your-username/monorepo.git
-    cd monorepo
+    git clone git@github.com:wwbp/WWBP-Bot.git
+    cd WWBP-Bot
     ```
 
 3. **Create a new branch** for your feature or bug fix:
@@ -32,7 +32,7 @@ Please note that this project is released with a Contributor Code of Conduct. By
     git push origin feature-or-bugfix-name
     ```
 
-6. **Create a pull request** from your branch to the main repository.
+6. **Create a pull request** from your branch to the `develop` repository.
 
 ## Style Guide
 

@@ -31,7 +31,7 @@ monorepo/
 1. Clone the repository:
 
     ```bash
-    git clone <repository_url>
+    git clone git@github.com:wwbp/WWBP-Bot.git
     cd WWBP-Bot
     ```
 
