@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { fetchData, deleteData } from "../utils/api";
 import ModuleForm from "./ModuleForm";
+import {
+  Box,
+  Typography,
+  Button,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  CircularProgress,
+} from "@mui/material";
 
 function TeacherDashboard() {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [editingModule, setEditingModule] = useState(null);
+  const [selectedModule, setSelectedModule] = useState(null);
 
   useEffect(() => {
     fetchData("/modules/")
@@ -22,10 +32,11 @@ function TeacherDashboard() {
 
   const handleModuleCreated = () => {
     fetchData("/modules/").then(setModules);
+    setSelectedModule(null); // Clear the form after creation
   };
 
   const handleEditClick = (module) => {
-    setEditingModule(module);
+    setSelectedModule(module);
   };
 
   const handleDeleteClick = async (moduleId) => {
@@ -37,37 +48,71 @@ function TeacherDashboard() {
     }
   };
 
+  const handleCloseForm = () => {
+    setSelectedModule(null);
+  };
+
   return (
-    <div>
-      <h1>Teacher Dashboard</h1>
-      {error && <p style={{ color: "red" }}>Error: {error}</p>}
-      <button onClick={() => setEditingModule({})}>Add Module</button>
-      {editingModule && (
+    <Grid container spacing={3} py={5} px={3}>
+      <Grid item xs={12} md={4}>
+        <Typography variant="h5" gutterBottom>
+          Modules
+        </Typography>
+        {error && <Typography color="error">Error: {error}</Typography>}
+        {loading ? (
+          <Box textAlign="center" py={5}>
+            <CircularProgress />
+          </Box>
+        ) : modules.length === 0 ? (
+          <Typography>No modules available</Typography>
+        ) : (
+          <Grid container spacing={3}>
+            {modules.map((module) => (
+              <Grid item xs={12} key={module.id}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6">{module.name}</Typography>
+                    <Typography variant="body2">
+                      {module.description}
+                    </Typography>
+                  </CardContent>
+                  <CardActions>
+                    <Button
+                      size="small"
+                      color="primary"
+                      onClick={() => handleEditClick(module)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="small"
+                      color="secondary"
+                      onClick={() => handleDeleteClick(module.id)}
+                      disabled={
+                        selectedModule && selectedModule.id === module.id
+                      }
+                    >
+                      Delete
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </Grid>
+      <Grid item xs={12} md={8}>
+        <Typography variant="h5" gutterBottom>
+          {selectedModule ? "Edit Module" : "Create Module"}
+        </Typography>
         <ModuleForm
-          module={editingModule}
+          module={selectedModule || {}}
           onModuleCreated={handleModuleCreated}
-          onClose={() => setEditingModule(null)}
+          onClose={handleCloseForm}
+          resetFormAfterSubmit={true}
         />
-      )}
-      <h2>Modules</h2>
-      {loading ? (
-        <div>Loading...</div>
-      ) : modules.length === 0 ? (
-        <p>No modules available</p>
-      ) : (
-        <ul>
-          {modules.map((module) => (
-            <li key={module.id}>
-              {module.name} - {module.description}
-              <button onClick={() => handleEditClick(module)}>Edit</button>
-              <button onClick={() => handleDeleteClick(module.id)}>
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+      </Grid>
+    </Grid>
   );
 }
 

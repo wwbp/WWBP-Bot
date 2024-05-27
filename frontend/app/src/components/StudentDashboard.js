@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { fetchData } from "../utils/api";
 import { Link } from "react-router-dom";
+import {
+  Box,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  CircularProgress,
+} from "@mui/material";
 
 function StudentDashboard() {
   const [modules, setModules] = useState([]);
@@ -20,29 +28,46 @@ function StudentDashboard() {
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <Box textAlign="center" py={5}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography color="error">Error: {error}</Typography>
+      </Box>
+    );
   }
 
   return (
-    <div>
-      <h1>Student Dashboard</h1>
-      <h2>Active Modules</h2>
+    <Box py={5}>
+      <Typography variant="h4" gutterBottom>
+        Student Dashboard
+      </Typography>
+      <Typography variant="h5" gutterBottom>
+        Active Modules
+      </Typography>
       {modules.length === 0 ? (
-        <p>No active modules assigned to you</p>
+        <Typography>No active modules assigned to you</Typography>
       ) : (
-        <ul>
+        <List>
           {modules.map((module) => (
-            <li key={module.id}>
-              <Link to={`/modules/${module.id}`}>{module.name}</Link>
-            </li>
+            <ListItem
+              button
+              component={Link}
+              to={`/modules/${module.id}`}
+              key={module.id}
+            >
+              <ListItemText primary={module.name} />
+            </ListItem>
           ))}
-        </ul>
+        </List>
       )}
-    </div>
+    </Box>
   );
 }
 
