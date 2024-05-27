@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { fetchData, deleteData } from "../utils/api";
 import ModuleForm from "./ModuleForm";
+import {
+  Box,
+  Typography,
+  Button,
+  List,
+  ListItem,
+  ListItemText,
+  CircularProgress,
+} from "@mui/material";
 
 function TeacherDashboard() {
   const [modules, setModules] = useState([]);
@@ -38,10 +47,18 @@ function TeacherDashboard() {
   };
 
   return (
-    <div>
-      <h1>Teacher Dashboard</h1>
-      {error && <p style={{ color: "red" }}>Error: {error}</p>}
-      <button onClick={() => setEditingModule({})}>Add Module</button>
+    <Box py={5}>
+      <Typography variant="h4" gutterBottom>
+        Teacher Dashboard
+      </Typography>
+      {error && <Typography color="error">Error: {error}</Typography>}
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => setEditingModule({})}
+      >
+        Add Module
+      </Button>
       {editingModule && (
         <ModuleForm
           module={editingModule}
@@ -49,25 +66,41 @@ function TeacherDashboard() {
           onClose={() => setEditingModule(null)}
         />
       )}
-      <h2>Modules</h2>
+      <Typography variant="h5" gutterBottom>
+        Modules
+      </Typography>
       {loading ? (
-        <div>Loading...</div>
+        <Box textAlign="center" py={5}>
+          <CircularProgress />
+        </Box>
       ) : modules.length === 0 ? (
-        <p>No modules available</p>
+        <Typography>No modules available</Typography>
       ) : (
-        <ul>
+        <List>
           {modules.map((module) => (
-            <li key={module.id}>
-              {module.name} - {module.description}
-              <button onClick={() => handleEditClick(module)}>Edit</button>
-              <button onClick={() => handleDeleteClick(module.id)}>
+            <ListItem key={module.id}>
+              <ListItemText
+                primary={`${module.name} - ${module.description}`}
+              />
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => handleEditClick(module)}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => handleDeleteClick(module.id)}
+              >
                 Delete
-              </button>
-            </li>
+              </Button>
+            </ListItem>
           ))}
-        </ul>
+        </List>
       )}
-    </div>
+    </Box>
   );
 }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { fetchData } from "../utils/api";
+import { Box, Typography } from "@mui/material";
 
 function CurrentTime() {
   const [time, setTime] = useState("");
@@ -19,10 +20,10 @@ function CurrentTime() {
   }, []);
 
   return (
-    <div>
-      <h1>Current Time</h1>
-      <p>{time}</p>
-    </div>
+    <Box textAlign="center" py={2}>
+      <Typography variant="h5">Current Time</Typography>
+      <Typography variant="h6">{time}</Typography>
+    </Box>
   );
 }
 

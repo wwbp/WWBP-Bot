@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { fetchData, postData, putData } from "../utils/api";
 import TaskForm from "./TaskForm";
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  MenuItem,
+  CircularProgress,
+} from "@mui/material";
 
 function ModuleForm({ module, onModuleCreated, onClose }) {
   const [moduleData, setModuleData] = useState({
@@ -12,6 +20,7 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
   });
   const [tasks, setTasks] = useState(module.tasks || []);
   const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -19,9 +28,11 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
       .then((data) => {
         const studentUsers = data.filter((user) => user.role === "student");
         setStudents(studentUsers);
+        setLoading(false);
       })
       .catch((error) => {
         setError(error.message);
+        setLoading(false);
       });
   }, []);
 
@@ -71,86 +82,110 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
     }
   };
 
+  if (loading) {
+    return (
+      <Box textAlign="center" py={5}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
-    <div>
-      <h1>{module.id ? "Edit Module" : "Create Module"}</h1>
-      {error && <p style={{ color: "red" }}>Error: {error}</p>}
+    <Box py={5}>
+      <Typography variant="h4" gutterBottom>
+        {module.id ? "Edit Module" : "Create Module"}
+      </Typography>
+      {error && <Typography color="error">Error: {error}</Typography>}
       <form onSubmit={handleSubmit}>
-        <div>
-          <label>Name:</label>
-          <input
-            type="text"
-            name="name"
-            value={moduleData.name}
-            onChange={handleModuleChange}
-          />
-        </div>
-        <div>
-          <label>Description:</label>
-          <textarea
-            name="description"
-            value={moduleData.description}
-            onChange={handleModuleChange}
-          ></textarea>
-        </div>
-        <div>
-          <label>Start Time:</label>
-          <input
-            type="datetime-local"
-            name="start_time"
-            value={moduleData.start_time}
-            onChange={handleModuleChange}
-          />
-        </div>
-        <div>
-          <label>End Time:</label>
-          <input
-            type="datetime-local"
-            name="end_time"
-            value={moduleData.end_time}
-            onChange={handleModuleChange}
-          />
-        </div>
-        <div>
-          <label>Assign to Students:</label>
-          <select
-            multiple
-            name="assigned_students"
-            value={moduleData.assigned_students}
-            onChange={handleStudentChange}
-          >
-            {students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.username}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>Tasks:</label>
+        <TextField
+          fullWidth
+          label="Name"
+          name="name"
+          value={moduleData.name}
+          onChange={handleModuleChange}
+          margin="normal"
+        />
+        <TextField
+          fullWidth
+          label="Description"
+          name="description"
+          value={moduleData.description}
+          onChange={handleModuleChange}
+          margin="normal"
+          multiline
+          rows={4}
+        />
+        <TextField
+          fullWidth
+          label="Start Time"
+          name="start_time"
+          type="datetime-local"
+          value={moduleData.start_time}
+          onChange={handleModuleChange}
+          margin="normal"
+          InputLabelProps={{
+            shrink: true,
+          }}
+        />
+        <TextField
+          fullWidth
+          label="End Time"
+          name="end_time"
+          type="datetime-local"
+          value={moduleData.end_time}
+          onChange={handleModuleChange}
+          margin="normal"
+          InputLabelProps={{
+            shrink: true,
+          }}
+        />
+        <TextField
+          fullWidth
+          select
+          label="Assign to Students"
+          name="assigned_students"
+          value={moduleData.assigned_students}
+          onChange={handleStudentChange}
+          SelectProps={{
+            multiple: true,
+          }}
+          margin="normal"
+        >
+          {students.map((student) => (
+            <MenuItem key={student.id} value={student.id}>
+              {student.username}
+            </MenuItem>
+          ))}
+        </TextField>
+        <Box my={2}>
+          <Typography variant="h6">Tasks</Typography>
           {tasks.map((task, index) => (
-            <div key={index}>
+            <Box key={index} mb={2}>
               <TaskForm
                 task={task}
                 onChange={(updatedTask) => handleTaskChange(index, updatedTask)}
               />
-              <button type="button" onClick={() => handleRemoveTask(index)}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => handleRemoveTask(index)}
+              >
                 Remove Task
-              </button>
-            </div>
+              </Button>
+            </Box>
           ))}
-          <button type="button" onClick={handleAddTask}>
+          <Button variant="outlined" color="primary" onClick={handleAddTask}>
             Add Task
-          </button>
-        </div>
-        <button type="submit">
+          </Button>
+        </Box>
+        <Button variant="contained" color="primary" type="submit">
           {module.id ? "Update Module" : "Create Module"}
-        </button>
-        <button type="button" onClick={onClose}>
+        </Button>
+        <Button variant="contained" color="secondary" onClick={onClose}>
           Cancel
-        </button>
+        </Button>
       </form>
-    </div>
+    </Box>
   );
 }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createWebSocket } from "../utils/api";
+import { Box, TextField, Button, Typography } from "@mui/material";
 
 function ChatInterface({ session }) {
   const [messages, setMessages] = useState([]);
@@ -96,27 +97,32 @@ function ChatInterface({ session }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "10px" }}>
+    <Box display="flex" flexDirection="column" height="100%">
+      <Box flexGrow={1} overflow="auto" p={2}>
         {messages.map((msg) => (
-          <div key={msg.id} style={{ marginBottom: "10px" }}>
-            <strong>{msg.sender}:</strong> {msg.message}
-          </div>
+          <Box key={msg.id} mb={2}>
+            <Typography variant="body2" color="textSecondary">
+              <strong>{msg.sender}:</strong> {msg.message}
+            </Typography>
+          </Box>
         ))}
         <div ref={messagesEndRef} />
-      </div>
-      <div style={{ display: "flex", padding: "10px" }}>
-        <input
-          type="text"
+      </Box>
+      <Box display="flex" p={2}>
+        <TextField
+          fullWidth
           value={message}
           onChange={handleInputChange}
-          style={{ flexGrow: 1, marginRight: "10px", padding: "10px" }}
+          variant="outlined"
+          placeholder="Type your message"
+          margin="normal"
+          style={{ marginRight: "10px" }}
         />
-        <button onClick={handleSubmit} style={{ padding: "10px" }}>
+        <Button variant="contained" color="primary" onClick={handleSubmit}>
           Send
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
