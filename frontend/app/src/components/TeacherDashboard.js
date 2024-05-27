@@ -9,6 +9,10 @@ import {
   ListItem,
   ListItemText,
   CircularProgress,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
 } from "@mui/material";
 
 function TeacherDashboard() {
@@ -76,29 +80,34 @@ function TeacherDashboard() {
       ) : modules.length === 0 ? (
         <Typography>No modules available</Typography>
       ) : (
-        <List>
+        <Grid container spacing={3}>
           {modules.map((module) => (
-            <ListItem key={module.id}>
-              <ListItemText
-                primary={`${module.name} - ${module.description}`}
-              />
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={() => handleEditClick(module)}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={() => handleDeleteClick(module.id)}
-              >
-                Delete
-              </Button>
-            </ListItem>
+            <Grid item xs={12} sm={6} md={4} key={module.id}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6">{module.name}</Typography>
+                  <Typography variant="body2">{module.description}</Typography>
+                </CardContent>
+                <CardActions>
+                  <Button
+                    size="small"
+                    color="primary"
+                    onClick={() => handleEditClick(module)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="small"
+                    color="secondary"
+                    onClick={() => handleDeleteClick(module.id)}
+                  >
+                    Delete
+                  </Button>
+                </CardActions>
+              </Card>
+            </Grid>
           ))}
-        </List>
+        </Grid>
       )}
     </Box>
   );

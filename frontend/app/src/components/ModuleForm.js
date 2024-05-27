@@ -6,8 +6,14 @@ import {
   TextField,
   Button,
   Typography,
-  MenuItem,
   CircularProgress,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 
 function ModuleForm({ module, onModuleCreated, onClose }) {
@@ -36,16 +42,36 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
       });
   }, []);
 
+  useEffect(() => {
+    if (module) {
+      setModuleData({
+        name: module.name || "",
+        description: module.description || "",
+        start_time: module.start_time
+          ? new Date(module.start_time).toISOString().slice(0, 16)
+          : "",
+        end_time: module.end_time
+          ? new Date(module.end_time).toISOString().slice(0, 16)
+          : "",
+        assigned_students: module.assigned_students || [],
+      });
+      setTasks(module.tasks || []);
+    }
+  }, [module]);
+
   const handleModuleChange = (e) => {
     setModuleData({ ...moduleData, [e.target.name]: e.target.value });
   };
 
-  const handleStudentChange = (e) => {
-    const selectedOptions = Array.from(
-      e.target.selectedOptions,
-      (option) => option.value
-    );
-    setModuleData({ ...moduleData, assigned_students: selectedOptions });
+  const handleStudentClick = (studentId) => {
+    const selected = [...moduleData.assigned_students];
+    const index = selected.indexOf(studentId);
+    if (index > -1) {
+      selected.splice(index, 1);
+    } else {
+      selected.push(studentId);
+    }
+    setModuleData({ ...moduleData, assigned_students: selected });
   };
 
   const handleTaskChange = (index, updatedTask) => {
@@ -97,86 +123,102 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
       </Typography>
       {error && <Typography color="error">Error: {error}</Typography>}
       <form onSubmit={handleSubmit}>
-        <TextField
-          fullWidth
-          label="Name"
-          name="name"
-          value={moduleData.name}
-          onChange={handleModuleChange}
-          margin="normal"
-        />
-        <TextField
-          fullWidth
-          label="Description"
-          name="description"
-          value={moduleData.description}
-          onChange={handleModuleChange}
-          margin="normal"
-          multiline
-          rows={4}
-        />
-        <TextField
-          fullWidth
-          label="Start Time"
-          name="start_time"
-          type="datetime-local"
-          value={moduleData.start_time}
-          onChange={handleModuleChange}
-          margin="normal"
-          InputLabelProps={{
-            shrink: true,
-          }}
-        />
-        <TextField
-          fullWidth
-          label="End Time"
-          name="end_time"
-          type="datetime-local"
-          value={moduleData.end_time}
-          onChange={handleModuleChange}
-          margin="normal"
-          InputLabelProps={{
-            shrink: true,
-          }}
-        />
-        <TextField
-          fullWidth
-          select
-          label="Assign to Students"
-          name="assigned_students"
-          value={moduleData.assigned_students}
-          onChange={handleStudentChange}
-          SelectProps={{
-            multiple: true,
-          }}
-          margin="normal"
-        >
-          {students.map((student) => (
-            <MenuItem key={student.id} value={student.id}>
-              {student.username}
-            </MenuItem>
-          ))}
-        </TextField>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              label="Name"
+              name="name"
+              value={moduleData.name}
+              onChange={handleModuleChange}
+              margin="normal"
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              label="Description"
+              name="description"
+              value={moduleData.description}
+              onChange={handleModuleChange}
+              margin="normal"
+              multiline
+              rows={4}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              label="Start Time"
+              name="start_time"
+              type="datetime-local"
+              value={moduleData.start_time}
+              onChange={handleModuleChange}
+              margin="normal"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              label="End Time"
+              name="end_time"
+              type="datetime-local"
+              value={moduleData.end_time}
+              onChange={handleModuleChange}
+              margin="normal"
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <Typography variant="h6">Assign to Students</Typography>
+            <List>
+              {students.map((student) => (
+                <ListItem
+                  key={student.id}
+                  button
+                  selected={moduleData.assigned_students.includes(student.id)}
+                  onClick={() => handleStudentClick(student.id)}
+                >
+                  <ListItemText primary={student.username} />
+                </ListItem>
+              ))}
+            </List>
+          </Grid>
+        </Grid>
         <Box my={2}>
-          <Typography variant="h6">Tasks</Typography>
-          {tasks.map((task, index) => (
-            <Box key={index} mb={2}>
-              <TaskForm
-                task={task}
-                onChange={(updatedTask) => handleTaskChange(index, updatedTask)}
-              />
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={() => handleRemoveTask(index)}
-              >
-                Remove Task
-              </Button>
-            </Box>
-          ))}
           <Button variant="outlined" color="primary" onClick={handleAddTask}>
             Add Task
           </Button>
+          <Grid container spacing={3}>
+            {tasks.map((task, index) => (
+              <Grid item xs={12} key={index}>
+                <Card>
+                  <CardContent>
+                    <TaskForm
+                      task={task}
+                      onChange={(updatedTask) =>
+                        handleTaskChange(index, updatedTask)
+                      }
+                    />
+                  </CardContent>
+                  <CardActions>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      onClick={() => handleRemoveTask(index)}
+                    >
+                      Remove Task
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
         </Box>
         <Button variant="contained" color="primary" type="submit">
           {module.id ? "Update Module" : "Create Module"}

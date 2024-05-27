@@ -1,3 +1,5 @@
+from .serializers import ModuleSerializer
+from .models import Module
 from .serializers import ChatSessionSerializer, ChatMessageSerializer
 from .models import ChatSession, ChatMessage
 from .serializers import ChatMessageSerializer, ChatSessionSerializer
@@ -166,9 +168,6 @@ def get_view_mode(request):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-
-
-logger = logging.getLogger(__name__)
 
 
 class ModuleViewSet(viewsets.ModelViewSet):
