@@ -51,7 +51,7 @@ Navigate to the [backend README](./backend/README.md) for detailed instructions 
 
 ### Frontend
 
-Navigate to the [frontend README](./frontend/README.md) for detailed instructions on setting up and running the frontend application.
+Navigate to the [frontend README](./frontend/app/README.md) for detailed instructions on setting up and running the frontend application.
 
 ## Contributing
 
