@@ -16,15 +16,22 @@ import {
   ListItemText,
 } from "@mui/material";
 
-function ModuleForm({ module, onModuleCreated, onClose }) {
-  const [moduleData, setModuleData] = useState({
-    name: module.name || "",
-    description: module.description || "",
-    start_time: module.start_time || "",
-    end_time: module.end_time || "",
-    assigned_students: module.assigned_students || [],
-  });
-  const [tasks, setTasks] = useState(module.tasks || []);
+function ModuleForm({
+  module,
+  onModuleCreated,
+  onClose,
+  resetFormAfterSubmit,
+}) {
+  const initialModuleData = {
+    name: "",
+    description: "",
+    start_time: "",
+    end_time: "",
+    assigned_students: [],
+  };
+
+  const [moduleData, setModuleData] = useState(initialModuleData);
+  const [tasks, setTasks] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,7 +50,7 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
   }, []);
 
   useEffect(() => {
-    if (module) {
+    if (module.id) {
       setModuleData({
         name: module.name || "",
         description: module.description || "",
@@ -56,6 +63,9 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
         assigned_students: module.assigned_students || [],
       });
       setTasks(module.tasks || []);
+    } else {
+      setModuleData(initialModuleData);
+      setTasks([]);
     }
   }, [module]);
 
@@ -100,9 +110,12 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
           ...moduleData,
           tasks,
         });
+        if (resetFormAfterSubmit) {
+          setModuleData(initialModuleData);
+          setTasks([]);
+        }
       }
       onModuleCreated();
-      onClose();
     } catch (error) {
       setError(error.message);
     }
@@ -118,13 +131,10 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
 
   return (
     <Box py={5}>
-      <Typography variant="h4" gutterBottom>
-        {module.id ? "Edit Module" : "Create Module"}
-      </Typography>
       {error && <Typography color="error">Error: {error}</Typography>}
       <form onSubmit={handleSubmit}>
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <TextField
               fullWidth
               label="Name"
@@ -134,7 +144,7 @@ function ModuleForm({ module, onModuleCreated, onClose }) {
               margin="normal"
             />
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12}>
             <TextField
               fullWidth
               label="Description"
