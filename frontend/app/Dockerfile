@@ -1,5 +1,5 @@
 # Build environment
-FROM node:14 as builder
+FROM node:22 as builder
 WORKDIR /app
 COPY ./package.json ./package-lock.json ./
 RUN npm ci --only=production

@@ -10,7 +10,7 @@ prompt = ChatPromptTemplate.from_messages([
     ("user", "{input}")
 ])
 
-llm = ChatOpenAI(model="gpt-4o", api_key=os.getenv("OPENAI_API_KEY"))
+llm = ChatOpenAI(model="gpt-4o", api_key=os.getenv("OPENAI_API_KEY", ""))
 
 output_parser = StrOutputParser()
 
