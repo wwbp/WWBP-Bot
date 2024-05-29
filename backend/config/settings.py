@@ -22,8 +22,10 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Append Elastic Beanstalk Load Balancer Health Check requests since the source host IP address keeps changing
 try:
-    token = requests.put('http://169.254.169.254/latest/api/token', headers={'X-aws-ec2-metadata-token-ttl-seconds': '60'}).text
-    internal_ip = requests.get('http://169.254.169.254/latest/meta-data/local-ipv4', headers={'X-aws-ec2-metadata-token': token}).text
+    token = requests.put('http://169.254.169.254/latest/api/token',
+                         headers={'X-aws-ec2-metadata-token-ttl-seconds': '60'}).text
+    internal_ip = requests.get('http://169.254.169.254/latest/meta-data/local-ipv4',
+                               headers={'X-aws-ec2-metadata-token': token}).text
 except requests.exceptions.ConnectionError:
     pass
 else:
@@ -59,13 +61,16 @@ MIDDLEWARE = [
 
 # Consider restricting in production
 # CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+CORS_ALLOWED_ORIGINS = os.getenv(
+    'CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 CORS_ALLOW_CREDENTIALS = True
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000').split(',')
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    'CSRF_TRUSTED_ORIGINS', 'http://localhost:3000').split(',')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication'
     ),
 }
 

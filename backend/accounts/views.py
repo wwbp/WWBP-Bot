@@ -1,3 +1,4 @@
+from rest_framework.views import exception_handler
 from .serializers import ModuleSerializer
 from .models import Module
 from .serializers import ChatSessionSerializer, ChatMessageSerializer
@@ -40,6 +41,13 @@ def current_time(request):
     return JsonResponse({'current_time': now})
 
 
+def custom_exception_handler(exc, context):
+    response = exception_handler(exc, context)
+    if response is not None:
+        logger.error(f"Exception: {exc} Context: {context}")
+    return response
+
+
 def login_view(request):
     if request.method == 'POST':
         data = json.loads(request.body)
@@ -56,6 +64,7 @@ def login_view(request):
                 "role": user.role
             }, status=200)
         else:
+            logger.error(f"Invalid login attempt for username: {username}")
             return JsonResponse({"message": "Invalid credentials"}, status=401)
 
 
