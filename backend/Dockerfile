@@ -28,7 +28,10 @@ COPY . /app
 # Run Django collectstatic, using your production settings
 RUN python manage.py collectstatic --noinput
 
-# Start Gunicorn with the module for WSGI located in your 'config' directory
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Run migrations for the database
+RUN python manage.py migrate
+
+# Start Daphne with the module for ASGI located in your 'config' directory
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
 
 EXPOSE 8000
