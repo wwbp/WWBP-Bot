@@ -16,6 +16,8 @@ langchain-community = "*"
 langchain-openai = "*"
 channels = "*"
 daphne = "*"
+google-cloud-speech = "*"
+google-cloud-texttospeech = "*"
 
 [dev-packages]
 

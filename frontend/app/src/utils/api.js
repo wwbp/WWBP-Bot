@@ -148,12 +148,30 @@ export async function fetchChatMessages(sessionId) {
   }
 }
 
-export function createWebSocket(sessionId) {
-  const wsUrl = process.env.REACT_APP_API_URL.replace("http", "ws").replace(
-    "/api/v1",
-    ""
-  );
-  return new WebSocket(`${wsUrl}/ws/chat/${sessionId}/`);
-}
+// frontend/app/src/utils/api.js
+
+export const createWebSocket = (sessionId, isAudioMode = false) => {
+  const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${wsProtocol}//${window.location.host}/ws/${
+    isAudioMode ? "audio" : "chat"
+  }/${sessionId}/`;
+  const socket = new WebSocket(wsUrl);
+
+  socket.onopen = () => {
+    console.log("WebSocket connected!");
+  };
+
+  socket.onerror = (event) => {
+    console.error("WebSocket error observed:", event);
+  };
+
+  socket.onclose = (event) => {
+    console.log(
+      `WebSocket is closed now. Code: ${event.code}, Reason: ${event.reason}`
+    );
+  };
+
+  return socket;
+};
 
 export default api;
