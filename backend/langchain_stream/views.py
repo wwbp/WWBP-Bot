@@ -23,7 +23,19 @@ chain = prompt | llm.with_config(
     {"run_name": "model"}) | output_parser.with_config({"run_name": "Assistant"})
 
 
-class ChatConsumer(AsyncWebsocketConsumer):
+class BaseWebSocketConsumer(AsyncWebsocketConsumer):
+    async def ping(self):
+        while True:
+            try:
+                await self.send(text_data=json.dumps({"type": "ping"}))
+                logger.debug("Ping sent")
+            except Exception as e:
+                logger.error(f"Error in ping: {e}")
+                break
+            await asyncio.sleep(30)  # Ping every 30 seconds
+
+
+class ChatConsumer(BaseWebSocketConsumer):
 
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
@@ -47,18 +59,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.error(f"Error: {e}")
 
-    async def ping(self):
-        while True:
-            try:
-                await self.send(text_data=json.dumps({"type": "ping"}))
-                logger.debug("Ping sent")
-            except Exception as e:
-                logger.error(f"Error in ping: {e}")
-                break
-            await asyncio.sleep(30)  # Ping every 30 seconds
 
-
-class AudioConsumer(AsyncWebsocketConsumer):
+class AudioConsumer(BaseWebSocketConsumer):
 
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
@@ -72,33 +74,59 @@ class AudioConsumer(AsyncWebsocketConsumer):
             f"Audio WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
 
     async def receive(self, bytes_data=None):
-        logger.debug("Audio data received")
+        logger.debug(f"Audio data received: {type(bytes_data)}")
         if bytes_data:
+            # Save audio data to a file for inspection
+            # with open(f"received_audio_{self.session_id}.webm", "wb") as f:
+            #     f.write(bytes_data)
+
+            # Log first few bytes of audio data
+            logger.debug(f"First 100 bytes of audio data: {bytes_data[:100]}")
+
             transcript = await self.process_audio(bytes_data)
-            logger.debug(f"Transcript: {transcript}")
-            await self.stream_audio_response(transcript)
+            if transcript:
+                logger.debug(f"Transcript: {transcript}")
+                await self.stream_audio_response(transcript)
+            else:
+                logger.error("Transcript is empty")
 
     async def process_audio(self, audio_data):
+        logger.debug(f"Audio data size: {len(audio_data)} bytes")
         client = speech.SpeechClient()
         audio = speech.RecognitionAudio(content=audio_data)
         config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            sample_rate_hertz=16000,
+            encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
+            sample_rate_hertz=48000,
             language_code="en-US",
         )
-        response = client.recognize(config=config, audio=audio)
-        transcript = ""
-        for result in response.results:
-            transcript += result.alternatives[0].transcript
-        return transcript
+        try:
+            response = client.recognize(config=config, audio=audio)
+            if not response.results:
+                logger.error("No results from speech recognition")
+                return ""
+            transcript = response.results[0].alternatives[0].transcript
+            return transcript
+        except Exception as e:
+            logger.error(f"Error during speech recognition: {e}")
+            return ""
 
     async def stream_audio_response(self, text):
         try:
             async for chunk in chain.astream_events({'input': text}, version="v1", include_names=["Assistant"]):
-                if chunk["event"] in ["on_parser_start", "on_parser_stream"]:
-                    audio_chunk = await self.text_to_speech(chunk["data"]["chunk"])
-                    await self.send(bytes_data=audio_chunk)
-                    logger.debug(f"Audio chunk sent: {chunk}")
+                if chunk["event"] == "on_parser_start":
+                    logger.debug(f"Parser start event received: {chunk}")
+                    await self.send(text_data=json.dumps(chunk))
+                elif chunk["event"] == "on_parser_stream":
+                    if 'chunk' in chunk['data']:
+                        logger.debug(f"Chunk data: {chunk['data']['chunk']}")
+                        audio_chunk = await self.text_to_speech(chunk["data"]["chunk"])
+                        await self.send(bytes_data=audio_chunk)
+                        logger.debug(
+                            f"Audio chunk sent: {len(audio_chunk)} bytes")
+                    else:
+                        logger.error(f"Missing 'chunk' in data: {chunk}")
+                else:
+                    logger.debug(f"Unhandled event: {chunk['event']}")
         except Exception as e:
             logger.error(f"Error: {e}")
 
@@ -116,13 +144,3 @@ class AudioConsumer(AsyncWebsocketConsumer):
             input=input_text, voice=voice, audio_config=audio_config
         )
         return response.audio_content
-
-    async def ping(self):
-        while True:
-            try:
-                await self.send(text_data=json.dumps({"type": "ping"}))
-                logger.debug("Ping sent")
-            except Exception as e:
-                logger.error(f"Error in ping: {e}")
-                break
-            await asyncio.sleep(30)  # Ping every 30 seconds

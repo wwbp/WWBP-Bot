@@ -15,15 +15,14 @@ import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 function ChatInterface({ session }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState(null);
   const [isAudioMode, setIsAudioMode] = useState(false);
   const [audioState, setAudioState] = useState("idle");
   const ws = useRef(null);
+  const peerConnection = useRef(null);
+  const localStream = useRef(null);
+  const remoteStream = useRef(new MediaStream());
+  const mediaRecorderRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const maxReconnectAttempts = 5;
-  let mediaRecorder = null;
-  let ongoingStream = useRef(null);
 
   const setupWebSocket = () => {
     if (ws.current) {
@@ -34,35 +33,67 @@ function ChatInterface({ session }) {
 
     ws.current.onopen = () => {
       console.log("WebSocket connected!");
-      setReconnectAttempts(0);
+      setupPeerConnection();
     };
 
     ws.current.onmessage = async (event) => {
+      console.log("WebSocket message type:", typeof event.data);
+
       if (event.data === '{"type":"ping"}') {
         console.log("Ping received from server");
-        return; // Ignore ping messages
+        return;
       }
 
       if (isAudioMode) {
-        const audioBlob = new Blob([event.data], { type: "audio/wav" });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        await audio.play();
+        if (event.data instanceof Blob) {
+          const audioUrl = URL.createObjectURL(event.data);
+          const audio = new Audio(audioUrl);
+          audio
+            .play()
+            .then(() => {
+              console.log("Audio played successfully");
+            })
+            .catch((error) => {
+              console.error("Error playing audio:", error);
+            });
+        } else if (typeof event.data === "string") {
+          const data = JSON.parse(event.data);
+          if (data.sdp) {
+            try {
+              await peerConnection.current.setRemoteDescription(
+                new RTCSessionDescription(data.sdp)
+              );
+              if (data.sdp.type === "offer") {
+                const answer = await peerConnection.current.createAnswer();
+                await peerConnection.current.setLocalDescription(answer);
+                ws.current.send(
+                  JSON.stringify({
+                    sdp: peerConnection.current.localDescription,
+                  })
+                );
+              }
+            } catch (error) {
+              console.error("Failed to set remote description:", error);
+            }
+          } else if (data.candidate) {
+            try {
+              await peerConnection.current.addIceCandidate(
+                new RTCIceCandidate(data.candidate)
+              );
+            } catch (error) {
+              console.error("Error adding received ICE candidate", error);
+            }
+          }
+        }
       } else {
         const data = JSON.parse(event.data);
 
         if (data.event === "on_parser_start") {
-          ongoingStream.current = { id: data.run_id, content: "" };
           setMessages((prevMessages) => [
             ...prevMessages,
             { sender: "Assistant", message: "", id: data.run_id },
           ]);
-          setAudioState("processing");
-        } else if (
-          data.event === "on_parser_stream" &&
-          ongoingStream.current &&
-          data.run_id === ongoingStream.current.id
-        ) {
+        } else if (data.event === "on_parser_stream") {
           setMessages((prevMessages) =>
             prevMessages.map((msg) =>
               msg.id === data.run_id
@@ -70,13 +101,11 @@ function ChatInterface({ session }) {
                 : msg
             )
           );
-          setAudioState("speaking");
         } else if (data.event === "message") {
           setMessages((prevMessages) => [
             ...prevMessages,
             { sender: "Assistant", message: data.message },
           ]);
-          setAudioState("idle");
         }
       }
     };
@@ -89,21 +118,30 @@ function ChatInterface({ session }) {
       console.log(
         `WebSocket is closed now. Code: ${event.code}, Reason: ${event.reason}`
       );
-      handleReconnect();
     };
   };
 
-  const handleReconnect = () => {
-    if (reconnectAttempts < maxReconnectAttempts) {
-      let timeout = Math.pow(2, reconnectAttempts) * 1000;
-      setTimeout(() => {
-        setupWebSocket();
-      }, timeout);
-      setReconnectAttempts(reconnectAttempts + 1);
-    } else {
-      console.log(
-        "Max reconnect attempts reached, not attempting further reconnects."
-      );
+  const setupPeerConnection = () => {
+    peerConnection.current = new RTCPeerConnection();
+
+    peerConnection.current.onicecandidate = ({ candidate }) => {
+      if (candidate) {
+        ws.current.send(JSON.stringify({ candidate }));
+      }
+    };
+
+    peerConnection.current.ontrack = (event) => {
+      event.streams[0].getTracks().forEach((track) => {
+        remoteStream.current.addTrack(track);
+      });
+      console.log("Received remote track");
+    };
+
+    if (localStream.current) {
+      localStream.current.getTracks().forEach((track) => {
+        peerConnection.current.addTrack(track, localStream.current);
+      });
+      console.log("Added local tracks to peer connection");
     }
   };
 
@@ -113,6 +151,9 @@ function ChatInterface({ session }) {
     return () => {
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         ws.current.close();
+      }
+      if (peerConnection.current) {
+        peerConnection.current.close();
       }
     };
   }, [session.id, isAudioMode]);
@@ -135,21 +176,25 @@ function ChatInterface({ session }) {
 
   const handlePTTMouseDown = () => {
     navigator.mediaDevices
-      .getUserMedia({ audio: true })
+      .getUserMedia({ audio: { sampleRate: 48000, channelCount: 1 } })
       .then((stream) => {
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.start();
+        localStream.current = stream;
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+          mimeType: "audio/webm;codecs=opus",
+        });
+        mediaRecorderRef.current.start();
 
-        const audioChunks = [];
-        mediaRecorder.ondataavailable = (event) => {
-          audioChunks.push(event.data);
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          if (ws.current.readyState === WebSocket.OPEN) {
+            ws.current.send(event.data);
+          } else {
+            console.error("WebSocket is not open");
+          }
         };
 
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-          ws.current.send(audioBlob);
-          setAudioState("processing");
+        mediaRecorderRef.current.onstop = () => {
           stream.getTracks().forEach((track) => track.stop());
+          setAudioState("idle");
         };
 
         setAudioState("recording");
@@ -160,8 +205,11 @@ function ChatInterface({ session }) {
   };
 
   const handlePTTMouseUp = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
       setAudioState("processing");
     }
   };
@@ -216,25 +264,17 @@ function ChatInterface({ session }) {
               fullWidth
               value={message}
               onChange={handleInputChange}
-              variant="outlined"
-              placeholder="Type your message"
-              margin="normal"
-              style={{ marginRight: "10px" }}
+              placeholder="Type a message..."
             />
-            <Button variant="contained" color="primary" onClick={handleSubmit}>
+            <Button onClick={handleSubmit} color="primary" variant="contained">
               Send
             </Button>
           </>
         )}
-      </Box>
-      {isAudioMode && (
-        <Box display="flex" justifyContent="center" alignItems="center" p={2}>
+        <IconButton>
           <FiberManualRecordIcon style={{ color: getAudioStateColor() }} />
-          <Typography variant="body2" style={{ marginLeft: "10px" }}>
-            {audioState.charAt(0).toUpperCase() + audioState.slice(1)}
-          </Typography>
-        </Box>
-      )}
+        </IconButton>
+      </Box>
     </Box>
   );
 }

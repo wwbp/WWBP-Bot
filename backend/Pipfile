@@ -18,6 +18,9 @@ channels = "*"
 daphne = "*"
 google-cloud-speech = "*"
 google-cloud-texttospeech = "*"
+redis = "*"
+channels-redis = "*"
+django-redis = "*"
 
 [dev-packages]
 
