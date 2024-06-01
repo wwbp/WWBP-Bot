@@ -144,7 +144,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                             processed_text = self.process_text_for_tts(
                                 batched_text)
                             audio_chunk = await self.text_to_speech(processed_text)
-                            self.audio_queue.append(audio_chunk)
+                            self.audio_queue.append(
+                                (audio_chunk, processed_text))
                             asyncio.create_task(self.send_audio_chunk())
                             logger.debug(
                                 f"Audio chunk queued: {len(audio_chunk)} bytes")
@@ -156,7 +157,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                         processed_text = self.process_text_for_tts(
                             batched_text)
                         audio_chunk = await self.text_to_speech(processed_text)
-                        self.audio_queue.append(audio_chunk)
+                        self.audio_queue.append(
+                            (audio_chunk, processed_text))
                         asyncio.create_task(self.send_audio_chunk())
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                 else:
@@ -166,9 +168,17 @@ class AudioConsumer(BaseWebSocketConsumer):
 
     async def send_audio_chunk(self):
         while self.audio_queue:
-            audio_chunk = self.audio_queue.popleft()
+            audio_chunk, text = self.audio_queue.popleft()
+            audio_duration = self.estimate_audio_duration(text)
             await self.send(bytes_data=audio_chunk)
-            await asyncio.sleep(1)  # Adjust as needed for smooth playback
+            # Wait for the estimated duration of the audio chunk
+            await asyncio.sleep(audio_duration)
+
+    def estimate_audio_duration(self, text):
+        words_per_minute = 150  # Typical speaking rate
+        words = len(text.split())
+        duration = (words / words_per_minute) * 60  # Duration in seconds
+        return duration
 
     def process_text_for_tts(self, text):
         # Remove unnecessary punctuation for TTS
@@ -186,7 +196,7 @@ class AudioConsumer(BaseWebSocketConsumer):
         )
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,  # MP3 for smoother playback
-            speaking_rate=0.8,  # Adjust speaking rate to sound more natural
+            speaking_rate=1.0,  # Adjust speaking rate to sound more natural
             pitch=0.0,
         )
         response = client.synthesize_speech(
