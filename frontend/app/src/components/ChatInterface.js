@@ -17,6 +17,7 @@ function ChatInterface({ session }) {
   const [message, setMessage] = useState("");
   const [isAudioMode, setIsAudioMode] = useState(false);
   const [audioState, setAudioState] = useState("idle");
+  const [messageId, setMessageId] = useState(1); // Initialize messageId
   const ws = useRef(null);
   const peerConnection = useRef(null);
   const localStream = useRef(null);
@@ -32,15 +33,15 @@ function ChatInterface({ session }) {
     ws.current = createWebSocket(session.id, isAudioMode);
 
     ws.current.onopen = () => {
-      console.log("WebSocket connected!");
+      // console.log("WebSocket connected!");
       setupPeerConnection();
     };
 
     ws.current.onmessage = async (event) => {
-      console.log("WebSocket message type:", typeof event.data);
+      // console.log("WebSocket message type:", typeof event.data);
 
       if (event.data === '{"type":"ping"}') {
-        console.log("Ping received from server");
+        // console.log("Ping received from server");
         return;
       }
 
@@ -51,7 +52,7 @@ function ChatInterface({ session }) {
           audio
             .play()
             .then(() => {
-              console.log("Audio played successfully");
+              // console.log("Audio played successfully");
             })
             .catch((error) => {
               console.error("Error playing audio:", error);
@@ -83,6 +84,39 @@ function ChatInterface({ session }) {
             } catch (error) {
               console.error("Error adding received ICE candidate", error);
             }
+          } else if (data.transcript) {
+            // console.log(`User Message ID: ${userMessageId}`);
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                sender: `User (audio) (${data.message_id})`,
+                message: data.transcript,
+                id: data.message_id,
+              },
+            ]);
+            setMessageId((prevId) => prevId + 1);
+            setMessage("");
+          } else if (data.event === "on_parser_start") {
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                sender: `Assistant (audio) (${data.message_id})`,
+                message: "",
+                id: data.message_id,
+              },
+            ]);
+          } else if (data.event === "on_parser_stream") {
+            // console.log(`Assistant Message ID: ${data.data.message_id}`);
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === data.message_id
+                  ? { ...msg, message: msg.message + data.data.chunk }
+                  : msg
+              )
+            );
+          } else if (data.event === "on_parser_end") {
+            setMessageId((prevId) => prevId + 1);
+            setMessage("");
           }
         }
       } else {
@@ -91,21 +125,23 @@ function ChatInterface({ session }) {
         if (data.event === "on_parser_start") {
           setMessages((prevMessages) => [
             ...prevMessages,
-            { sender: "Assistant", message: "", id: data.run_id },
+            {
+              sender: `Assistant (text) (${data.message_id})`,
+              message: "",
+              id: data.message_id,
+            },
           ]);
         } else if (data.event === "on_parser_stream") {
           setMessages((prevMessages) =>
             prevMessages.map((msg) =>
-              msg.id === data.run_id
+              msg.id === data.message_id
                 ? { ...msg, message: msg.message + data.data.chunk }
                 : msg
             )
           );
-        } else if (data.event === "message") {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: "Assistant", message: data.message },
-          ]);
+        } else if (data.event === "on_parser_end") {
+          setMessageId((prevId) => prevId + 1);
+          setMessage("");
         }
       }
     };
@@ -115,9 +151,9 @@ function ChatInterface({ session }) {
     };
 
     ws.current.onclose = (event) => {
-      console.log(
-        `WebSocket is closed now. Code: ${event.code}, Reason: ${event.reason}`
-      );
+      // console.log(
+      //   `WebSocket is closed now. Code: ${event.code}, Reason: ${event.reason}`
+      // );
     };
   };
 
@@ -134,14 +170,14 @@ function ChatInterface({ session }) {
       event.streams[0].getTracks().forEach((track) => {
         remoteStream.current.addTrack(track);
       });
-      console.log("Received remote track");
+      // console.log("Received remote track");
     };
 
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
         peerConnection.current.addTrack(track, localStream.current);
       });
-      console.log("Added local tracks to peer connection");
+      // console.log("Added local tracks to peer connection");
     }
   };
 
@@ -168,9 +204,18 @@ function ChatInterface({ session }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const userMessage = { sender: "You", message: message };
+    const userMessageId = messageId;
+    // console.log(`User Message ID (Text): ${userMessageId}`);
+    const userMessage = {
+      sender: `User (text) (${userMessageId})`,
+      message: message,
+      id: userMessageId.toString(),
+    };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    ws.current.send(JSON.stringify({ message: message }));
+    ws.current.send(
+      JSON.stringify({ message: message, message_id: userMessageId + 1 })
+    );
+    setMessageId((prevId) => prevId + 1); // Increment messageId
     setMessage("");
   };
 
@@ -186,6 +231,9 @@ function ChatInterface({ session }) {
 
         mediaRecorderRef.current.ondataavailable = (event) => {
           if (ws.current.readyState === WebSocket.OPEN) {
+            const currentMessageId = messageId;
+            ws.current.send(JSON.stringify({ message_id: currentMessageId })); // Send messageId before audio data
+            // console.log(`User Message ID (Audio): ${currentMessageId}`);
             ws.current.send(event.data);
           } else {
             console.error("WebSocket is not open");
@@ -211,6 +259,7 @@ function ChatInterface({ session }) {
     ) {
       mediaRecorderRef.current.stop();
       setAudioState("processing");
+      // setMessageId((prevId) => prevId + 1); // Increment messageId after sending audio data
     }
   };
 
