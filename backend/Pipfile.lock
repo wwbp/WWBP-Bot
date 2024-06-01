@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "e00a15f07f292ea69364b4a1054f89d65e2fac9e5a04549e42b8c3b5152e537f"
+            "sha256": "2ae8c3edf418b85de25a8d50daff67fb727683461ab79ba91b22732d0f25e374"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -766,11 +766,11 @@
         },
         "langsmith": {
             "hashes": [
-                "sha256:ab4487029240e69cca30da1065f1e9138e5a7ca2bbe8c697f0bd7d5839f71cf7",
-                "sha256:d3c2eb2391478bd79989f02652cf66e29a7959d677614b6993a47cef43f7f43b"
+                "sha256:149558669a2ac4f21471cd964e61072687bba23b7c1ccb51f190a8f59b595b39",
+                "sha256:7eb2e1c1b375925ff47700ed8071e10c15e942e9d1d634b4a449a9060364071a"
             ],
             "markers": "python_version < '4.0' and python_full_version >= '3.8.1'",
-            "version": "==0.1.65"
+            "version": "==0.1.67"
         },
         "marshmallow": {
             "hashes": [
@@ -1214,6 +1214,14 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==2.18.3"
+        },
+        "pydub": {
+            "hashes": [
+                "sha256:65617e33033874b59d87db603aa1ed450633288aefead953b30bded59cb599a6",
+                "sha256:980a33ce9949cab2a569606b65674d748ecbca4f0796887fd6f46173a7b0d30f"
+            ],
+            "index": "pypi",
+            "version": "==0.25.1"
         },
         "pyopenssl": {
             "hashes": [

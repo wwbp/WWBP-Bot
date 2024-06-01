@@ -2,11 +2,13 @@ import asyncio
 import json
 import os
 import logging
+from collections import deque
 from channels.generic.websocket import AsyncWebsocketConsumer
 from google.cloud import speech, texttospeech
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -68,6 +70,7 @@ class ChatConsumer(BaseWebSocketConsumer):
 
 class AudioConsumer(BaseWebSocketConsumer):
     current_message_id = None
+    audio_queue = deque()
 
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
@@ -125,39 +128,65 @@ class AudioConsumer(BaseWebSocketConsumer):
 
     async def stream_audio_response(self, text, message_id):
         try:
+            buffer = []  # Buffer to collect tokens
             async for chunk in chain.astream_events({'input': text}, version="v1", include_names=["Assistant"]):
                 if chunk["event"] == "on_parser_start":
                     chunk["message_id"] = message_id
                     await self.send(text_data=json.dumps(chunk))
                 elif chunk["event"] == "on_parser_stream":
                     if 'chunk' in chunk['data']:
-                        logger.debug(f"Chunk data: {chunk['data']['chunk']}")
-                        audio_chunk = await self.text_to_speech(chunk["data"]["chunk"])
+                        buffer.append(chunk['data']['chunk'])
                         chunk["message_id"] = message_id
                         await self.send(text_data=json.dumps(chunk))
-                        await self.send(bytes_data=audio_chunk)
-                        logger.debug(
-                            f"Audio chunk sent: {len(audio_chunk)} bytes")
+                        if len(buffer) >= 10 or any(p in buffer[-1] for p in ['.', '!', '?', ';']):
+                            batched_text = ' '.join(buffer)
+                            buffer = []
+                            processed_text = self.process_text_for_tts(
+                                batched_text)
+                            audio_chunk = await self.text_to_speech(processed_text)
+                            self.audio_queue.append(audio_chunk)
+                            asyncio.create_task(self.send_audio_chunk())
+                            logger.debug(
+                                f"Audio chunk queued: {len(audio_chunk)} bytes")
                     else:
                         logger.error(f"Missing 'chunk' in data: {chunk}")
                 elif chunk["event"] == "on_parser_end":
+                    if buffer:
+                        batched_text = ' '.join(buffer)
+                        processed_text = self.process_text_for_tts(
+                            batched_text)
+                        audio_chunk = await self.text_to_speech(processed_text)
+                        self.audio_queue.append(audio_chunk)
+                        asyncio.create_task(self.send_audio_chunk())
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                 else:
                     logger.error(f"Unknown 'chunk' event: {chunk['event']}")
         except Exception as e:
             logger.error(f"Error: {e}")
 
+    async def send_audio_chunk(self):
+        while self.audio_queue:
+            audio_chunk = self.audio_queue.popleft()
+            await self.send(bytes_data=audio_chunk)
+            await asyncio.sleep(1)  # Adjust as needed for smooth playback
+
+    def process_text_for_tts(self, text):
+        # Remove unnecessary punctuation for TTS
+        text = re.sub(r'[,.!?;]', '', text)
+        return text
+
     async def text_to_speech(self, text):
         client = texttospeech.TextToSpeechClient()
-        input_text = texttospeech.SynthesisInput(text=text)
+        ssml_text = f"<speak>{text}</speak>"
+        input_text = texttospeech.SynthesisInput(ssml=ssml_text)
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
-            name="en-US-Wavenet-D",  # Use WaveNet voice for more natural sound
-            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL,
+            name="en-US-Standard-F",  # Use WaveNet voice for more natural sound
+            ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
         )
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,  # MP3 for smoother playback
-            speaking_rate=1.0,  # Adjust speaking rate to sound more natural
+            speaking_rate=0.8,  # Adjust speaking rate to sound more natural
             pitch=0.0,
         )
         response = client.synthesize_speech(
