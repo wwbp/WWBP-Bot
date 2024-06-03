@@ -166,7 +166,7 @@ function ChatInterface({ session }) {
         peerConnection.current.close();
       }
     };
-  }, [session.id, isAudioMode, setupWebSocket]);
+  }, [session.id, isAudioMode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -176,7 +176,7 @@ function ChatInterface({ session }) {
     if (!isPlaying && audioQueue.length > 0) {
       playNextAudio();
     }
-  }, [audioQueue, isPlaying, playNextAudio]);
+  }, [audioQueue, isPlaying]);
 
   const playNextAudio = () => {
     if (audioQueue.length > 0) {

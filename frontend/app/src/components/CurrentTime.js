@@ -17,7 +17,7 @@ function CurrentTime() {
     };
 
     fetchTime();
-  }, [apiUrl]);
+  }, []);
 
   return (
     <Box textAlign="center" py={2}>
