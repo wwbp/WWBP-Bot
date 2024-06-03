@@ -30,6 +30,7 @@ jobs:
       - name: Build frontend
         env:
           REACT_APP_API_URL: https://dev.gritcoach.ai/api/v1
+          CI: false
         run: |
           cd frontend/app
           npm run build
