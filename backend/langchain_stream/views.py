@@ -138,7 +138,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                         buffer.append(chunk['data']['chunk'])
                         chunk["message_id"] = message_id
                         await self.send(text_data=json.dumps(chunk))
-                        if len(buffer) >= 10 or any(p in buffer[-1] for p in ['.', '!', '?', ';']):
+                        if len(buffer) >= 15 or any(p in buffer[-1] for p in ['.', '!', '?', ';']):
                             batched_text = ' '.join(buffer)
                             buffer = []
                             processed_text = self.process_text_for_tts(
@@ -168,7 +168,7 @@ class AudioConsumer(BaseWebSocketConsumer):
         while self.audio_queue:
             audio_chunk = self.audio_queue.popleft()
             await self.send(bytes_data=audio_chunk)
-            await asyncio.sleep(1)  # Adjust as needed for smooth playback
+            # await asyncio.sleep(1)  # Adjust as needed for smooth playback
 
     def process_text_for_tts(self, text):
         # Remove unnecessary punctuation for TTS
@@ -186,7 +186,7 @@ class AudioConsumer(BaseWebSocketConsumer):
         )
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,  # MP3 for smoother playback
-            speaking_rate=0.8,  # Adjust speaking rate to sound more natural
+            speaking_rate=1,  # Adjust speaking rate to sound more natural
             pitch=0.0,
         )
         response = client.synthesize_speech(

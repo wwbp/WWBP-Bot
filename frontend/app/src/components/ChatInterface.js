@@ -18,6 +18,8 @@ function ChatInterface({ session }) {
   const [isAudioMode, setIsAudioMode] = useState(false);
   const [audioState, setAudioState] = useState("idle");
   const [messageId, setMessageId] = useState(1); // Initialize messageId
+  const [audioQueue, setAudioQueue] = useState([]);
+  const [isPlaying, setIsPlaying] = useState(false);
   const ws = useRef(null);
   const peerConnection = useRef(null);
   const localStream = useRef(null);
@@ -33,30 +35,17 @@ function ChatInterface({ session }) {
     ws.current = createWebSocket(session.id, isAudioMode);
 
     ws.current.onopen = () => {
-      // console.log("WebSocket connected!");
       setupPeerConnection();
     };
 
     ws.current.onmessage = async (event) => {
-      // console.log("WebSocket message type:", typeof event.data);
-
       if (event.data === '{"type":"ping"}') {
-        // console.log("Ping received from server");
         return;
       }
 
       if (isAudioMode) {
         if (event.data instanceof Blob) {
-          const audioUrl = URL.createObjectURL(event.data);
-          const audio = new Audio(audioUrl);
-          audio
-            .play()
-            .then(() => {
-              // console.log("Audio played successfully");
-            })
-            .catch((error) => {
-              console.error("Error playing audio:", error);
-            });
+          setAudioQueue((prevQueue) => [...prevQueue, event.data]);
         } else if (typeof event.data === "string") {
           const data = JSON.parse(event.data);
           if (data.sdp) {
@@ -85,7 +74,6 @@ function ChatInterface({ session }) {
               console.error("Error adding received ICE candidate", error);
             }
           } else if (data.transcript) {
-            // console.log(`User Message ID: ${userMessageId}`);
             setMessages((prevMessages) => [
               ...prevMessages,
               {
@@ -106,7 +94,6 @@ function ChatInterface({ session }) {
               },
             ]);
           } else if (data.event === "on_parser_stream") {
-            // console.log(`Assistant Message ID: ${data.data.message_id}`);
             setMessages((prevMessages) =>
               prevMessages.map((msg) =>
                 msg.id === data.message_id
@@ -170,14 +157,12 @@ function ChatInterface({ session }) {
       event.streams[0].getTracks().forEach((track) => {
         remoteStream.current.addTrack(track);
       });
-      // console.log("Received remote track");
     };
 
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
         peerConnection.current.addTrack(track, localStream.current);
       });
-      // console.log("Added local tracks to peer connection");
     }
   };
 
@@ -198,6 +183,32 @@ function ChatInterface({ session }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!isPlaying && audioQueue.length > 0) {
+      playNextAudio();
+    }
+  }, [audioQueue, isPlaying]);
+
+  const playNextAudio = () => {
+    if (audioQueue.length > 0) {
+      setIsPlaying(true);
+      const nextAudioBlob = audioQueue[0];
+      const audioUrl = URL.createObjectURL(nextAudioBlob);
+      const audio = new Audio(audioUrl);
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        setAudioQueue((prevQueue) => prevQueue.slice(1));
+      };
+
+      audio.play().catch((error) => {
+        console.error("Error playing audio:", error);
+        setIsPlaying(false);
+        setAudioQueue((prevQueue) => prevQueue.slice(1));
+      });
+    }
+  };
+
   const handleInputChange = (e) => {
     setMessage(e.target.value);
   };
@@ -205,7 +216,6 @@ function ChatInterface({ session }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const userMessageId = messageId;
-    // console.log(`User Message ID (Text): ${userMessageId}`);
     const userMessage = {
       sender: `User (text) (${userMessageId})`,
       message: message,
@@ -233,7 +243,6 @@ function ChatInterface({ session }) {
           if (ws.current.readyState === WebSocket.OPEN) {
             const currentMessageId = messageId;
             ws.current.send(JSON.stringify({ message_id: currentMessageId })); // Send messageId before audio data
-            // console.log(`User Message ID (Audio): ${currentMessageId}`);
             ws.current.send(event.data);
           } else {
             console.error("WebSocket is not open");
@@ -259,7 +268,6 @@ function ChatInterface({ session }) {
     ) {
       mediaRecorderRef.current.stop();
       setAudioState("processing");
-      // setMessageId((prevId) => prevId + 1); // Increment messageId after sending audio data
     }
   };
 
