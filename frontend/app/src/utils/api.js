@@ -137,7 +137,8 @@ export async function fetchChatMessages(sessionId) {
 }
 
 export const createWebSocket = (sessionId, isAudioMode) => {
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  // const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const protocol = "ws";
   const wsUrl = process.env.REACT_APP_API_URL.replace("http", protocol).replace(
     "/api/v1",
     ""
