@@ -37,7 +37,7 @@ function ModuleInteraction() {
     if (selectedTask) {
       startChatSession(selectedTask.id);
     }
-  }, [selectedTask]);
+  }, [selectedTask, startChatSession]);
 
   const startChatSession = async (taskId) => {
     try {

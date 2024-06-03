@@ -67,7 +67,7 @@ function ModuleForm({
       setModuleData(initialModuleData);
       setTasks([]);
     }
-  }, [module]);
+  }, [module, initialModuleData]);
 
   const handleModuleChange = (e) => {
     setModuleData({ ...moduleData, [e.target.name]: e.target.value });
