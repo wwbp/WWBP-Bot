@@ -137,7 +137,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                         buffer.append(chunk['data']['chunk'])
                         chunk["message_id"] = message_id
                         await self.send(text_data=json.dumps(chunk))
-                        if any(p in buffer[-1] for p in ['.', '!', '?', ';']):
+                        if any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
                             batched_text = ' '.join(buffer)
                             buffer = []
                             processed_text = self.process_text_for_tts(
