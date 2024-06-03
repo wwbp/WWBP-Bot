@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// Helper function to get cookies by name
 function getCookie(name) {
   let cookieValue = null;
   if (document.cookie && document.cookie !== "") {
@@ -16,7 +15,6 @@ function getCookie(name) {
   return cookieValue;
 }
 
-// Creating an Axios instance
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL,
   withCredentials: true,
@@ -25,12 +23,11 @@ const api = axios.create({
   },
 });
 
-// Interceptor to add token to each request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token"); // Get the token from localStorage
+    const token = localStorage.getItem("token");
     if (token) {
-      config.headers["Authorization"] = `Token ${token}`; // Append token to headers
+      config.headers["Authorization"] = `Token ${token}`;
     }
     return config;
   },
@@ -39,7 +36,6 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor to add CSRF token to each request
 api.interceptors.request.use(
   (config) => {
     const token = getCookie("csrftoken");
@@ -53,7 +49,6 @@ api.interceptors.request.use(
   }
 );
 
-// Function to fetch CSRF token and update cookie
 export async function getCSRFToken() {
   try {
     const response = await api.get("/csrf/");
@@ -64,7 +59,6 @@ export async function getCSRFToken() {
   }
 }
 
-// Function to fetch data using GET method
 export async function fetchData(url = "") {
   try {
     const response = await api.get(url);
@@ -75,7 +69,6 @@ export async function fetchData(url = "") {
   }
 }
 
-// Function to send data using POST method
 export async function postData(url = "", body = {}) {
   try {
     const response = await api.post(url, body);
@@ -86,7 +79,6 @@ export async function postData(url = "", body = {}) {
   }
 }
 
-// Function to send data using PUT method
 export async function putData(url = "", body = {}) {
   try {
     const response = await api.put(url, body);
@@ -97,7 +89,6 @@ export async function putData(url = "", body = {}) {
   }
 }
 
-// Function to delete data using DELETE method
 export async function deleteData(url = "") {
   try {
     const response = await api.delete(url);
@@ -108,7 +99,6 @@ export async function deleteData(url = "") {
   }
 }
 
-// Function to create a chat session
 export async function createChatSession(moduleId, taskId) {
   try {
     const response = await postData("/chat_sessions/", {
@@ -122,7 +112,6 @@ export async function createChatSession(moduleId, taskId) {
   }
 }
 
-// Function to send a chat message and receive a response
 export async function sendMessage(sessionId, message, sender) {
   try {
     const response = await postData("/chat_messages/", {
@@ -137,7 +126,6 @@ export async function sendMessage(sessionId, message, sender) {
   }
 }
 
-// Function to fetch chat messages for a session
 export async function fetchChatMessages(sessionId) {
   try {
     const response = await fetchData(`/chat_sessions/${sessionId}/messages/`);
@@ -148,12 +136,16 @@ export async function fetchChatMessages(sessionId) {
   }
 }
 
-export function createWebSocket(sessionId) {
-  const wsUrl = process.env.REACT_APP_API_URL.replace("http", "ws").replace(
+export const createWebSocket = (sessionId, isAudioMode) => {
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = process.env.REACT_APP_API_URL.replace("http", protocol).replace(
     "/api/v1",
     ""
   );
-  return new WebSocket(`${wsUrl}/ws/chat/${sessionId}/`);
-}
+  const endpoint = isAudioMode
+    ? `/ws/audio/${sessionId}/`
+    : `/ws/chat/${sessionId}/`;
+  return new WebSocket(`${wsUrl}${endpoint}`);
+};
 
 export default api;

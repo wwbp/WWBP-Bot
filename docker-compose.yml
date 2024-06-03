@@ -13,6 +13,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
   backend:
     build:
       context: ./backend
@@ -20,10 +21,12 @@ services:
     command: sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
       - ./backend:/app
+      - /app/__pycache__
     ports:
       - "8000:8000"
     depends_on:
       - db
+      - redis
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
@@ -36,6 +39,8 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+
   frontend:
     build:
       context: ./frontend/app
@@ -44,11 +49,19 @@ services:
         - REACT_APP_API_URL=${REACT_APP_API_URL}
     volumes:
       - ./frontend/app/src:/app/src
+      - ./frontend/app/public:/app/public
+      - ./frontend/app/nginx/nginx.conf:/etc/nginx/nginx.conf
     ports:
       - "3000:80"
     depends_on:
       - backend
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL}
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
 volumes:
   mysql-data:
