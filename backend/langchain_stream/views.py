@@ -10,7 +10,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import re
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -104,7 +103,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                 assistant_message_id = str(int(self.current_message_id) + 1)
                 await self.stream_audio_response(transcript, assistant_message_id)
             else:
-                logger.error("Transcript is empty")
+                await self.send_audio_chunk(await self.text_to_speech("Sorry, I couldn't hear you."))
 
     async def process_audio(self, audio_data):
         logger.debug(f"Audio data size: {len(audio_data)} bytes")
@@ -138,7 +137,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                         buffer.append(chunk['data']['chunk'])
                         chunk["message_id"] = message_id
                         await self.send(text_data=json.dumps(chunk))
-                        if len(buffer) >= 15 or any(p in buffer[-1] for p in ['.', '!', '?', ';']):
+                        if any(p in buffer[-1] for p in ['.', '!', '?', ';']):
                             batched_text = ' '.join(buffer)
                             buffer = []
                             processed_text = self.process_text_for_tts(
@@ -164,14 +163,15 @@ class AudioConsumer(BaseWebSocketConsumer):
         except Exception as e:
             logger.error(f"Error: {e}")
 
-    async def send_audio_chunk(self):
+    async def send_audio_chunk(self, audio_chunk=None):
+        if audio_chunk:
+            self.audio_queue.append(audio_chunk)
         while self.audio_queue:
             audio_chunk = self.audio_queue.popleft()
             await self.send(bytes_data=audio_chunk)
             # await asyncio.sleep(1)  # Adjust as needed for smooth playback
 
     def process_text_for_tts(self, text):
-        # Remove unnecessary punctuation for TTS
         text = re.sub(r'[,.!?;]', '', text)
         return text
 
@@ -181,12 +181,12 @@ class AudioConsumer(BaseWebSocketConsumer):
         input_text = texttospeech.SynthesisInput(ssml=ssml_text)
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
-            name="en-US-Standard-F",  # Use WaveNet voice for more natural sound
+            name="en-US-Standard-F",
             ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
         )
         audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3,  # MP3 for smoother playback
-            speaking_rate=1,  # Adjust speaking rate to sound more natural
+            audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=1,
             pitch=0.0,
         )
         response = client.synthesize_speech(

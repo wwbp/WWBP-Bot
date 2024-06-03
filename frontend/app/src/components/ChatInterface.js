@@ -9,7 +9,6 @@ import {
   Switch,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
-import MicOffIcon from "@mui/icons-material/MicOff";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
 function ChatInterface({ session }) {
@@ -17,9 +16,10 @@ function ChatInterface({ session }) {
   const [message, setMessage] = useState("");
   const [isAudioMode, setIsAudioMode] = useState(false);
   const [audioState, setAudioState] = useState("idle");
-  const [messageId, setMessageId] = useState(1); // Initialize messageId
+  const [messageId, setMessageId] = useState(1);
   const [audioQueue, setAudioQueue] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isWsConnected, setIsWsConnected] = useState(false);
   const ws = useRef(null);
   const peerConnection = useRef(null);
   const localStream = useRef(null);
@@ -35,6 +35,7 @@ function ChatInterface({ session }) {
     ws.current = createWebSocket(session.id, isAudioMode);
 
     ws.current.onopen = () => {
+      setIsWsConnected(true);
       setupPeerConnection();
     };
 
@@ -76,22 +77,14 @@ function ChatInterface({ session }) {
           } else if (data.transcript) {
             setMessages((prevMessages) => [
               ...prevMessages,
-              {
-                sender: `User (audio) (${data.message_id})`,
-                message: data.transcript,
-                id: data.message_id,
-              },
+              { sender: `You`, message: data.transcript, id: data.message_id },
             ]);
             setMessageId((prevId) => prevId + 1);
             setMessage("");
           } else if (data.event === "on_parser_start") {
             setMessages((prevMessages) => [
               ...prevMessages,
-              {
-                sender: `Assistant (audio) (${data.message_id})`,
-                message: "",
-                id: data.message_id,
-              },
+              { sender: `GritCoach`, message: "", id: data.message_id },
             ]);
           } else if (data.event === "on_parser_stream") {
             setMessages((prevMessages) =>
@@ -110,13 +103,10 @@ function ChatInterface({ session }) {
         const data = JSON.parse(event.data);
 
         if (data.event === "on_parser_start") {
+          setAudioState("speaking");
           setMessages((prevMessages) => [
             ...prevMessages,
-            {
-              sender: `Assistant (text) (${data.message_id})`,
-              message: "",
-              id: data.message_id,
-            },
+            { sender: `GritCoach`, message: "", id: data.message_id },
           ]);
         } else if (data.event === "on_parser_stream") {
           setMessages((prevMessages) =>
@@ -127,6 +117,7 @@ function ChatInterface({ session }) {
             )
           );
         } else if (data.event === "on_parser_end") {
+          setAudioState("idle");
           setMessageId((prevId) => prevId + 1);
           setMessage("");
         }
@@ -138,9 +129,7 @@ function ChatInterface({ session }) {
     };
 
     ws.current.onclose = (event) => {
-      // console.log(
-      //   `WebSocket is closed now. Code: ${event.code}, Reason: ${event.reason}`
-      // );
+      setIsWsConnected(false);
     };
   };
 
@@ -192,18 +181,21 @@ function ChatInterface({ session }) {
   const playNextAudio = () => {
     if (audioQueue.length > 0) {
       setIsPlaying(true);
+      setAudioState("speaking");
       const nextAudioBlob = audioQueue[0];
       const audioUrl = URL.createObjectURL(nextAudioBlob);
       const audio = new Audio(audioUrl);
 
       audio.onended = () => {
         setIsPlaying(false);
+        setAudioState("idle");
         setAudioQueue((prevQueue) => prevQueue.slice(1));
       };
 
       audio.play().catch((error) => {
         console.error("Error playing audio:", error);
         setIsPlaying(false);
+        setAudioState("idle");
         setAudioQueue((prevQueue) => prevQueue.slice(1));
       });
     }
@@ -217,7 +209,7 @@ function ChatInterface({ session }) {
     e.preventDefault();
     const userMessageId = messageId;
     const userMessage = {
-      sender: `User (text) (${userMessageId})`,
+      sender: `You`,
       message: message,
       id: userMessageId.toString(),
     };
@@ -225,7 +217,7 @@ function ChatInterface({ session }) {
     ws.current.send(
       JSON.stringify({ message: message, message_id: userMessageId + 1 })
     );
-    setMessageId((prevId) => prevId + 1); // Increment messageId
+    setMessageId((prevId) => prevId + 1);
     setMessage("");
   };
 
@@ -242,7 +234,7 @@ function ChatInterface({ session }) {
         mediaRecorderRef.current.ondataavailable = (event) => {
           if (ws.current.readyState === WebSocket.OPEN) {
             const currentMessageId = messageId;
-            ws.current.send(JSON.stringify({ message_id: currentMessageId })); // Send messageId before audio data
+            ws.current.send(JSON.stringify({ message_id: currentMessageId }));
             ws.current.send(event.data);
           } else {
             console.error("WebSocket is not open");
@@ -291,11 +283,24 @@ function ChatInterface({ session }) {
   return (
     <Box display="flex" flexDirection="column" height="100%">
       <Box display="flex" justifyContent="space-between" p={2}>
-        <Typography variant="h6">Chat Interface</Typography>
-        <Switch checked={isAudioMode} onChange={handleModeSwitch} />
-        <Typography variant="body2">Audio Mode</Typography>
+        <Box display="flex" alignItems="center">
+          {!isAudioMode && <Typography variant="body2">Text Mode</Typography>}
+          <Switch checked={isAudioMode} onChange={handleModeSwitch} />
+          {isAudioMode && (
+            <Typography variant="body2" style={{ marginLeft: "8px" }}>
+              Audio Mode
+            </Typography>
+          )}
+        </Box>
+        <Typography
+          variant="body2"
+          color={isWsConnected ? "green" : "red"}
+          style={{ marginLeft: "auto" }}
+        >
+          {isWsConnected ? "Connected" : "Disconnected"}
+        </Typography>
       </Box>
-      <Box flexGrow={1} overflow="auto" p={2}>
+      <Box flexGrow={1} overflow="auto" p={2} height="400px">
         {messages.map((msg, index) => (
           <Box key={index} mb={2}>
             <Typography variant="body2" color="textSecondary">
@@ -305,15 +310,16 @@ function ChatInterface({ session }) {
         ))}
         <div ref={messagesEndRef} />
       </Box>
-      <Box display="flex" p={2}>
+      <Box display="flex" justifyContent="center" alignItems="center" p={2}>
         {isAudioMode ? (
           <IconButton
             onMouseDown={handlePTTMouseDown}
             onMouseUp={handlePTTMouseUp}
             color={audioState === "recording" ? "secondary" : "default"}
             aria-label="push-to-talk"
+            style={{ fontSize: "2rem" }}
           >
-            {audioState === "recording" ? <MicIcon /> : <MicOffIcon />}
+            <MicIcon style={{ fontSize: "3rem" }} />
           </IconButton>
         ) : (
           <>
