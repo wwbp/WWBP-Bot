@@ -21,6 +21,7 @@ google-cloud-texttospeech = "*"
 redis = "*"
 channels-redis = "*"
 django-redis = "*"
+pydub = "*"
 
 [dev-packages]
 
