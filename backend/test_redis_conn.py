@@ -8,12 +8,12 @@ django.setup()
 
 
 def test_redis_connection():
-
     try:
         print(
             f"Attempting to connect to Redis at {settings.REDIS_HOST}:{settings.REDIS_PORT}")
-        r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT,
-                        socket_connect_timeout=5)
+        r = redis.Redis(host=settings.REDIS_HOST,
+                        port=settings.REDIS_PORT, socket_connect_timeout=5)
+        print("Redis client created.")
         response = r.ping()
         print("Connected to Redis successfully! Ping response:", response)
     except redis.ConnectionError as e:
