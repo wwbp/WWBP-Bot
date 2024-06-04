@@ -1,6 +1,6 @@
 from django.forms import ValidationError
 from rest_framework import serializers
-from .models import User, Module, Task, ChatSession, ChatMessage
+from .models import User, Module, Task, ChatSession, ChatMessage, SystemPrompt
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -78,3 +78,9 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
         fields = ['id', 'session', 'message', 'sender', 'created_at']
+
+
+class SystemPromptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SystemPrompt
+        fields = ['id', 'prompt', 'created_at', 'updated_at']

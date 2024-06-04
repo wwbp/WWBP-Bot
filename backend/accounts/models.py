@@ -48,3 +48,9 @@ class ChatMessage(models.Model):
     sender = models.CharField(max_length=10, choices=(
         ('student', 'Student'), ('bot', 'Bot')))
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class SystemPrompt(models.Model):
+    prompt = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

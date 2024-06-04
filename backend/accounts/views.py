@@ -17,8 +17,8 @@ from rest_framework import permissions
 from rest_framework.authtoken.models import Token
 from django.middleware.csrf import get_token
 import logging
-from .models import User, Task, Module, ChatSession, ChatMessage
-from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer
+from .models import User, Task, Module, ChatSession, SystemPrompt
+from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer, SystemPromptSerializer
 from django.contrib.auth import get_user_model
 import json
 from django.views.decorators.csrf import csrf_exempt
@@ -299,3 +299,9 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             'user_message': serializer.data,
             'bot_message': bot_serializer.data
         }, status=status.HTTP_201_CREATED)
+
+
+class SystemPromptViewSet(viewsets.ModelViewSet):
+    queryset = SystemPrompt.objects.all()
+    serializer_class = SystemPromptSerializer
+    permission_classes = [IsAuthenticated]
