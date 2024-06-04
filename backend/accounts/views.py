@@ -53,7 +53,9 @@ def login_view(request):
         data = json.loads(request.body)
         username = data.get('username')
         password = data.get('password')
+        print(f'@@@@@@@username {username}')
         user = authenticate(request, username=username, password=password)
+        print(f'########## we here after authenticate')
         if user is not None:
             login(request, user)
             token, _ = Token.objects.get_or_create(user=user)
@@ -123,7 +125,9 @@ def register(request):
             user.save()
 
             # Log the user in after registration
+            print(f'@@@@@@@username {username}')
             user = authenticate(request, username=username, password=password)
+            print(f'########## we here after authenticate')
             if user is not None:
                 login(request, user)
                 token, _ = Token.objects.get_or_create(user=user)
