@@ -13,18 +13,17 @@ class UserSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'title', 'content']
+        fields = ['id', 'title', 'content', 'instruction_prompt',
+                  'persona_prompt', 'time_allocated']
 
 
 class ModuleSerializer(serializers.ModelSerializer):
     tasks = TaskSerializer(many=True, required=False)
-    assigned_students = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=User.objects.filter(role='student'))
 
     class Meta:
         model = Module
-        fields = ['id', 'name', 'description', 'created_by',
-                  'start_time', 'end_time', 'tasks', 'assigned_students']
+        fields = ['id', 'name', 'created_by',
+                  'start_time', 'end_time', 'tasks']
         read_only_fields = ['created_by']
 
     def validate(self, data):
@@ -34,23 +33,17 @@ class ModuleSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         tasks_data = validated_data.pop('tasks', [])
-        students_data = validated_data.pop('assigned_students', [])
         module = Module.objects.create(**validated_data)
-        module.assigned_students.set(students_data)
         for task_data in tasks_data:
             Task.objects.create(module=module, **task_data)
         return module
 
     def update(self, instance, validated_data):
         tasks_data = validated_data.pop('tasks', [])
-        students_data = validated_data.pop('assigned_students', [])
         instance.name = validated_data.get('name', instance.name)
-        instance.description = validated_data.get(
-            'description', instance.description)
         instance.start_time = validated_data.get(
             'start_time', instance.start_time)
         instance.end_time = validated_data.get('end_time', instance.end_time)
-        instance.assigned_students.set(students_data)
         instance.save()
 
         keep_tasks = []
@@ -59,6 +52,12 @@ class ModuleSerializer(serializers.ModelSerializer):
                 task = Task.objects.get(id=task_data["id"], module=instance)
                 task.title = task_data.get("title", task.title)
                 task.content = task_data.get("content", task.content)
+                task.instruction_prompt = task_data.get(
+                    "instruction_prompt", task.instruction_prompt)
+                task.persona_prompt = task_data.get(
+                    "persona_prompt", task.persona_prompt)
+                task.time_allocated = task_data.get(
+                    "time_allocated", task.time_allocated)
                 task.save()
                 keep_tasks.append(task.id)
             else:

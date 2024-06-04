@@ -8,12 +8,6 @@ import {
   Typography,
   CircularProgress,
   Grid,
-  Card,
-  CardContent,
-  CardActions,
-  List,
-  ListItem,
-  ListItemText,
 } from "@mui/material";
 
 function ModuleForm({
@@ -24,64 +18,36 @@ function ModuleForm({
 }) {
   const initialModuleData = {
     name: "",
-    description: "",
     start_time: "",
     end_time: "",
-    assigned_students: [],
   };
 
   const [moduleData, setModuleData] = useState(initialModuleData);
   const [tasks, setTasks] = useState([]);
-  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetchData("/users/")
-      .then((data) => {
-        const studentUsers = data.filter((user) => user.role === "student");
-        setStudents(studentUsers);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoading(false);
-      });
-  }, []);
 
   useEffect(() => {
     if (module.id) {
       setModuleData({
         name: module.name || "",
-        description: module.description || "",
         start_time: module.start_time
           ? new Date(module.start_time).toISOString().slice(0, 16)
           : "",
         end_time: module.end_time
           ? new Date(module.end_time).toISOString().slice(0, 16)
           : "",
-        assigned_students: module.assigned_students || [],
       });
       setTasks(module.tasks || []);
     } else {
       setModuleData(initialModuleData);
       setTasks([]);
     }
+    setLoading(false);
   }, [module]);
 
   const handleModuleChange = (e) => {
     setModuleData({ ...moduleData, [e.target.name]: e.target.value });
-  };
-
-  const handleStudentClick = (studentId) => {
-    const selected = [...moduleData.assigned_students];
-    const index = selected.indexOf(studentId);
-    if (index > -1) {
-      selected.splice(index, 1);
-    } else {
-      selected.push(studentId);
-    }
-    setModuleData({ ...moduleData, assigned_students: selected });
   };
 
   const handleTaskChange = (index, updatedTask) => {
@@ -90,7 +56,16 @@ function ModuleForm({
   };
 
   const handleAddTask = () => {
-    setTasks([...tasks, { title: "", content: "" }]);
+    setTasks([
+      ...tasks,
+      {
+        title: "",
+        content: "",
+        instruction_prompt: "",
+        persona_prompt: "",
+        time_allocated: "",
+      },
+    ]);
   };
 
   const handleRemoveTask = (index) => {
@@ -144,18 +119,6 @@ function ModuleForm({
               margin="normal"
             />
           </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Description"
-              name="description"
-              value={moduleData.description}
-              onChange={handleModuleChange}
-              margin="normal"
-              multiline
-              rows={4}
-            />
-          </Grid>
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
@@ -184,21 +147,6 @@ function ModuleForm({
               }}
             />
           </Grid>
-          <Grid item xs={12}>
-            <Typography variant="h6">Assign to Students</Typography>
-            <List>
-              {students.map((student) => (
-                <ListItem
-                  key={student.id}
-                  button
-                  selected={moduleData.assigned_students.includes(student.id)}
-                  onClick={() => handleStudentClick(student.id)}
-                >
-                  <ListItemText primary={student.username} />
-                </ListItem>
-              ))}
-            </List>
-          </Grid>
         </Grid>
         <Box my={2}>
           <Button variant="outlined" color="primary" onClick={handleAddTask}>
@@ -207,25 +155,13 @@ function ModuleForm({
           <Grid container spacing={3}>
             {tasks.map((task, index) => (
               <Grid item xs={12} key={index}>
-                <Card>
-                  <CardContent>
-                    <TaskForm
-                      task={task}
-                      onChange={(updatedTask) =>
-                        handleTaskChange(index, updatedTask)
-                      }
-                    />
-                  </CardContent>
-                  <CardActions>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => handleRemoveTask(index)}
-                    >
-                      Remove Task
-                    </Button>
-                  </CardActions>
-                </Card>
+                <TaskForm
+                  task={task}
+                  onChange={(updatedTask) =>
+                    handleTaskChange(index, updatedTask)
+                  }
+                  onRemove={() => handleRemoveTask(index)}
+                />
               </Grid>
             ))}
           </Grid>

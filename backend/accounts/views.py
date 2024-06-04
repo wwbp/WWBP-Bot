@@ -187,8 +187,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def assigned(self, request):
         if request.user.role == 'student' or request.session.get('student_view', False):
-            modules = Module.objects.filter(
-                assigned_students=request.user) | Module.objects.filter(created_by=request.user)
+            modules = Module.objects.filter(created_by=request.user)
             serializer = self.get_serializer(modules, many=True)
             return Response(serializer.data)
         return Response(status=status.HTTP_403_FORBIDDEN)

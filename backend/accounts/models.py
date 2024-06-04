@@ -16,13 +16,10 @@ class User(AbstractUser):
 
 class Module(models.Model):
     name = models.CharField(max_length=100)
-    description = models.TextField()
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='modules')
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    assigned_students = models.ManyToManyField(
-        User, related_name='assigned_modules')
 
 
 class Task(models.Model):
@@ -30,6 +27,9 @@ class Task(models.Model):
     content = models.TextField()
     module = models.ForeignKey(
         Module, on_delete=models.CASCADE, related_name='tasks')
+    instruction_prompt = models.TextField(blank=True, null=True)
+    persona_prompt = models.TextField(blank=True, null=True)
+    time_allocated = models.IntegerField(default=60)  # Default to 60 minutes
 
 
 class ChatSession(models.Model):
