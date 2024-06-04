@@ -61,8 +61,11 @@ MIDDLEWARE = [
 ]
 
 # Redis Configuration
-REDIS_HOST = os.getenv('REDIS_HOST', 'redis:6379')
-REDIS_URL = f'redis://{REDIS_HOST}/1'
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+if ':' in REDIS_HOST:
+    REDIS_HOST, REDIS_PORT = REDIS_HOST.split(':', 1)
+REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/1'
 
 
 CACHES = {
