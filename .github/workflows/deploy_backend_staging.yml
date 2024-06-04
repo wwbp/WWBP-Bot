@@ -30,6 +30,6 @@ jobs:
       - name: Deploy to Elastic Beanstalk
         run: |
           cd backend
-          eb init -p "Docker running on 64bit Amazon Linux 2023/4.3.2" ${{ secrets.AWS_BACKEND_APPLICATION_NAME }} --region us-east-1
+          eb init -p "Docker running on 64bit Amazon Linux 2023" ${{ secrets.AWS_BACKEND_APPLICATION_NAME }} --region us-east-1
           eb use ${{ secrets.AWS_BACKEND_ENVIRONMENT_NAME }}
           eb deploy
