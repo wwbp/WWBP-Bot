@@ -1,5 +1,10 @@
-import redis
+import os
+import django
 from django.conf import settings
+import redis
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
 
 
 def test_redis_connection():
