@@ -6,22 +6,56 @@ from collections import deque
 from channels.generic.websocket import AsyncWebsocketConsumer
 from google.cloud import speech, texttospeech
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 import re
+from langchain_community.chat_message_histories import RedisChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful assistant."),
-    ("user", "{input}")
-])
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
 
-llm = ChatOpenAI(model="gpt-4o", api_key=os.getenv("OPENAI_API_KEY", ""))
-output_parser = StrOutputParser()
-chain = prompt | llm.with_config(
-    {"run_name": "model"}) | output_parser.with_config({"run_name": "Assistant"})
+if ENVIRONMENT == 'production':
+    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}'
+else:
+    REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
+
+
+class LangChainSessionManager:
+    def __init__(self):
+        self.llm_instances = {}
+
+    def get_llm_instance(self, session_id):
+        if session_id not in self.llm_instances:
+            memory = RedisChatMessageHistory(
+                session_id=session_id,
+                url=REDIS_URL
+            )
+            llm = ChatOpenAI(
+                model="gpt-4o", api_key=os.getenv("OPENAI_API_KEY", ""))
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", "You are a helpful assistant."),
+                MessagesPlaceholder("history")
+                ("user", "{question}")
+            ])
+            output_parser = StrOutputParser()
+            chain = prompt | llm.with_config(
+                {"run_name": "model"}) | output_parser.with_config({"run_name": "Assistant"})
+            chain_with_history = RunnableWithMessageHistory(
+                chain,
+                memory,
+                input_messages_key="question",
+                history_messages_key="history",
+            )
+            self.llm_instances[session_id] = chain_with_history
+        return self.llm_instances[session_id]
+
+
+session_manager = LangChainSessionManager()
 
 
 class BaseWebSocketConsumer(AsyncWebsocketConsumer):
@@ -37,16 +71,14 @@ class BaseWebSocketConsumer(AsyncWebsocketConsumer):
 
 
 class ChatConsumer(BaseWebSocketConsumer):
-
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
         await self.accept()
         logger.debug(f"WebSocket connected: session_id={self.session_id}")
         asyncio.create_task(self.ping())
 
-    async def disconnect(self, close_code):
-        logger.debug(
-            f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
+        # Initialize LLM with memory for this session
+        self.chain = session_manager.get_llm_instance(self.session_id)
 
     async def receive(self, text_data):
         logger.debug(f"Message received: {text_data}")
@@ -54,7 +86,7 @@ class ChatConsumer(BaseWebSocketConsumer):
         message = text_data_json["message"]
         message_id = text_data_json["message_id"]
         try:
-            async for chunk in chain.astream_events({'input': message}, version="v1", include_names=["Assistant"]):
+            async for chunk in self.chain.astream_events({'question': message}, version="v1", include_names=["Assistant"]):
                 chunk["message_id"] = message_id
                 if chunk["event"] in ["on_parser_start", "on_parser_stream"]:
                     await self.send(text_data=json.dumps(chunk))
@@ -78,9 +110,8 @@ class AudioConsumer(BaseWebSocketConsumer):
             f"Audio WebSocket connected: session_id={self.session_id}")
         asyncio.create_task(self.ping())
 
-    async def disconnect(self, close_code):
-        logger.debug(
-            f"Audio WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
+        # Initialize LLM with memory for this session
+        self.chain = session_manager.get_llm_instance(self.session_id)
 
     async def receive(self, bytes_data=None, text_data=None):
         if text_data:
@@ -128,7 +159,7 @@ class AudioConsumer(BaseWebSocketConsumer):
     async def stream_audio_response(self, text, message_id):
         try:
             buffer = []  # Buffer to collect tokens
-            async for chunk in chain.astream_events({'input': text}, version="v1", include_names=["Assistant"]):
+            async for chunk in self.chain.astream_events({'question': text}, version="v1", include_names=["Assistant"]):
                 if chunk["event"] == "on_parser_start":
                     chunk["message_id"] = message_id
                     await self.send(text_data=json.dumps(chunk))

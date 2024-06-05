@@ -64,7 +64,7 @@ MIDDLEWARE = [
 
 # Redis Configuration
 REDIS_HOST = os.getenv(
-    'REDIS_HOST', 'redis-5rqgxm.serverless.use1.cache.amazonaws.com')
+    'REDIS_HOST', 'redis')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
 
