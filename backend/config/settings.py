@@ -14,6 +14,9 @@ SECRET_KEY = os.getenv(
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
+# HTTPS settings
+SECURE_SSL_REDIRECT = True
+
 # Application definition
 INSTALLED_APPS = [
     'channels',
