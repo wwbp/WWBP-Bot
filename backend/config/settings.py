@@ -1,3 +1,4 @@
+import ssl
 import os
 from pathlib import Path
 import requests
@@ -35,12 +36,12 @@ del requests
 # Application definition
 INSTALLED_APPS = [
     'channels',
-    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'daphne',
     'django.contrib.staticfiles',
     'accounts',
     'corsheaders',
@@ -60,13 +61,25 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Redis Configuration
-REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
-REDIS_PORT = os.getenv('REDIS_PORT', '6379')
-if ':' in REDIS_HOST:
-    REDIS_HOST, REDIS_PORT = REDIS_HOST.split(':', 1)
-REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/1'
 
+# Redis Configuration
+REDIS_HOST = os.getenv(
+    'REDIS_HOST', 'redis-5rqgxm.serverless.use1.cache.amazonaws.com')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
+
+if ENVIRONMENT == 'production':
+    ssl_context = ssl.SSLContext()
+    ssl_context.check_hostname = False
+    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}'
+    REDIS_OPTIONS = {
+        "SSL": True,
+        "ssl_cert_reqs": None,
+        "ssl_context": ssl_context
+    }
+else:
+    REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
+    REDIS_OPTIONS = {}
 
 CACHES = {
     "default": {
@@ -74,6 +87,7 @@ CACHES = {
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            **REDIS_OPTIONS
         }
     }
 }
@@ -82,14 +96,25 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
+if ENVIRONMENT == 'production':
+    redis_ssl_host = {
+        'address': REDIS_URL,
+        'ssl': ssl_context
+    }
+else:
+    redis_ssl_host = {
+        'address': REDIS_URL
+    }
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "hosts": [redis_ssl_host]
         },
     },
 }
+
 
 # Consider restricting in production
 # CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
