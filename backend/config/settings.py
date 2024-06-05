@@ -66,7 +66,6 @@ MIDDLEWARE = [
 REDIS_HOST = os.getenv(
     'REDIS_HOST', 'redis-5rqgxm.serverless.use1.cache.amazonaws.com')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
-REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
 
 if ENVIRONMENT == 'production':
@@ -74,9 +73,12 @@ if ENVIRONMENT == 'production':
     ssl_context.check_hostname = False
     REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}'
     REDIS_OPTIONS = {
-        "ssl": ssl_context
+        "SSL": True,
+        "ssl_cert_reqs": None,
+        "ssl_context": ssl_context
     }
 else:
+    REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
     REDIS_OPTIONS = {}
 
 CACHES = {
@@ -94,16 +96,21 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
-redis_ssl_host = {
-    'address': REDIS_URL,
-    'ssl': ssl_context if ENVIRONMENT == 'production' else None
-}
+if ENVIRONMENT == 'production':
+    redis_ssl_host = {
+        'address': REDIS_URL,
+        'ssl': ssl_context
+    }
+else:
+    redis_ssl_host = {
+        'address': REDIS_URL
+    }
 
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": (redis_ssl_host,)
+            "hosts": [redis_ssl_host]
         },
     },
 }
