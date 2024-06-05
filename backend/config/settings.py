@@ -63,15 +63,16 @@ MIDDLEWARE = [
 
 
 # Redis Configuration
-REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+REDIS_HOST = os.getenv(
+    'REDIS_HOST', 'redis-5rqgxm.serverless.use1.cache.amazonaws.com')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
-REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/1'
+REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
 
 if ENVIRONMENT == 'production':
     ssl_context = ssl.SSLContext()
     ssl_context.check_hostname = False
-    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}/1'
+    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}'
     REDIS_OPTIONS = {
         "ssl": ssl_context
     }
@@ -97,6 +98,16 @@ redis_ssl_host = {
     'address': REDIS_URL,
     'ssl': ssl_context if ENVIRONMENT == 'production' else None
 }
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": (redis_ssl_host,)
+        },
+    },
+}
+
 
 CHANNEL_LAYERS = {
     'default': {
