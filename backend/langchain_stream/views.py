@@ -6,13 +6,21 @@ from collections import deque
 from channels.generic.websocket import AsyncWebsocketConsumer
 from google.cloud import speech, texttospeech
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts.chat import MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 import re
 from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
@@ -26,20 +34,13 @@ else:
 
 
 class LangChainSessionManager:
-    def __init__(self):
-        self.llm_instances = {}
-
     def get_llm_instance(self, session_id):
-        if session_id not in self.llm_instances:
-            memory = RedisChatMessageHistory(
-                session_id=session_id,
-                url=REDIS_URL
-            )
+        try:
             llm = ChatOpenAI(
-                model="gpt-4o", api_key=os.getenv("OPENAI_API_KEY", ""))
+                model="gpt-4", api_key=os.getenv("OPENAI_API_KEY", ""))
             prompt = ChatPromptTemplate.from_messages([
                 ("system", "You are a helpful assistant."),
-                MessagesPlaceholder("history")
+                MessagesPlaceholder("history"),
                 ("user", "{question}")
             ])
             output_parser = StrOutputParser()
@@ -47,12 +48,18 @@ class LangChainSessionManager:
                 {"run_name": "model"}) | output_parser.with_config({"run_name": "Assistant"})
             chain_with_history = RunnableWithMessageHistory(
                 chain,
-                memory,
+                lambda config: RedisChatMessageHistory(
+                    session_id=config['configurable']['session_id'],
+                    url=REDIS_URL
+                ),
                 input_messages_key="question",
                 history_messages_key="history",
             )
-            self.llm_instances[session_id] = chain_with_history
-        return self.llm_instances[session_id]
+            return chain_with_history.with_config({
+                'configurable': {"session_id": session_id}})
+        except Exception as e:
+            raise Exception(
+                f"Error creating LLM instance for session_id {session_id}: {e}")
 
 
 session_manager = LangChainSessionManager()
@@ -86,7 +93,11 @@ class ChatConsumer(BaseWebSocketConsumer):
         message = text_data_json["message"]
         message_id = text_data_json["message_id"]
         try:
-            async for chunk in self.chain.astream_events({'question': message}, version="v1", include_names=["Assistant"]):
+            async for chunk in self.chain.astream_events(
+                {'question': message},
+                version="v1",
+                include_names=["Assistant"],
+            ):
                 chunk["message_id"] = message_id
                 if chunk["event"] in ["on_parser_start", "on_parser_stream"]:
                     await self.send(text_data=json.dumps(chunk))
@@ -159,7 +170,11 @@ class AudioConsumer(BaseWebSocketConsumer):
     async def stream_audio_response(self, text, message_id):
         try:
             buffer = []  # Buffer to collect tokens
-            async for chunk in self.chain.astream_events({'question': text}, version="v1", include_names=["Assistant"]):
+            async for chunk in self.chain.astream_events(
+                {'question': text},
+                version="v1",
+                include_names=["Assistant"],
+            ):
                 if chunk["event"] == "on_parser_start":
                     chunk["message_id"] = message_id
                     await self.send(text_data=json.dumps(chunk))
@@ -200,7 +215,6 @@ class AudioConsumer(BaseWebSocketConsumer):
         while self.audio_queue:
             audio_chunk = self.audio_queue.popleft()
             await self.send(bytes_data=audio_chunk)
-            # await asyncio.sleep(1)  # Adjust as needed for smooth playback
 
     def process_text_for_tts(self, text):
         text = re.sub(r'[,.!?;]', '', text)
