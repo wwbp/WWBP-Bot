@@ -15,12 +15,14 @@ def test_redis_connection():
         r = redis.Redis(
             host=settings.REDIS_HOST,
             port=settings.REDIS_PORT,
-            socket_connect_timeout=10,
-            socket_timeout=10
+            socket_connect_timeout=30,
+            decode_responses=True,
+            ssl=True,
+            socket_timeout=30
         )
         print("Redis client created. Pinging...")
-        response = r.ping()
-        print("Connected to Redis successfully! Ping response:", response)
+        if r.ping():
+            print("Connected to Redis successfully!")
     except redis.ConnectionError as e:
         print(f"ConnectionError: Failed to connect to Redis: {e}")
     except redis.TimeoutError as e:
