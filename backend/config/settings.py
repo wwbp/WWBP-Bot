@@ -1,3 +1,4 @@
+import ssl
 import os
 from pathlib import Path
 import requests
@@ -60,13 +61,22 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
 # Redis Configuration
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
 REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/1'
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
+
 if ENVIRONMENT == 'production':
-    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}/1'    
+    ssl_context = ssl.SSLContext()
+    ssl_context.check_hostname = False
+    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}/1'
+    REDIS_OPTIONS = {
+        "ssl": ssl_context
+    }
+else:
+    REDIS_OPTIONS = {}
 
 CACHES = {
     "default": {
@@ -74,6 +84,7 @@ CACHES = {
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            **REDIS_OPTIONS
         }
     }
 }
@@ -82,14 +93,20 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
+redis_ssl_host = {
+    'address': REDIS_URL,
+    'ssl': ssl_context if ENVIRONMENT == 'production' else None
+}
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "hosts": (redis_ssl_host,)
         },
     },
 }
+
 
 # Consider restricting in production
 # CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
