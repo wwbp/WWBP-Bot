@@ -1,21 +1,36 @@
 import os
 from pathlib import Path
+import requests
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/4.0/howto/static-files/
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Define the STATIC_ROOT
 
-# Security settings
-SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key')
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv(
+    'SECRET_KEY', 'qn11i3%iit_9^b4ma1jg%20$v=mazb5wnp0j=a$%9#aq5x2b_p')
+
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
+
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
-# HTTPS settings
-SECURE_SSL_REDIRECT = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+# Append Elastic Beanstalk Load Balancer Health Check requests since the source host IP address keeps changing
+try:
+    token = requests.put('http://169.254.169.254/latest/api/token',
+                         headers={'X-aws-ec2-metadata-token-ttl-seconds': '60'}).text
+    internal_ip = requests.get('http://169.254.169.254/latest/meta-data/local-ipv4',
+                               headers={'X-aws-ec2-metadata-token': token}).text
+except requests.exceptions.ConnectionError:
+    pass
+else:
+    ALLOWED_HOSTS.append(internal_ip)
+del requests
 
 # Application definition
 INSTALLED_APPS = [
@@ -46,13 +61,12 @@ MIDDLEWARE = [
 ]
 
 # Redis Configuration
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
-REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
 REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/1'
-
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
 if ENVIRONMENT == 'production':
-    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}/1'
+    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}/1'    
 
 CACHES = {
     "default": {
@@ -60,9 +74,6 @@ CACHES = {
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "SOCKET_CONNECT_TIMEOUT": 30,
-            "SOCKET_TIMEOUT": 30,
-            "ssl_cert_reqs": None if ENVIRONMENT == 'production' else False,
         }
     }
 }
@@ -75,25 +86,19 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [(
-                f"{'rediss' if ENVIRONMENT == 'production' else 'redis'}://{REDIS_HOST}:{REDIS_PORT}",
-                {
-                    "ssl": ENVIRONMENT == 'production',
-                    "ssl_cert_reqs": None if ENVIRONMENT == 'production' else False,
-                }
-            )],
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
         },
     },
 }
 
-# CORS settings
+# Consider restricting in production
+# CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
 CORS_ALLOWED_ORIGINS = os.getenv(
     'CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = os.getenv(
     'CSRF_TRUSTED_ORIGINS', 'http://localhost:3000').split(',')
 
-# REST framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
@@ -101,8 +106,9 @@ REST_FRAMEWORK = {
     ),
 }
 
-# Other settings...
+
 ROOT_URLCONF = 'config.urls'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -156,6 +162,8 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'accounts.User'
