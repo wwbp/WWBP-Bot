@@ -32,6 +32,6 @@ RUN python manage.py collectstatic --noinput
 RUN python manage.py migrate
 
 # Start Daphne with the module for ASGI located in your 'config' directory
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
+CMD ["daphne", "-b", "::", "-p", "8000", "config.asgi:application"]
 
 EXPOSE 8000
