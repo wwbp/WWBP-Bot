@@ -1,6 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
-import os
+import json
 
 
 def get_secret():
@@ -30,5 +30,10 @@ def get_secret():
 # Fetch the secret and save it to a file
 secret_json = get_secret()
 credentials_path = 'google_credentials.json'
+
+# Parse the JSON string to a dictionary
+credentials_dict = json.loads(secret_json)
+
+# Save the dictionary as a properly formatted JSON file
 with open(credentials_path, 'w') as f:
-    f.write(secret_json)
+    json.dump(credentials_dict, f, indent=4)
