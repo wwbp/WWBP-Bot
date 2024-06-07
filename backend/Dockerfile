@@ -24,7 +24,7 @@ RUN pip install pipenv && pipenv install --system --deploy --ignore-pipfile
 COPY . /app
 
 # Run the script to fetch Google credentials
-# RUN python fetch_google_credentials.py
+RUN python fetch_google_credentials.py
 
 # Run Django collectstatic, using your production settings
 RUN python manage.py collectstatic --noinput
