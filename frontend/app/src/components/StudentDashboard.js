@@ -41,7 +41,7 @@ function StudentDashboard() {
 
   function moduleCard(module) {
     return (
-      <Card>
+      <Card key={module.id}>
         <CardContent>
           <Typography variant="h5" gutterBottom>{module.name}</Typography>
           <Typography variant="subtitle1">{module.description}</Typography>
@@ -91,7 +91,7 @@ function StudentDashboard() {
       spacing={2}
       sx={{ height: '100vh' }}
     >
-      <Box py={5} sx={{ backgroundColor: '#333333', color: 'white'}} p={5}>
+      <Box py={5} sx={{ backgroundColor: '#333333', color: 'white', overflow: 'scroll'}} p={5}>
         <Typography variant="h5" gutterBottom>
           Active Modules
         </Typography>

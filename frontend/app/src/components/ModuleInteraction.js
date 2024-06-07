@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { createChatSession } from "../utils/api";
 import ChatInterface from "./ChatInterface";
-import { useParams } from "react-router-dom";
 import {
   Box,
   Typography,
   Button,
 } from "@mui/material";
 
-function ModuleInteraction() {
-  const { moduleId, selectedTask } = useParams();
+function ModuleInteraction({ moduleId, selectedTask }) {
   const [error, setError] = useState(null);
   const [chatSession, setChatSession] = useState(null);
 
   useEffect(() => {
-    if (selectedTask) {
       startChatSession(selectedTask.id);
-    }
-  });
+      // Disabling lint because we can't add what it is asking for to the dependency array below.
+      // eslint-disable-next-line
+  }, []);
 
   const startChatSession = async (taskId) => {
     try {
