@@ -5,7 +5,6 @@ import { Box, TextField, Button, Typography } from "@mui/material";
 function ChatInterface({ session }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState(null);
   const ws = useRef(null);
   const messagesEndRef = useRef(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
@@ -78,6 +77,7 @@ function ChatInterface({ session }) {
         ws.current.close();
       }
     };
+    // eslint-disable-next-line
   }, [session.id]);
 
   useEffect(() => {
@@ -95,6 +95,12 @@ function ChatInterface({ session }) {
     ws.current.send(JSON.stringify({ message: message }));
     setMessage("");
   };
+
+  const onKeyPress = (e) => {
+    if(e.keyCode === 13) {
+      handleSubmit(e);
+    }
+  }
 
   return (
     <Box display="flex" flexDirection="column" height="100%">
@@ -117,6 +123,7 @@ function ChatInterface({ session }) {
           placeholder="Type your message"
           margin="normal"
           style={{ marginRight: "10px" }}
+          onKeyDown={onKeyPress}
         />
         <Button variant="contained" color="primary" onClick={handleSubmit}>
           Send

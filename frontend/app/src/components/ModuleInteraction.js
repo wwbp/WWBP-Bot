@@ -44,13 +44,13 @@ function ModuleInteraction({ moduleId, selectedTask }) {
   }
 
   return (
-    <Box>
+    <Box sx={{ height: '90%'}} p={3}>
       {selectedTask && (
         <>
           <Typography variant="h6">{selectedTask.title}</Typography>
           <Typography variant="body1">{selectedTask.content}</Typography>
           {chatSession ? (
-            <Box flexGrow={1} display="flex" flexDirection="column">
+            <Box flexGrow={1} display="flex" flexDirection="column" sx={{ height: '100%'}}>
               <ChatInterface session={chatSession} />
               <Button
                 onClick={() => alert("Task completed!")}

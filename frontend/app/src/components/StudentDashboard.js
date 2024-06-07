@@ -14,6 +14,7 @@ import {
   Paper,
 } from "@mui/material";
 import ModuleInteraction from "./ModuleInteraction";
+import Grid from '@mui/material/Unstable_Grid2';
 
 function StudentDashboard() {
   const [modules, setModules] = useState([]);
@@ -84,33 +85,33 @@ function StudentDashboard() {
   }
 
   return (
-    <Stack
-      direction="row"
-      justifyContent="flex-start"
-      alignItems="stretch"
-      spacing={2}
-      sx={{ height: '100vh' }}
-    >
-      <Box py={5} sx={{ backgroundColor: '#333333', color: 'white', overflow: 'scroll'}} p={5}>
-        <Typography variant="h5" gutterBottom>
-          Active Modules
-        </Typography>
-        {modules.length === 0 ? (
-          <Typography>No active modules assigned to you</Typography>
-        ) : (
-          <Stack spacing={2}>
-            {modules.map((module) => moduleCard(module))}
-          </Stack>
-        )}
-      </Box>
-      <Box p={5}>
-        {(selectedModule && selectedTask) ? (
-          <ModuleInteraction moduleId={selectedModule.id} selectedTask={selectedTask} />
-        ): (
-          <Typography variant="h5">Please select a specific task from the list on the left!</Typography>
-        )}
-      </Box>
-    </Stack>
+    <Box sx={{ flexGrow: 1}}>
+      <Grid container spacing={2} >
+        <Grid>
+          <Box sx={{ backgroundColor: '#333333', color: 'white', overflow: 'scroll', height: '100vh'}} p={5}>
+            <Typography variant="h5" gutterBottom>
+              Active Modules
+            </Typography>
+            {modules.length === 0 ? (
+              <Typography>No active modules assigned to you</Typography>
+            ) : (
+              <Stack spacing={2}>
+                {modules.map((module) => moduleCard(module))}
+              </Stack>
+            )}
+          </Box>
+        </Grid>
+        <Grid xs>
+          <Box p={5} sx={{ height: '100vh'}}>
+            {(selectedModule && selectedTask) ? (
+              <ModuleInteraction moduleId={selectedModule.id} selectedTask={selectedTask} />
+            ): (
+              <Typography variant="h5">Please select a specific task from the list on the left!</Typography>
+            )}
+          </Box>
+        </Grid>
+      </Grid>
+    </Box>
   );
 }
 
