@@ -5,7 +5,7 @@ import os
 
 def get_secret():
     secret_name = "google-credentials-json"
-    region_name = "us-east-1" 
+    region_name = "us-east-1"
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
@@ -32,6 +32,3 @@ secret_json = get_secret()
 credentials_path = 'google_credentials.json'
 with open(credentials_path, 'w') as f:
     f.write(secret_json)
-
-# Set the environment variable
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path

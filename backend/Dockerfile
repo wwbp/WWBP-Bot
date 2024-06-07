@@ -25,6 +25,7 @@ COPY . /app
 
 # Run the script to fetch Google credentials
 RUN python fetch_google_credentials.py
+ENV GOOGLE_APPLICATION_CREDENTIALS ./google_credentials.json
 
 # Run Django collectstatic, using your production settings
 RUN python manage.py collectstatic --noinput
