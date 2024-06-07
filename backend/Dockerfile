@@ -4,8 +4,6 @@ FROM python:3.9-slim
 # Set environment variables to prevent Python from writing pyc files to disc and buffer stdout and stderr
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-
-# Define the DJANGO_SETTINGS_MODULE environment variable to point to your production settings file
 ENV DJANGO_SETTINGS_MODULE config.settings
 
 WORKDIR /app
@@ -25,6 +23,9 @@ RUN pip install pipenv && pipenv install --system --deploy --ignore-pipfile
 # Copy your Django project into the container
 COPY . /app
 
+# Run the script to fetch Google credentials
+RUN python fetch_google_credentials.py
+
 # Run Django collectstatic, using your production settings
 RUN python manage.py collectstatic --noinput
 
@@ -32,7 +33,6 @@ RUN python manage.py collectstatic --noinput
 RUN python manage.py migrate
 
 # Start Daphne with the module for ASGI located in your 'config' directory
-# CMD ["daphne", "-e", "ssl:8000:privateKey=./certificates/dev.gritcoach.ai.key:certKey=./certificates/dev.gritcoach.ai.crt", "config.asgi:application"]
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
 
 EXPOSE 8000

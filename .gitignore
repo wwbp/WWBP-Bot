@@ -8,5 +8,3 @@ db.sqlite3
 /migrations/
 google_credentials.json
 .DS_STORE
-.lego/*
-backend/certificates/
