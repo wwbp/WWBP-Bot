@@ -217,7 +217,7 @@ class AudioConsumer(BaseWebSocketConsumer):
             await self.send(bytes_data=audio_chunk)
 
     def process_text_for_tts(self, text):
-        text = re.sub(r'[,.!?;]', '', text)
+        text = re.sub(r'[,.!?;*#]', '', text)
         return text
 
     async def text_to_speech(self, text):
