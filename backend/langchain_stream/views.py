@@ -13,13 +13,7 @@ import re
 from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
+logging.basicConfig(level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +31,7 @@ class LangChainSessionManager:
     def get_llm_instance(self, session_id):
         try:
             llm = ChatOpenAI(
-                model="gpt-4", api_key=os.getenv("OPENAI_API_KEY", ""))
+                model="gpt-4o", api_key=os.getenv("OPENAI_API_KEY", ""))
             prompt = ChatPromptTemplate.from_messages([
                 ("system", "You are a helpful assistant."),
                 MessagesPlaceholder("history"),
@@ -48,18 +42,21 @@ class LangChainSessionManager:
                 {"run_name": "model"}) | output_parser.with_config({"run_name": "Assistant"})
             chain_with_history = RunnableWithMessageHistory(
                 chain,
-                lambda config: RedisChatMessageHistory(
-                    session_id=config['configurable']['session_id'],
+                lambda session_id: RedisChatMessageHistory(
+                    session_id,
                     url=REDIS_URL
                 ),
                 input_messages_key="question",
                 history_messages_key="history",
             )
+            logger.debug(
+                f"Chain with history created for session_id={session_id}")
             return chain_with_history.with_config({
                 'configurable': {"session_id": session_id}})
         except Exception as e:
-            raise Exception(
+            logger.error(
                 f"Error creating LLM instance for session_id {session_id}: {e}")
+            raise
 
 
 session_manager = LangChainSessionManager()
@@ -85,19 +82,31 @@ class ChatConsumer(BaseWebSocketConsumer):
         asyncio.create_task(self.ping())
 
         # Initialize LLM with memory for this session
-        self.chain = session_manager.get_llm_instance(self.session_id)
+        try:
+            self.chain = session_manager.get_llm_instance(self.session_id)
+            logger.debug(
+                f"LLM instance initialized for session_id={self.session_id}")
+        except Exception as e:
+            logger.error(f"Failed to initialize LLM instance: {e}")
 
     async def receive(self, text_data):
         logger.debug(f"Message received: {text_data}")
-        text_data_json = json.loads(text_data)
-        message = text_data_json["message"]
-        message_id = text_data_json["message_id"]
         try:
+            text_data_json = json.loads(text_data)
+            message = text_data_json["message"]
+            message_id = text_data_json["message_id"]
+        except Exception as e:
+            logger.error(f"Error parsing message: {e}")
+            return
+
+        try:
+            logger.debug(f"Starting chain events with message: {message}")
             async for chunk in self.chain.astream_events(
                 {'question': message},
                 version="v1",
                 include_names=["Assistant"],
             ):
+                logger.debug(f"Chunk received: {chunk}")
                 chunk["message_id"] = message_id
                 if chunk["event"] in ["on_parser_start", "on_parser_stream"]:
                     await self.send(text_data=json.dumps(chunk))
@@ -105,9 +114,10 @@ class ChatConsumer(BaseWebSocketConsumer):
                 elif chunk["event"] == "on_parser_end":
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                 else:
-                    logger.error(f"Unknown 'chunk' event: {chunk['event']}")
+                    logger.error(
+                        f"Unknown 'chunk' event: {chunk.get('event', 'no event')}")
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Error in chain events: {e}")
 
 
 class AudioConsumer(BaseWebSocketConsumer):
@@ -122,15 +132,24 @@ class AudioConsumer(BaseWebSocketConsumer):
         asyncio.create_task(self.ping())
 
         # Initialize LLM with memory for this session
-        self.chain = session_manager.get_llm_instance(self.session_id)
+        try:
+            self.chain = session_manager.get_llm_instance(self.session_id)
+            logger.debug(
+                f"LLM instance initialized for session_id={self.session_id}")
+        except Exception as e:
+            logger.error(f"Failed to initialize LLM instance: {e}")
 
     async def receive(self, bytes_data=None, text_data=None):
         if text_data:
             logger.debug(f"JSON message received: {text_data}")
-            json_data = json.loads(text_data)
-            if 'message_id' in json_data:
-                self.current_message_id = json_data['message_id']
-                logger.debug(f"Current Message ID: {self.current_message_id}")
+            try:
+                json_data = json.loads(text_data)
+                if 'message_id' in json_data:
+                    self.current_message_id = json_data['message_id']
+                    logger.debug(
+                        f"Current Message ID: {self.current_message_id}")
+            except Exception as e:
+                logger.error(f"Error parsing text data: {e}")
 
         if bytes_data:
             logger.debug(f"Audio data received: {type(bytes_data)}")
@@ -170,11 +189,13 @@ class AudioConsumer(BaseWebSocketConsumer):
     async def stream_audio_response(self, text, message_id):
         try:
             buffer = []  # Buffer to collect tokens
+            logger.debug(f"Starting chain events with text: {text}")
             async for chunk in self.chain.astream_events(
                 {'question': text},
                 version="v1",
                 include_names=["Assistant"],
             ):
+                logger.debug(f"Chunk received: {chunk}")
                 if chunk["event"] == "on_parser_start":
                     chunk["message_id"] = message_id
                     await self.send(text_data=json.dumps(chunk))
@@ -205,9 +226,10 @@ class AudioConsumer(BaseWebSocketConsumer):
                         asyncio.create_task(self.send_audio_chunk())
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                 else:
-                    logger.error(f"Unknown 'chunk' event: {chunk['event']}")
+                    logger.error(
+                        f"Unknown 'chunk' event: {chunk.get('event', 'no event')}")
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Error in chain events: {e}")
 
     async def send_audio_chunk(self, audio_chunk=None):
         if audio_chunk:
