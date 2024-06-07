@@ -166,6 +166,7 @@ function ChatInterface({ session }) {
         peerConnection.current.close();
       }
     };
+    // eslint-disable-next-line
   }, [session.id, isAudioMode]);
 
   useEffect(() => {
@@ -220,6 +221,12 @@ function ChatInterface({ session }) {
     setMessageId((prevId) => prevId + 1);
     setMessage("");
   };
+
+  const onKeyPress = (e) => {
+    if(e.keyCode === 13) {
+      handleSubmit(e);
+    }
+  }
 
   const handlePTTMouseDown = () => {
     navigator.mediaDevices
@@ -328,6 +335,7 @@ function ChatInterface({ session }) {
               value={message}
               onChange={handleInputChange}
               placeholder="Type a message..."
+              onKeyDown={onKeyPress}
             />
             <Button onClick={handleSubmit} color="primary" variant="contained">
               Send
