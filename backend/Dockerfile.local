@@ -15,6 +15,7 @@ COPY . /app
 RUN pipenv install --system --deploy
 
 EXPOSE 8000
+EXPOSE 6379
 
 RUN chmod +x /app/wait-for-it.sh
 
