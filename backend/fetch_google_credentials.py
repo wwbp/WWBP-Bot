@@ -5,7 +5,7 @@ import os
 
 def get_secret():
     secret_name = "google-credentials-json"
-    region_name = "us-east-1"  # Replace with your actual region
+    region_name = "us-east-1" 
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
