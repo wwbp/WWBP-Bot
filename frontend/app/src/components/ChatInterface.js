@@ -11,7 +11,7 @@ import {
 import MicIcon from "@mui/icons-material/Mic";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
-function ChatInterface({ session }) {
+function ChatInterface({ session, clearChat }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [isAudioMode, setIsAudioMode] = useState(false);
@@ -166,8 +166,13 @@ function ChatInterface({ session }) {
         peerConnection.current.close();
       }
     };
-    // eslint-disable-next-line
   }, [session.id, isAudioMode]);
+
+  useEffect(() => {
+    if (clearChat) {
+      setMessages([]);
+    }
+  }, [clearChat]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -223,10 +228,10 @@ function ChatInterface({ session }) {
   };
 
   const onKeyPress = (e) => {
-    if(e.keyCode === 13) {
+    if (e.keyCode === 13) {
       handleSubmit(e);
     }
-  }
+  };
 
   const handlePTTMouseDown = () => {
     navigator.mediaDevices

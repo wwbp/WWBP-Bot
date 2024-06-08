@@ -16,13 +16,10 @@ class User(AbstractUser):
 
 class Module(models.Model):
     name = models.CharField(max_length=100)
-    description = models.TextField()
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='modules')
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    assigned_students = models.ManyToManyField(
-        User, related_name='assigned_modules')
 
 
 class Task(models.Model):
@@ -30,13 +27,18 @@ class Task(models.Model):
     content = models.TextField()
     module = models.ForeignKey(
         Module, on_delete=models.CASCADE, related_name='tasks')
+    instruction_prompt = models.TextField(blank=True, null=True)
+    persona_prompt = models.TextField(blank=True, null=True)
+    time_allocated = models.IntegerField(default=60)  # Default to 60 minutes
 
 
 class ChatSession(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='chat_sessions')
     module = models.ForeignKey(
-        Module, on_delete=models.CASCADE, related_name='chat_sessions')
+        Module, on_delete=models.CASCADE, related_name='chat_sessions', null=True, blank=True)
+    task = models.ForeignKey(
+        Task, on_delete=models.CASCADE, related_name='chat_sessions', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -48,3 +50,9 @@ class ChatMessage(models.Model):
     sender = models.CharField(max_length=10, choices=(
         ('student', 'Student'), ('bot', 'Bot')))
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class SystemPrompt(models.Model):
+    prompt = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

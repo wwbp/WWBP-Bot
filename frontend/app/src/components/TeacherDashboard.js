@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { fetchData, deleteData } from "../utils/api";
 import ModuleForm from "./ModuleForm";
+import SystemPromptForm from "./SystemPromptForm";
 import {
   Box,
   Typography,
@@ -72,9 +73,6 @@ function TeacherDashboard() {
                 <Card>
                   <CardContent>
                     <Typography variant="h6">{module.name}</Typography>
-                    <Typography variant="body2">
-                      {module.description}
-                    </Typography>
                   </CardContent>
                   <CardActions>
                     <Button
@@ -102,6 +100,7 @@ function TeacherDashboard() {
         )}
       </Grid>
       <Grid item xs={12} md={8}>
+        <SystemPromptForm />
         <Typography variant="h5" gutterBottom>
           {selectedModule ? "Edit Module" : "Create Module"}
         </Typography>
