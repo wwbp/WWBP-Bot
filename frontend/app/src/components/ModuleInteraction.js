@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createChatSession } from "../utils/api";
 import ChatInterface from "./ChatInterface";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Typography, Button, Paper } from "@mui/material";
 
 function ModuleInteraction({ moduleId, selectedTask }) {
   const [error, setError] = useState(null);
@@ -66,8 +66,13 @@ function ModuleInteraction({ moduleId, selectedTask }) {
   }
 
   return (
-    <Box sx={{ height: "90%" }} p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center">
+    <Paper elevation={3} sx={{ padding: 3, height: "90%" }}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
         <Typography variant="h6">{selectedTask.title}</Typography>
         <Typography
           variant="body1"
@@ -88,7 +93,7 @@ function ModuleInteraction({ moduleId, selectedTask }) {
             onClick={() => alert("Task completed!")}
             variant="contained"
             color="primary"
-            style={{ marginTop: "10px" }}
+            sx={{ marginTop: 2 }}
           >
             Complete Task
           </Button>
@@ -96,7 +101,7 @@ function ModuleInteraction({ moduleId, selectedTask }) {
       ) : (
         <Typography>Loading chat session...</Typography>
       )}
-    </Box>
+    </Paper>
   );
 }
 
