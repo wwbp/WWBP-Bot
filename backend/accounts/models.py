@@ -36,7 +36,9 @@ class ChatSession(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='chat_sessions')
     module = models.ForeignKey(
-        Module, on_delete=models.CASCADE, related_name='chat_sessions')
+        Module, on_delete=models.CASCADE, related_name='chat_sessions', null=True, blank=True)
+    task = models.ForeignKey(
+        Task, on_delete=models.CASCADE, related_name='chat_sessions', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

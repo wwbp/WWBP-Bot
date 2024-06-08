@@ -4,6 +4,7 @@ import os
 import logging
 from collections import deque
 from channels.generic.websocket import AsyncWebsocketConsumer
+import django
 from google.cloud import speech, texttospeech
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -12,6 +13,11 @@ from langchain_core.output_parsers import StrOutputParser
 import re
 from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from asgiref.sync import sync_to_async
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+from accounts.models import ChatSession, SystemPrompt
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -28,12 +34,53 @@ else:
 
 
 class LangChainSessionManager:
-    def get_llm_instance(self, session_id):
+    @sync_to_async
+    def get_system_prompt(self):
+        try:
+            prompt = SystemPrompt.objects.latest('created_at').prompt
+            return prompt
+        except SystemPrompt.DoesNotExist:
+            return "You are a helpful assistant."
+
+    @sync_to_async
+    def get_task_prompts(self, session_id):
+        session = ChatSession.objects.get(id=session_id)
+        task = session.task
+        return task.content, task.instruction_prompt, task.persona_prompt
+
+    @sync_to_async
+    def get_user_profile(self, session_id):
+        session = ChatSession.objects.get(id=session_id)
+        user = session.user
+        profile_info = {
+            "username": user.username,
+            "role": user.role,
+            "grade": user.grade,
+            "preferred_language": user.preferred_language
+        }
+        return profile_info
+
+    async def get_llm_instance(self, session_id):
         try:
             llm = ChatOpenAI(
                 model="gpt-4o", api_key=os.getenv("OPENAI_API_KEY", ""))
+
+            # prompt library
+            system_prompts = await self.get_system_prompt()
+            task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
+            user_profile_details = await self.get_user_profile(session_id)
+
+            # Combine and format the prompts
+            prompt_value = f"""
+            System: {system_prompts}
+            Task Content: {task_content}
+            Task Instruction: {task_instruction}
+            Task Persona: {task_persona}
+            User Profile: {user_profile_details}
+            """
+
             prompt = ChatPromptTemplate.from_messages([
-                ("system", "You are a helpful assistant."),
+                ("system", "{system}"),
                 MessagesPlaceholder("history"),
                 ("user", "{question}")
             ])
@@ -52,7 +99,7 @@ class LangChainSessionManager:
             logger.debug(
                 f"Chain with history created for session_id={session_id}")
             return chain_with_history.with_config({
-                'configurable': {"session_id": session_id}})
+                'configurable': {"session_id": session_id}}), prompt_value
         except Exception as e:
             logger.error(
                 f"Error creating LLM instance for session_id {session_id}: {e}")
@@ -83,7 +130,7 @@ class ChatConsumer(BaseWebSocketConsumer):
 
         # Initialize LLM with memory for this session
         try:
-            self.chain = session_manager.get_llm_instance(self.session_id)
+            self.chain, self.prompt_value = await session_manager.get_llm_instance(self.session_id)
             logger.debug(
                 f"LLM instance initialized for session_id={self.session_id}")
         except Exception as e:
@@ -102,7 +149,9 @@ class ChatConsumer(BaseWebSocketConsumer):
         try:
             logger.debug(f"Starting chain events with message: {message}")
             async for chunk in self.chain.astream_events(
-                {'question': message},
+                {'question': message,
+                 'system': self.prompt_value
+                 },
                 version="v1",
                 include_names=["Assistant"],
             ):
@@ -133,7 +182,7 @@ class AudioConsumer(BaseWebSocketConsumer):
 
         # Initialize LLM with memory for this session
         try:
-            self.chain = session_manager.get_llm_instance(self.session_id)
+            self.chain, self.prompt_value = await session_manager.get_llm_instance(self.session_id)
             logger.debug(
                 f"LLM instance initialized for session_id={self.session_id}")
         except Exception as e:
@@ -191,7 +240,9 @@ class AudioConsumer(BaseWebSocketConsumer):
             buffer = []  # Buffer to collect tokens
             logger.debug(f"Starting chain events with text: {text}")
             async for chunk in self.chain.astream_events(
-                {'question': text},
+                {'question': text,
+                 'system': self.prompt_value
+                 },
                 version="v1",
                 include_names=["Assistant"],
             ):
