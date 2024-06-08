@@ -23,6 +23,9 @@ RUN pip install pipenv && pipenv install --system --deploy --ignore-pipfile
 # Copy your Django project into the container
 COPY . /app
 
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
 # Run the script to fetch Google credentials
 RUN python fetch_google_credentials.py
 ENV GOOGLE_APPLICATION_CREDENTIALS ./google_credentials.json
@@ -30,10 +33,7 @@ ENV GOOGLE_APPLICATION_CREDENTIALS ./google_credentials.json
 # Run Django collectstatic, using your production settings
 RUN python manage.py collectstatic --noinput
 
-# Run migrations for the database
-RUN python manage.py migrate
-
-# Start Daphne with the module for ASGI located in your 'config' directory
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
+# Use the entrypoint script to run the container
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 EXPOSE 8000
