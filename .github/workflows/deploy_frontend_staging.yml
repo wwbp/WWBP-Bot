@@ -1,0 +1,51 @@
+name: Deploy Frontend to Staging
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: |
+          cd frontend/app
+          npm install
+
+      - name: Build frontend
+        env:
+          REACT_APP_API_URL: https://dev.gritcoach.ai/api/v1
+          CI: false
+        run: |
+          cd frontend/app
+          npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: us-west-2
+
+      - name: Sync S3 bucket
+        run: |
+          aws s3 rm s3://${{ secrets.AWS_S3_BUCKET_NAME_FRONTEND }} --recursive
+          aws s3 sync frontend/app/build/ s3://${{ secrets.AWS_S3_BUCKET_NAME_FRONTEND }} --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"

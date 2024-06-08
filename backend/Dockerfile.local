@@ -15,9 +15,10 @@ COPY . /app
 RUN pipenv install --system --deploy
 
 EXPOSE 8000
+EXPOSE 6379
 
 RUN chmod +x /app/wait-for-it.sh
 
 ENTRYPOINT ["./wait-for-it.sh", "db:3306", "--"]
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]

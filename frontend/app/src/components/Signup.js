@@ -1,6 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { postData } from "../utils/api";
+import {
+  Container,
+  TextField,
+  Button,
+  Box,
+  Typography,
+  MenuItem,
+} from "@mui/material";
 
 function Signup({ setLoggedIn, setRole }) {
   const [username, setUsername] = useState("");
@@ -33,41 +41,52 @@ function Signup({ setLoggedIn, setRole }) {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label>
-        Username:
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-      </label>
-      <label>
-        Email:
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </label>
-      <label>
-        Password:
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </label>
-      <label>
-        Role:
-        <select value={role} onChange={(e) => setRoleState(e.target.value)}>
-          <option value="student">Student</option>
-          <option value="teacher">Teacher</option>
-          <option value="admin">Admin</option>
-        </select>
-      </label>
-      <button type="submit">Sign Up</button>
-    </form>
+    <Container maxWidth="sm">
+      <Box py={5}>
+        <Typography variant="h4" gutterBottom>
+          Sign Up
+        </Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="Username"
+            margin="normal"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            label="Email"
+            margin="normal"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            label="Password"
+            margin="normal"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <TextField
+            select
+            fullWidth
+            label="Role"
+            margin="normal"
+            value={role}
+            onChange={(e) => setRoleState(e.target.value)}
+          >
+            <MenuItem value="student">Student</MenuItem>
+            <MenuItem value="teacher">Teacher</MenuItem>
+            <MenuItem value="admin">Admin</MenuItem>
+          </TextField>
+          <Button variant="contained" color="primary" type="submit">
+            Sign Up
+          </Button>
+        </form>
+      </Box>
+    </Container>
   );
 }
 

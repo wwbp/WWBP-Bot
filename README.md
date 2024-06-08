@@ -1,89 +1,62 @@
-# Project ChatFriend
+# Project GritCoach
 
 ## Overview
 
-**ChatFriend** is designed to be a voice-interfaced chatbot that helps students practice course materials. This project includes a Django backend, a React frontend, and a MySQL database, all containerized using Docker.
+**GritCoach** is designed to be a voice-interfaced chatbot that helps students practice course materials. This project includes a Django backend, a React frontend, and a MySQL database, all containerized using Docker.
 
-## Project Structure
+This monorepo contains the source code for a full-stack web application. It is divided into two main parts: the backend and the frontend. The backend is built with Django, while the frontend is built with React. The repository is structured to facilitate easy development and deployment.
 
-### Directories
+## Directory Structure
 
-- `backend/`: Contains all Django application files and REST API configurations.
-- `frontend/`: Contains all React application files.
-- `scripts/`: Internal tooling
+```
+monorepo/
+├── backend/
+│   ├── ...
+├── frontend/
+│   ├── ...
+├── .gitignore
+├── docker-compose.yml
+├── README.md
+```
 
-## Tech Stack
-
-- **Backend**: Django + Django REST Framework
-- **Database**: MySQL
-- **Frontend**: React
-- **Containerization**: Docker and Docker Compose
-
-## Local Development Setup
+## Getting Started
 
 ### Prerequisites
 
-Ensure you have Docker and Docker Compose installed on your system to handle containerization.
+- Docker
+- Docker Compose
 
-### Building and Running the Project
+### Setup
 
-1. **Clone the repository**
+1. Clone the repository:
 
-   ```bash
-   git clone <repository-url>
-   cd myproject
+    ```bash
+    git clone git@github.com:wwbp/WWBP-Bot.git
+    cd WWBP-Bot
+    ```
 
-2. **Start the application using Docker Compose**
+2. Build and run the containers:
 
     ```bash
     docker-compose up --build
+    ```
 
-3. **Accessing the application**
-Frontend is accessible at <http://localhost:3000>
-Backend API is accessible at <http://localhost:8000>
+3. The backend should be accessible at `http://localhost:8000` and the frontend at `http://localhost:3000`.
 
-### Useful Commands
+## Development
 
-- Rebuilding and restarting the Docker containers
+### Backend
 
-    ```bash
-    docker-compose up --build
+Navigate to the [backend README](./backend/README.md) for detailed instructions on setting up and running the backend server.
 
-### Docker Configuration
+### Frontend
 
-Docker is used to containerize the backend, frontend, and database services. Here’s a brief on the Docker services:
+Navigate to the [frontend README](./frontend/app/README.md) for detailed instructions on setting up and running the frontend application.
 
-- db: Runs the MySQL database.
-- backend: Runs the Django application.
-- frontend: Serves the React application using Nginx as a static file server.
+## Contributing
 
-### Initial Development Achievements
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
 
-- Set up a multi-container Docker environment with Django, React, and MySQL.
-- Configured Docker Compose to manage container orchestration.
-- Ensured basic connectivity between Django and React over Docker.
-- Established a primary React component structure and basic Django settings for development.
+## License
 
-### Testing
-
-For now, manual testing is done by accessing the frontend and backend via browser and using API tools like Postman to test Django endpoints.
-
-### Next Steps
-
-#### Milestone 2: Initial Deployment Setup
-
-- DevOps: Set up a staging environment on AWS using EC2 and RDS to mimic the production environment.
-- Task: Deploy the current state of the application to the staging environment and ensure all components are functioning as expected.
-
-#### Milestone 5: Advanced Chatbot Features
-
-- Backend: Implement voice capabilities alongside text-based chat.
-- Frontend: Allow users to switch easily between text and voice interaction.
-- Task: Test and optimize the performance of both text and voice interactions.
-
-#### Milestone 6: Final Testing and Deployment
-
-- Testing: Conduct comprehensive tests including unit, integration, and system tests.
-- DevOps: Finalize the production environment setup on AWS, ensuring scalability and security.
-- Deployment: Deploy the fully tested application to the production environment.
-- Task: Monitor application performance and user interactions, adjust based on feedback.
+This project is licensed under the MIT License - see the [LICENSE.md](./LICENSE.md) file for details.

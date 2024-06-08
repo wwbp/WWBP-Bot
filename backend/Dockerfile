@@ -4,8 +4,6 @@ FROM python:3.9-slim
 # Set environment variables to prevent Python from writing pyc files to disc and buffer stdout and stderr
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-
-# Define the DJANGO_SETTINGS_MODULE environment variable to point to your production settings file
 ENV DJANGO_SETTINGS_MODULE config.settings
 
 WORKDIR /app
@@ -25,10 +23,17 @@ RUN pip install pipenv && pipenv install --system --deploy --ignore-pipfile
 # Copy your Django project into the container
 COPY . /app
 
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
+# Run the script to fetch Google credentials
+RUN python fetch_google_credentials.py
+ENV GOOGLE_APPLICATION_CREDENTIALS ./google_credentials.json
+
 # Run Django collectstatic, using your production settings
 RUN python manage.py collectstatic --noinput
 
-# Start Gunicorn with the module for WSGI located in your 'config' directory
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Use the entrypoint script to run the container
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 EXPOSE 8000

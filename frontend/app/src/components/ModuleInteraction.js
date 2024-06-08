@@ -1,119 +1,107 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, createChatSession } from "../utils/api";
+import { createChatSession } from "../utils/api";
 import ChatInterface from "./ChatInterface";
-import { useParams } from "react-router-dom";
+import { Box, Typography, Button, Paper } from "@mui/material";
 
-function ModuleInteraction() {
-  const { moduleId } = useParams();
-  const [module, setModule] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+function ModuleInteraction({ moduleId, selectedTask }) {
   const [error, setError] = useState(null);
-  const [selectedTask, setSelectedTask] = useState(null);
   const [chatSession, setChatSession] = useState(null);
+  const [clearChat, setClearChat] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
-    fetchData(`/modules/${moduleId}/`)
-      .then((data) => {
-        setModule(data);
-        setTasks(data.tasks);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoading(false);
-      });
-  }, [moduleId]);
-
-  useEffect(() => {
+    let timer;
     if (selectedTask) {
       startChatSession(selectedTask.id);
+      setClearChat(true);
+      setElapsedTime(0);
+      timer = setInterval(() => setElapsedTime((prev) => prev + 1), 1000);
     }
+    return () => clearInterval(timer);
   }, [selectedTask]);
 
   const startChatSession = async (taskId) => {
     try {
       const session = await createChatSession(moduleId, taskId);
       setChatSession(session);
+      setClearChat(false);
     } catch (error) {
       console.error("Error creating chat session:", error.message);
       setError(error.message);
     }
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  const formatElapsedTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  const getTimerColor = () => {
+    const allocatedTimeInSeconds = selectedTask.time_allocated * 60;
+
+    if (elapsedTime >= allocatedTimeInSeconds) {
+      return "red";
+    }
+    if (elapsedTime >= allocatedTimeInSeconds - 60) {
+      return "orange";
+    }
+    return "black";
+  };
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography color="error">Error: {error}</Typography>
+      </Box>
+    );
   }
 
-  if (!module) {
-    return <div>No module data available</div>;
+  if (!selectedTask) {
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography>No task selected</Typography>
+      </Box>
+    );
   }
 
   return (
-    <div style={{ display: "flex", height: "100%" }}>
-      <div
-        style={{ width: "30%", borderRight: "1px solid #ddd", padding: "10px" }}
+    <Paper elevation={3} sx={{ padding: 3, height: "90%" }}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
       >
-        <h2>{module.name}</h2>
-        <p>{module.description}</p>
-        <h3>Tasks</h3>
-        <ul>
-          {tasks.map((task) => (
-            <li key={task.id}>
-              <button onClick={() => setSelectedTask(task)}>
-                {task.title}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div
-        style={{
-          width: "70%",
-          padding: "10px",
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-        }}
-      >
-        {selectedTask && (
-          <>
-            <h3>{selectedTask.title}</h3>
-            <p>{selectedTask.content}</p>
-            {chatSession ? (
-              <div
-                style={{
-                  flexGrow: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <ChatInterface session={chatSession} />
-                <button
-                  onClick={() => alert("Task completed!")}
-                  style={{
-                    marginTop: "10px",
-                    padding: "10px",
-                    borderRadius: "5px",
-                    border: "none",
-                    background: "#28a745",
-                    color: "#fff",
-                  }}
-                >
-                  Complete Task
-                </button>
-              </div>
-            ) : (
-              <div>Loading chat session...</div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+        <Typography variant="h6">{selectedTask.title}</Typography>
+        <Typography
+          variant="body1"
+          style={{ color: getTimerColor(), marginLeft: "auto" }}
+        >
+          {formatElapsedTime(elapsedTime)}
+        </Typography>
+      </Box>
+      {chatSession ? (
+        <Box
+          flexGrow={1}
+          display="flex"
+          flexDirection="column"
+          sx={{ height: "100%" }}
+        >
+          <ChatInterface session={chatSession} clearChat={clearChat} />
+          <Button
+            onClick={() => alert("Task completed!")}
+            variant="contained"
+            color="primary"
+            sx={{ marginTop: 2 }}
+          >
+            Complete Task
+          </Button>
+        </Box>
+      ) : (
+        <Typography>Loading chat session...</Typography>
+      )}
+    </Paper>
   );
 }
 

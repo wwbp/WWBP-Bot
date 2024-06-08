@@ -1,3 +1,6 @@
+from rest_framework.views import exception_handler
+from .serializers import ModuleSerializer
+from .models import Module
 from .serializers import ChatSessionSerializer, ChatMessageSerializer
 from .models import ChatSession, ChatMessage
 from .serializers import ChatMessageSerializer, ChatSessionSerializer
@@ -14,8 +17,8 @@ from rest_framework import permissions
 from rest_framework.authtoken.models import Token
 from django.middleware.csrf import get_token
 import logging
-from .models import User, Task, Module, ChatSession, ChatMessage
-from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer
+from .models import User, Task, Module, ChatSession, SystemPrompt
+from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer, SystemPromptSerializer
 from django.contrib.auth import get_user_model
 import json
 from django.views.decorators.csrf import csrf_exempt
@@ -38,6 +41,13 @@ def current_time(request):
     return JsonResponse({'current_time': now})
 
 
+def custom_exception_handler(exc, context):
+    response = exception_handler(exc, context)
+    if response is not None:
+        logger.error(f"Exception: {exc} Context: {context}")
+    return response
+
+
 def login_view(request):
     if request.method == 'POST':
         data = json.loads(request.body)
@@ -54,6 +64,7 @@ def login_view(request):
                 "role": user.role
             }, status=200)
         else:
+            logger.error(f"Invalid login attempt for username: {username}")
             return JsonResponse({"message": "Invalid credentials"}, status=401)
 
 
@@ -168,9 +179,6 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
 
-logger = logging.getLogger(__name__)
-
-
 class ModuleViewSet(viewsets.ModelViewSet):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
@@ -179,8 +187,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def assigned(self, request):
         if request.user.role == 'student' or request.session.get('student_view', False):
-            modules = Module.objects.filter(
-                assigned_students=request.user) | Module.objects.filter(created_by=request.user)
+            modules = Module.objects.filter(created_by=request.user)
             serializer = self.get_serializer(modules, many=True)
             return Response(serializer.data)
         return Response(status=status.HTTP_403_FORBIDDEN)
@@ -229,7 +236,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 
 # Initialize OpenAI client
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 
 
 def generate_gpt_response(user_message):
@@ -292,3 +299,9 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
             'user_message': serializer.data,
             'bot_message': bot_serializer.data
         }, status=status.HTTP_201_CREATED)
+
+
+class SystemPromptViewSet(viewsets.ModelViewSet):
+    queryset = SystemPrompt.objects.all()
+    serializer_class = SystemPromptSerializer
+    permission_classes = [IsAuthenticated]

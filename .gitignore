@@ -6,3 +6,5 @@ __pycache__/
 .Python
 db.sqlite3
 /migrations/
+google_credentials.json
+.DS_STORE
