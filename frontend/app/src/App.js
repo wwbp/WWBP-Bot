@@ -8,6 +8,7 @@ import NavBar from "./components/NavBar";
 import Signup from "./components/Signup";
 import TeacherDashboard from "./components/TeacherDashboard";
 import StudentDashboard from "./components/StudentDashboard";
+import { SnackbarProvider } from "notistack";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -36,38 +37,40 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <NavBar
-        isLoggedIn={isLoggedIn}
-        role={role}
-        isStudentView={isStudentView}
-        setIsStudentView={setIsStudentView}
-        handleLogout={() => {
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
-          setIsLoggedIn(false);
-          setRole("");
-        }}
-      />
-      <Routes>
-        <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} />} />
-        <Route
-          path="/login"
-          element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+    <SnackbarProvider maxSnack={3}>
+      <Router>
+        <NavBar
+          isLoggedIn={isLoggedIn}
+          role={role}
+          isStudentView={isStudentView}
+          setIsStudentView={setIsStudentView}
+          handleLogout={() => {
+            localStorage.removeItem("token");
+            localStorage.removeItem("role");
+            setIsLoggedIn(false);
+            setRole("");
+          }}
         />
-        <Route path="/profile" element={<UserProfile />} />
-        <Route
-          path="/signup"
-          element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
-        />
-        {role === "teacher" && !isStudentView && (
-          <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-        )}
-        {(role === "student" || isStudentView) && (
-          <Route path="/student-dashboard" element={<StudentDashboard />} />
-        )}
-      </Routes>
-    </Router>
+        <Routes>
+          <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} />} />
+          <Route
+            path="/login"
+            element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+          />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route
+            path="/signup"
+            element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+          />
+          {role === "teacher" && !isStudentView && (
+            <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
+          )}
+          {(role === "student" || isStudentView) && (
+            <Route path="/student-dashboard" element={<StudentDashboard />} />
+          )}
+        </Routes>
+      </Router>
+    </SnackbarProvider>
   );
 }
 

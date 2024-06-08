@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import ModuleInteraction from "./ModuleInteraction";
 import Grid from "@mui/material/Unstable_Grid2";
+import { useSnackbar } from "notistack";
 
 function StudentDashboard() {
   const [modules, setModules] = useState([]);
@@ -22,6 +23,7 @@ function StudentDashboard() {
   const [error, setError] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchData("/modules/assigned/")
@@ -30,7 +32,7 @@ function StudentDashboard() {
         setLoading(false);
       })
       .catch((error) => {
-        setError(error.message);
+        enqueueSnackbar(error.message, { variant: "error" });
         setLoading(false);
       });
   }, []);

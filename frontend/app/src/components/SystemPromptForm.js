@@ -7,11 +7,12 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function SystemPromptForm() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchData("/system_prompts/")
@@ -22,7 +23,7 @@ function SystemPromptForm() {
         setLoading(false);
       })
       .catch((error) => {
-        setError(error.message);
+        enqueueSnackbar(error.message, { variant: "error" });
         setLoading(false);
       });
   }, []);
@@ -43,9 +44,12 @@ function SystemPromptForm() {
       } else {
         await postData("/system_prompts/", { prompt: systemPrompt });
       }
+      enqueueSnackbar("System prompt saved successfully!", {
+        variant: "success",
+      });
       setLoading(false);
     } catch (error) {
-      setError(error.message);
+      enqueueSnackbar(error.message, { variant: "error" });
       setLoading(false);
     }
   };
@@ -60,7 +64,6 @@ function SystemPromptForm() {
 
   return (
     <Box my={3}>
-      {error && <Typography color="error">Error: {error}</Typography>}
       <Typography variant="h6" gutterBottom>
         System Prompt
       </Typography>
@@ -73,6 +76,9 @@ function SystemPromptForm() {
           value={systemPrompt}
           onChange={handleChange}
           margin="normal"
+          required
+          error={!systemPrompt}
+          helperText={!systemPrompt && "System prompt is required"}
         />
         <Button variant="contained" color="primary" type="submit">
           Save

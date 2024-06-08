@@ -12,12 +12,14 @@ import {
   CardActions,
   CircularProgress,
 } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function TeacherDashboard() {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchData("/modules/")
@@ -26,14 +28,18 @@ function TeacherDashboard() {
         setLoading(false);
       })
       .catch((error) => {
-        setError(error.message);
+        enqueueSnackbar(error.message, { variant: "error" });
         setLoading(false);
       });
   }, []);
 
   const handleModuleCreated = () => {
-    fetchData("/modules/").then(setModules);
-    setSelectedModule(null); // Clear the form after creation
+    fetchData("/modules/")
+      .then(setModules)
+      .catch((error) => {
+        enqueueSnackbar(error.message, { variant: "error" });
+      });
+    setSelectedModule(null);
   };
 
   const handleEditClick = (module) => {
@@ -43,9 +49,10 @@ function TeacherDashboard() {
   const handleDeleteClick = async (moduleId) => {
     try {
       await deleteData(`/modules/${moduleId}/`);
-      handleModuleCreated(); // Refresh the module list after deletion
+      handleModuleCreated();
+      enqueueSnackbar("Module deleted successfully!", { variant: "success" });
     } catch (error) {
-      setError(error.message);
+      enqueueSnackbar(error.message, { variant: "error" });
     }
   };
 

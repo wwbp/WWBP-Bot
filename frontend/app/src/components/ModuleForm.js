@@ -9,6 +9,7 @@ import {
   CircularProgress,
   Grid,
 } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function ModuleForm({
   module,
@@ -26,6 +27,7 @@ function ModuleForm({
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     if (module.id) {
@@ -80,11 +82,13 @@ function ModuleForm({
           ...moduleData,
           tasks,
         });
+        enqueueSnackbar("Module updated successfully!", { variant: "success" });
       } else {
         await postData("/modules/", {
           ...moduleData,
           tasks,
         });
+        enqueueSnackbar("Module created successfully!", { variant: "success" });
         if (resetFormAfterSubmit) {
           setModuleData(initialModuleData);
           setTasks([]);
@@ -92,6 +96,7 @@ function ModuleForm({
       }
       onModuleCreated();
     } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
       setError(error.message);
     }
   };
@@ -117,6 +122,9 @@ function ModuleForm({
               value={moduleData.name}
               onChange={handleModuleChange}
               margin="normal"
+              required
+              error={!moduleData.name}
+              helperText={!moduleData.name && "Name is required"}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -131,6 +139,9 @@ function ModuleForm({
               InputLabelProps={{
                 shrink: true,
               }}
+              required
+              error={!moduleData.start_time}
+              helperText={!moduleData.start_time && "Start Time is required"}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -145,6 +156,9 @@ function ModuleForm({
               InputLabelProps={{
                 shrink: true,
               }}
+              required
+              error={!moduleData.end_time}
+              helperText={!moduleData.end_time && "End Time is required"}
             />
           </Grid>
         </Grid>

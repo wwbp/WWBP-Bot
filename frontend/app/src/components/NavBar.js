@@ -11,6 +11,7 @@ import {
   Avatar,
 } from "@mui/material";
 import { postData } from "../utils/api";
+import { useSnackbar } from "notistack";
 
 function NavBar({
   isLoggedIn,
@@ -21,9 +22,11 @@ function NavBar({
 }) {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = React.useState(null);
+  const { enqueueSnackbar } = useSnackbar();
 
   const onLogout = () => {
     handleLogout();
+    enqueueSnackbar("Logged out successfully", { variant: "info" });
     navigate("/login");
   };
 
@@ -41,6 +44,7 @@ function NavBar({
       }
       window.location.reload(); // Force a full page refresh to ensure correct rendering
     } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
       console.error("Error toggling view", error);
     }
   };

@@ -7,10 +7,12 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function UserProfile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchData("/profile/")
@@ -19,7 +21,7 @@ function UserProfile() {
         setLoading(false);
       })
       .catch((error) => {
-        console.error("There was an error fetching the user data!", error);
+        enqueueSnackbar("Error fetching user data!", { variant: "error" });
         setLoading(false);
       });
   }, []);
@@ -35,10 +37,14 @@ function UserProfile() {
     e.preventDefault();
     putData("/profile/", user)
       .then(() => {
-        alert("Profile updated successfully!");
+        enqueueSnackbar("Profile updated successfully!", {
+          variant: "success",
+        });
       })
       .catch((error) => {
-        console.error("There was an error updating the profile!", error);
+        const message =
+          error.response?.data?.detail || "Error updating profile!";
+        enqueueSnackbar(message, { variant: "error" });
       });
   };
 
@@ -71,6 +77,9 @@ function UserProfile() {
           value={user.username}
           onChange={handleChange}
           margin="normal"
+          required
+          error={!user.username}
+          helperText={!user.username && "Username is required"}
         />
         <TextField
           fullWidth
@@ -79,6 +88,9 @@ function UserProfile() {
           value={user.email}
           onChange={handleChange}
           margin="normal"
+          required
+          error={!user.email}
+          helperText={!user.email && "Email is required"}
         />
         <TextField
           fullWidth
@@ -97,6 +109,9 @@ function UserProfile() {
               value={user.grade}
               onChange={handleChange}
               margin="normal"
+              required
+              error={!user.grade}
+              helperText={!user.grade && "Grade is required"}
             />
             <TextField
               fullWidth
@@ -105,6 +120,11 @@ function UserProfile() {
               value={user.preferred_language}
               onChange={handleChange}
               margin="normal"
+              required
+              error={!user.preferred_language}
+              helperText={
+                !user.preferred_language && "Preferred language is required"
+              }
             />
           </>
         )}

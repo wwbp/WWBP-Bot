@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { createChatSession } from "../utils/api";
 import ChatInterface from "./ChatInterface";
 import { Box, Typography, Button, Paper } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function ModuleInteraction({ moduleId, selectedTask }) {
   const [error, setError] = useState(null);
   const [chatSession, setChatSession] = useState(null);
   const [clearChat, setClearChat] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     let timer;
@@ -27,6 +29,7 @@ function ModuleInteraction({ moduleId, selectedTask }) {
       setClearChat(false);
     } catch (error) {
       console.error("Error creating chat session:", error.message);
+      enqueueSnackbar(error.message, { variant: "error" });
       setError(error.message);
     }
   };
@@ -90,7 +93,9 @@ function ModuleInteraction({ moduleId, selectedTask }) {
         >
           <ChatInterface session={chatSession} clearChat={clearChat} />
           <Button
-            onClick={() => alert("Task completed!")}
+            onClick={() =>
+              enqueueSnackbar("Task completed!", { variant: "success" })
+            }
             variant="contained"
             color="primary"
             sx={{ marginTop: 2 }}
