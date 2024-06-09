@@ -76,6 +76,13 @@ function TaskForm({ task, onChange, onRemove, submitted }) {
             value={taskData.time_allocated}
             onChange={handleChange}
             margin="normal"
+            required
+            error={submitted && !taskData.time_allocated}
+            helperText={
+              submitted &&
+              !taskData.time_allocated &&
+              "Time Allocated is required"
+            }
           />
         </Grid>
         <Grid item xs={12}>

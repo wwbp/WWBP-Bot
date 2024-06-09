@@ -81,7 +81,7 @@ function ModuleForm({
     }
 
     for (let task of tasks) {
-      if (!task.title || !task.content) {
+      if (!task.title || !task.content || !task.time_allocated) {
         return false;
       }
     }
@@ -113,7 +113,7 @@ function ModuleForm({
         if (resetFormAfterSubmit) {
           setModuleData(initialModuleData);
           setTasks([]);
-          setSubmitted(false);
+          setSubmitted(false); // Reset the submitted state
         }
       }
       onModuleCreated();
