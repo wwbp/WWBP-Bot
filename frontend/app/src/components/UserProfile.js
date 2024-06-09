@@ -6,6 +6,7 @@ import {
   Button,
   Typography,
   CircularProgress,
+  Container,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 
@@ -72,7 +73,7 @@ function UserProfile() {
   }
 
   return (
-    <Box py={5}>
+    <Container maxWidth="sm" sx={{ py: 5 }}>
       <Typography variant="h4" gutterBottom>
         User Profile
       </Typography>
@@ -127,11 +128,13 @@ function UserProfile() {
             />
           </>
         )}
-        <Button variant="contained" color="primary" type="submit">
-          Update Profile
-        </Button>
+        <Box mt={3} display="flex" justifyContent="flex-end">
+          <Button variant="contained" color="primary" type="submit">
+            Update Profile
+          </Button>
+        </Box>
       </form>
-    </Box>
+    </Container>
   );
 }
 

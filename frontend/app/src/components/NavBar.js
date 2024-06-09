@@ -9,6 +9,7 @@ import {
   MenuItem,
   IconButton,
   Avatar,
+  Box,
 } from "@mui/material";
 import { postData } from "../utils/api";
 import { useSnackbar } from "notistack";
@@ -96,28 +97,36 @@ function NavBar({
                 Student Dashboard
               </Button>
             )}
-            <IconButton edge="end" color="inherit" onClick={handleMenu}>
-              <Avatar />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              anchorOrigin={{
-                vertical: "top",
-                horizontal: "right",
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: "top",
-                horizontal: "right",
-              }}
-              open={Boolean(anchorEl)}
-              onClose={handleClose}
-            >
-              <MenuItem component={Link} to="/profile">
-                Profile
-              </MenuItem>
-              <MenuItem onClick={onLogout}>Logout</MenuItem>
-            </Menu>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <IconButton edge="end" color="inherit" onClick={handleMenu}>
+                <Avatar />
+              </IconButton>
+              <Menu
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
+                open={Boolean(anchorEl)}
+                onClose={handleClose}
+                sx={{
+                  "& .MuiPaper-root": {
+                    width: "200px", // Adjust the width as needed
+                    marginTop: "10px", // Ensure the menu appears just below the navbar
+                  },
+                }}
+              >
+                <MenuItem component={Link} to="/profile" onClick={handleClose}>
+                  Profile
+                </MenuItem>
+                <MenuItem onClick={onLogout}>Logout</MenuItem>
+              </Menu>
+            </Box>
           </>
         ) : (
           <Button color="inherit" component={Link} to="/login">
