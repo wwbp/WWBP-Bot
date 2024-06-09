@@ -28,7 +28,7 @@ function ModuleForm({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitted, setSubmitted] = useState(false);
-  const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
   useEffect(() => {
     if (module.id) {
@@ -113,6 +113,7 @@ function ModuleForm({
         if (resetFormAfterSubmit) {
           setModuleData(initialModuleData);
           setTasks([]);
+          setSubmitted(false);
         }
       }
       onModuleCreated();
@@ -120,6 +121,29 @@ function ModuleForm({
       enqueueSnackbar(error.message, { variant: "error" });
       setError(error.message);
     }
+  };
+
+  const handleCancel = () => {
+    const key = enqueueSnackbar("Are you sure you want to discard changes?", {
+      variant: "warning",
+      persist: true,
+      action: (key) => (
+        <>
+          <Button
+            onClick={() => {
+              setModuleData(initialModuleData);
+              setTasks([]);
+              setSubmitted(false);
+              closeSnackbar(key);
+              enqueueSnackbar("Changes discarded.", { variant: "info" });
+            }}
+          >
+            Yes
+          </Button>
+          <Button onClick={() => closeSnackbar(key)}>No</Button>
+        </>
+      ),
+    });
   };
 
   if (loading) {
@@ -188,7 +212,12 @@ function ModuleForm({
           </Grid>
         </Grid>
         <Box my={2}>
-          <Button variant="outlined" color="primary" onClick={handleAddTask}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleAddTask}
+            sx={{ mb: 2 }}
+          >
             Add Task
           </Button>
           <Grid container spacing={3}>
@@ -206,12 +235,14 @@ function ModuleForm({
             ))}
           </Grid>
         </Box>
-        <Button variant="contained" color="primary" type="submit">
-          {module.id ? "Update Module" : "Create Module"}
-        </Button>
-        <Button variant="contained" color="secondary" onClick={onClose}>
-          Cancel
-        </Button>
+        <Box display="flex" justifyContent="space-between">
+          <Button variant="contained" color="primary" type="submit">
+            {module.id ? "Update Module" : "Create Module"}
+          </Button>
+          <Button variant="contained" color="secondary" onClick={handleCancel}>
+            Cancel
+          </Button>
+        </Box>
       </form>
     </Box>
   );
