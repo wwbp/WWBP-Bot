@@ -38,11 +38,7 @@ function UserProfile() {
     e.preventDefault();
     setSubmitted(true);
 
-    if (
-      !user.username ||
-      !user.email ||
-      (user.role === "student" && (!user.grade || !user.preferred_language))
-    ) {
+    if (!user.username || !user.email) {
       return;
     }
 
@@ -120,9 +116,6 @@ function UserProfile() {
               value={user.grade}
               onChange={handleChange}
               margin="normal"
-              required
-              error={submitted && !user.grade}
-              helperText={submitted && !user.grade && "Grade is required"}
             />
             <TextField
               fullWidth
@@ -131,13 +124,6 @@ function UserProfile() {
               value={user.preferred_language}
               onChange={handleChange}
               margin="normal"
-              required
-              error={submitted && !user.preferred_language}
-              helperText={
-                submitted &&
-                !user.preferred_language &&
-                "Preferred language is required"
-              }
             />
           </>
         )}

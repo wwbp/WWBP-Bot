@@ -81,13 +81,7 @@ function ModuleForm({
     }
 
     for (let task of tasks) {
-      if (
-        !task.title ||
-        !task.content ||
-        !task.instruction_prompt ||
-        !task.persona_prompt ||
-        !task.time_allocated
-      ) {
+      if (!task.title || !task.content) {
         return false;
       }
     }

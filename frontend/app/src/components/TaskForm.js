@@ -55,13 +55,6 @@ function TaskForm({ task, onChange, onRemove, submitted }) {
             value={taskData.instruction_prompt}
             onChange={handleChange}
             margin="normal"
-            required
-            error={submitted && !taskData.instruction_prompt}
-            helperText={
-              submitted &&
-              !taskData.instruction_prompt &&
-              "Instruction Prompt is required"
-            }
           />
         </Grid>
         <Grid item xs={12}>
@@ -72,13 +65,6 @@ function TaskForm({ task, onChange, onRemove, submitted }) {
             value={taskData.persona_prompt}
             onChange={handleChange}
             margin="normal"
-            required
-            error={submitted && !taskData.persona_prompt}
-            helperText={
-              submitted &&
-              !taskData.persona_prompt &&
-              "Persona Prompt is required"
-            }
           />
         </Grid>
         <Grid item xs={12}>
@@ -90,13 +76,6 @@ function TaskForm({ task, onChange, onRemove, submitted }) {
             value={taskData.time_allocated}
             onChange={handleChange}
             margin="normal"
-            required
-            error={submitted && !taskData.time_allocated}
-            helperText={
-              submitted &&
-              !taskData.time_allocated &&
-              "Time Allocated is required"
-            }
           />
         </Grid>
         <Grid item xs={12}>
