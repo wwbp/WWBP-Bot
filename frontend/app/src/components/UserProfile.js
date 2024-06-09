@@ -12,6 +12,7 @@ import { useSnackbar } from "notistack";
 function UserProfile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -35,6 +36,16 @@ function UserProfile() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitted(true);
+
+    if (
+      !user.username ||
+      !user.email ||
+      (user.role === "student" && (!user.grade || !user.preferred_language))
+    ) {
+      return;
+    }
+
     putData("/profile/", user)
       .then(() => {
         enqueueSnackbar("Profile updated successfully!", {
@@ -78,8 +89,8 @@ function UserProfile() {
           onChange={handleChange}
           margin="normal"
           required
-          error={!user.username}
-          helperText={!user.username && "Username is required"}
+          error={submitted && !user.username}
+          helperText={submitted && !user.username && "Username is required"}
         />
         <TextField
           fullWidth
@@ -89,8 +100,8 @@ function UserProfile() {
           onChange={handleChange}
           margin="normal"
           required
-          error={!user.email}
-          helperText={!user.email && "Email is required"}
+          error={submitted && !user.email}
+          helperText={submitted && !user.email && "Email is required"}
         />
         <TextField
           fullWidth
@@ -110,8 +121,8 @@ function UserProfile() {
               onChange={handleChange}
               margin="normal"
               required
-              error={!user.grade}
-              helperText={!user.grade && "Grade is required"}
+              error={submitted && !user.grade}
+              helperText={submitted && !user.grade && "Grade is required"}
             />
             <TextField
               fullWidth
@@ -121,9 +132,11 @@ function UserProfile() {
               onChange={handleChange}
               margin="normal"
               required
-              error={!user.preferred_language}
+              error={submitted && !user.preferred_language}
               helperText={
-                !user.preferred_language && "Preferred language is required"
+                submitted &&
+                !user.preferred_language &&
+                "Preferred language is required"
               }
             />
           </>

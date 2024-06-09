@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, postData, putData } from "../utils/api";
+import { postData, putData } from "../utils/api";
 import TaskForm from "./TaskForm";
 import {
   Box,
@@ -27,6 +27,7 @@ function ModuleForm({
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -74,8 +75,34 @@ function ModuleForm({
     setTasks(tasks.filter((_, i) => i !== index));
   };
 
+  const validateForm = () => {
+    if (!moduleData.name || !moduleData.start_time || !moduleData.end_time) {
+      return false;
+    }
+
+    for (let task of tasks) {
+      if (
+        !task.title ||
+        !task.content ||
+        !task.instruction_prompt ||
+        !task.persona_prompt ||
+        !task.time_allocated
+      ) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitted(true);
+
+    if (!validateForm()) {
+      enqueueSnackbar("Please fill all required fields", { variant: "error" });
+      return;
+    }
+
     try {
       if (module.id) {
         await putData(`/modules/${module.id}/`, {
@@ -123,8 +150,8 @@ function ModuleForm({
               onChange={handleModuleChange}
               margin="normal"
               required
-              error={!moduleData.name}
-              helperText={!moduleData.name && "Name is required"}
+              error={submitted && !moduleData.name}
+              helperText={submitted && !moduleData.name && "Name is required"}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -140,8 +167,10 @@ function ModuleForm({
                 shrink: true,
               }}
               required
-              error={!moduleData.start_time}
-              helperText={!moduleData.start_time && "Start Time is required"}
+              error={submitted && !moduleData.start_time}
+              helperText={
+                submitted && !moduleData.start_time && "Start Time is required"
+              }
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -157,8 +186,10 @@ function ModuleForm({
                 shrink: true,
               }}
               required
-              error={!moduleData.end_time}
-              helperText={!moduleData.end_time && "End Time is required"}
+              error={submitted && !moduleData.end_time}
+              helperText={
+                submitted && !moduleData.end_time && "End Time is required"
+              }
             />
           </Grid>
         </Grid>
@@ -175,6 +206,7 @@ function ModuleForm({
                     handleTaskChange(index, updatedTask)
                   }
                   onRemove={() => handleRemoveTask(index)}
+                  submitted={submitted}
                 />
               </Grid>
             ))}

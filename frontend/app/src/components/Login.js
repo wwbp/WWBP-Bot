@@ -7,11 +7,18 @@ import { useSnackbar } from "notistack";
 function Login({ setLoggedIn, setRole }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setSubmitted(true);
+
+    if (!username || !password) {
+      return;
+    }
+
     try {
       const response = await postData("/login/", { username, password });
       if (response.message === "Login successful") {
@@ -43,8 +50,8 @@ function Login({ setLoggedIn, setRole }) {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            error={!username}
-            helperText={!username && "Username is required"}
+            error={submitted && !username}
+            helperText={submitted && !username && "Username is required"}
           />
           <TextField
             fullWidth
@@ -54,8 +61,8 @@ function Login({ setLoggedIn, setRole }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            error={!password}
-            helperText={!password && "Password is required"}
+            error={submitted && !password}
+            helperText={submitted && !password && "Password is required"}
           />
           <Button variant="contained" color="primary" type="submit">
             Login
