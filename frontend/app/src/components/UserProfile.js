@@ -6,12 +6,14 @@ import {
   Button,
   Typography,
   CircularProgress,
+  Container,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 
 function UserProfile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -35,6 +37,12 @@ function UserProfile() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitted(true);
+
+    if (!user.username || !user.email) {
+      return;
+    }
+
     putData("/profile/", user)
       .then(() => {
         enqueueSnackbar("Profile updated successfully!", {
@@ -65,7 +73,7 @@ function UserProfile() {
   }
 
   return (
-    <Box py={5}>
+    <Container maxWidth="sm" sx={{ py: 5 }}>
       <Typography variant="h4" gutterBottom>
         User Profile
       </Typography>
@@ -78,8 +86,8 @@ function UserProfile() {
           onChange={handleChange}
           margin="normal"
           required
-          error={!user.username}
-          helperText={!user.username && "Username is required"}
+          error={submitted && !user.username}
+          helperText={submitted && !user.username && "Username is required"}
         />
         <TextField
           fullWidth
@@ -89,8 +97,8 @@ function UserProfile() {
           onChange={handleChange}
           margin="normal"
           required
-          error={!user.email}
-          helperText={!user.email && "Email is required"}
+          error={submitted && !user.email}
+          helperText={submitted && !user.email && "Email is required"}
         />
         <TextField
           fullWidth
@@ -109,9 +117,6 @@ function UserProfile() {
               value={user.grade}
               onChange={handleChange}
               margin="normal"
-              required
-              error={!user.grade}
-              helperText={!user.grade && "Grade is required"}
             />
             <TextField
               fullWidth
@@ -120,19 +125,16 @@ function UserProfile() {
               value={user.preferred_language}
               onChange={handleChange}
               margin="normal"
-              required
-              error={!user.preferred_language}
-              helperText={
-                !user.preferred_language && "Preferred language is required"
-              }
             />
           </>
         )}
-        <Button variant="contained" color="primary" type="submit">
-          Update Profile
-        </Button>
+        <Box mt={3} display="flex" justifyContent="flex-end">
+          <Button variant="contained" color="primary" type="submit">
+            Update Profile
+          </Button>
+        </Box>
       </form>
-    </Box>
+    </Container>
   );
 }
 

@@ -2,9 +2,8 @@ import React, { useState, useEffect } from "react";
 import { TextField, Box, Button, Grid } from "@mui/material";
 import { useSnackbar } from "notistack";
 
-function TaskForm({ task, onChange, onRemove }) {
+function TaskForm({ task, onChange, onRemove, submitted }) {
   const [taskData, setTaskData] = useState(task);
-  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     setTaskData(task);
@@ -15,11 +14,6 @@ function TaskForm({ task, onChange, onRemove }) {
     const updatedTask = { ...taskData, [name]: value };
     setTaskData(updatedTask);
     onChange(updatedTask);
-  };
-
-  const handleRemove = () => {
-    enqueueSnackbar("Task removed", { variant: "info" });
-    onRemove();
   };
 
   return (
@@ -34,8 +28,8 @@ function TaskForm({ task, onChange, onRemove }) {
             onChange={handleChange}
             margin="normal"
             required
-            error={!taskData.title}
-            helperText={!taskData.title && "Title is required"}
+            error={submitted && !taskData.title}
+            helperText={submitted && !taskData.title && "Title is required"}
           />
         </Grid>
         <Grid item xs={12}>
@@ -49,8 +43,8 @@ function TaskForm({ task, onChange, onRemove }) {
             multiline
             rows={4}
             required
-            error={!taskData.content}
-            helperText={!taskData.content && "Content is required"}
+            error={submitted && !taskData.content}
+            helperText={submitted && !taskData.content && "Content is required"}
           />
         </Grid>
         <Grid item xs={12}>
@@ -61,11 +55,6 @@ function TaskForm({ task, onChange, onRemove }) {
             value={taskData.instruction_prompt}
             onChange={handleChange}
             margin="normal"
-            required
-            error={!taskData.instruction_prompt}
-            helperText={
-              !taskData.instruction_prompt && "Instruction Prompt is required"
-            }
           />
         </Grid>
         <Grid item xs={12}>
@@ -76,11 +65,6 @@ function TaskForm({ task, onChange, onRemove }) {
             value={taskData.persona_prompt}
             onChange={handleChange}
             margin="normal"
-            required
-            error={!taskData.persona_prompt}
-            helperText={
-              !taskData.persona_prompt && "Persona Prompt is required"
-            }
           />
         </Grid>
         <Grid item xs={12}>
@@ -93,14 +77,16 @@ function TaskForm({ task, onChange, onRemove }) {
             onChange={handleChange}
             margin="normal"
             required
-            error={!taskData.time_allocated}
+            error={submitted && !taskData.time_allocated}
             helperText={
-              !taskData.time_allocated && "Time Allocated is required"
+              submitted &&
+              !taskData.time_allocated &&
+              "Time Allocated is required"
             }
           />
         </Grid>
         <Grid item xs={12}>
-          <Button variant="outlined" color="secondary" onClick={handleRemove}>
+          <Button variant="outlined" color="secondary" onClick={onRemove}>
             Remove Task
           </Button>
         </Grid>

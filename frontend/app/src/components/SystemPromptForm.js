@@ -12,6 +12,7 @@ import { useSnackbar } from "notistack";
 function SystemPromptForm() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [loading, setLoading] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -34,6 +35,11 @@ function SystemPromptForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitted(true);
+    if (!systemPrompt) {
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetchData("/system_prompts/");
@@ -77,8 +83,8 @@ function SystemPromptForm() {
           onChange={handleChange}
           margin="normal"
           required
-          error={!systemPrompt}
-          helperText={!systemPrompt && "System prompt is required"}
+          error={submitted && !systemPrompt}
+          helperText={submitted && !systemPrompt && "System prompt is required"}
         />
         <Button variant="contained" color="primary" type="submit">
           Save

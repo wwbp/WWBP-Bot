@@ -44,7 +44,10 @@ function StudentDashboard() {
 
   function moduleCard(module) {
     return (
-      <Card key={module.id} sx={{ borderRadius: 2 }}>
+      <Card
+        key={module.id}
+        sx={{ borderRadius: 2, backgroundColor: "#ffcccc", color: "white" }}
+      >
         <CardContent>
           <Typography variant="h5" gutterBottom>
             {module.name}
@@ -97,9 +100,11 @@ function StudentDashboard() {
     <Box sx={{ flexGrow: 1 }}>
       <Grid container spacing={2}>
         <Grid
+          xs={12}
+          md={4}
           sx={{
-            backgroundColor: "#333333",
-            color: "white",
+            backgroundColor: "white",
+            color: "black",
             overflow: "scroll",
             height: "100vh",
             padding: 2,

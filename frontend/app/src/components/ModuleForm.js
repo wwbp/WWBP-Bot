@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, postData, putData } from "../utils/api";
+import { postData, putData } from "../utils/api";
 import TaskForm from "./TaskForm";
 import {
   Box,
@@ -27,7 +27,8 @@ function ModuleForm({
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { enqueueSnackbar } = useSnackbar();
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
   useEffect(() => {
     if (module.id) {
@@ -74,8 +75,28 @@ function ModuleForm({
     setTasks(tasks.filter((_, i) => i !== index));
   };
 
+  const validateForm = () => {
+    if (!moduleData.name || !moduleData.start_time || !moduleData.end_time) {
+      return false;
+    }
+
+    for (let task of tasks) {
+      if (!task.title || !task.content || !task.time_allocated) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitted(true);
+
+    if (!validateForm()) {
+      enqueueSnackbar("Please fill all required fields", { variant: "error" });
+      return;
+    }
+
     try {
       if (module.id) {
         await putData(`/modules/${module.id}/`, {
@@ -92,6 +113,7 @@ function ModuleForm({
         if (resetFormAfterSubmit) {
           setModuleData(initialModuleData);
           setTasks([]);
+          setSubmitted(false); // Reset the submitted state
         }
       }
       onModuleCreated();
@@ -99,6 +121,29 @@ function ModuleForm({
       enqueueSnackbar(error.message, { variant: "error" });
       setError(error.message);
     }
+  };
+
+  const handleCancel = () => {
+    const key = enqueueSnackbar("Are you sure you want to discard changes?", {
+      variant: "warning",
+      persist: true,
+      action: (key) => (
+        <>
+          <Button
+            onClick={() => {
+              setModuleData(initialModuleData);
+              setTasks([]);
+              setSubmitted(false);
+              closeSnackbar(key);
+              enqueueSnackbar("Changes discarded.", { variant: "info" });
+            }}
+          >
+            Yes
+          </Button>
+          <Button onClick={() => closeSnackbar(key)}>No</Button>
+        </>
+      ),
+    });
   };
 
   if (loading) {
@@ -123,8 +168,8 @@ function ModuleForm({
               onChange={handleModuleChange}
               margin="normal"
               required
-              error={!moduleData.name}
-              helperText={!moduleData.name && "Name is required"}
+              error={submitted && !moduleData.name}
+              helperText={submitted && !moduleData.name && "Name is required"}
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -140,8 +185,10 @@ function ModuleForm({
                 shrink: true,
               }}
               required
-              error={!moduleData.start_time}
-              helperText={!moduleData.start_time && "Start Time is required"}
+              error={submitted && !moduleData.start_time}
+              helperText={
+                submitted && !moduleData.start_time && "Start Time is required"
+              }
             />
           </Grid>
           <Grid item xs={12} md={6}>
@@ -157,13 +204,20 @@ function ModuleForm({
                 shrink: true,
               }}
               required
-              error={!moduleData.end_time}
-              helperText={!moduleData.end_time && "End Time is required"}
+              error={submitted && !moduleData.end_time}
+              helperText={
+                submitted && !moduleData.end_time && "End Time is required"
+              }
             />
           </Grid>
         </Grid>
         <Box my={2}>
-          <Button variant="outlined" color="primary" onClick={handleAddTask}>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleAddTask}
+            sx={{ mb: 2 }}
+          >
             Add Task
           </Button>
           <Grid container spacing={3}>
@@ -175,17 +229,20 @@ function ModuleForm({
                     handleTaskChange(index, updatedTask)
                   }
                   onRemove={() => handleRemoveTask(index)}
+                  submitted={submitted}
                 />
               </Grid>
             ))}
           </Grid>
         </Box>
-        <Button variant="contained" color="primary" type="submit">
-          {module.id ? "Update Module" : "Create Module"}
-        </Button>
-        <Button variant="contained" color="secondary" onClick={onClose}>
-          Cancel
-        </Button>
+        <Box display="flex" justifyContent="space-between">
+          <Button variant="contained" color="primary" type="submit">
+            {module.id ? "Update Module" : "Create Module"}
+          </Button>
+          <Button variant="contained" color="secondary" onClick={handleCancel}>
+            Cancel
+          </Button>
+        </Box>
       </form>
     </Box>
   );

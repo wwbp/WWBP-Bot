@@ -19,7 +19,7 @@ function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
-  const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchData("/modules/")
@@ -47,17 +47,52 @@ function TeacherDashboard() {
   };
 
   const handleDeleteClick = async (moduleId) => {
-    try {
-      await deleteData(`/modules/${moduleId}/`);
-      handleModuleCreated();
-      enqueueSnackbar("Module deleted successfully!", { variant: "success" });
-    } catch (error) {
-      enqueueSnackbar(error.message, { variant: "error" });
-    }
+    enqueueSnackbar("Are you sure you want to delete this module?", {
+      variant: "warning",
+      persist: true,
+      action: (key) => (
+        <>
+          <Button
+            onClick={async () => {
+              try {
+                await deleteData(`/modules/${moduleId}/`);
+                handleModuleCreated();
+                enqueueSnackbar("Module deleted successfully!", {
+                  variant: "success",
+                });
+                closeSnackbar(key);
+              } catch (error) {
+                enqueueSnackbar(error.message, { variant: "error" });
+              }
+            }}
+          >
+            Yes
+          </Button>
+          <Button onClick={() => closeSnackbar(key)}>No</Button>
+        </>
+      ),
+    });
   };
 
   const handleCloseForm = () => {
-    setSelectedModule(null);
+    enqueueSnackbar("Are you sure you want to discard changes?", {
+      variant: "warning",
+      persist: true,
+      action: (key) => (
+        <>
+          <Button
+            onClick={() => {
+              setSelectedModule(null);
+              enqueueSnackbar("Changes discarded.", { variant: "info" });
+              closeSnackbar(key);
+            }}
+          >
+            Yes
+          </Button>
+          <Button onClick={() => closeSnackbar(key)}>No</Button>
+        </>
+      ),
+    });
   };
 
   return (
@@ -77,14 +112,13 @@ function TeacherDashboard() {
           <Grid container spacing={3}>
             {modules.map((module) => (
               <Grid item xs={12} key={module.id}>
-                <Card>
+                <Card sx={{ backgroundColor: "#ffcccc", borderRadius: 2 }}>
                   <CardContent>
                     <Typography variant="h6">{module.name}</Typography>
                   </CardContent>
                   <CardActions>
                     <Button
                       size="small"
-                      color="primary"
                       onClick={() => handleEditClick(module)}
                     >
                       Edit
