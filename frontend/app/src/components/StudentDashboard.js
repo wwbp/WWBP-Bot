@@ -70,7 +70,7 @@ function StudentDashboard() {
                 key={`${module.id}-${task.id}`}
               >
                 <ListItem key={task.id}>
-                  <ListItemText primary={task.title} secondary={task.content} />
+                  <ListItemText primary={task.title} />
                 </ListItem>
               </Paper>
             ))}
