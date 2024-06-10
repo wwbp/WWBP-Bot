@@ -77,23 +77,28 @@ function ModuleForm({
 
   const validateForm = () => {
     if (!moduleData.name || !moduleData.start_time || !moduleData.end_time) {
-      return false;
+      return "Please fill all required fields";
+    }
+
+    if (new Date(moduleData.end_time) <= new Date(moduleData.start_time)) {
+      return "End Time cannot be less than or equal to Start Time";
     }
 
     for (let task of tasks) {
       if (!task.title || !task.content || !task.time_allocated) {
-        return false;
+        return "Please fill all required fields for tasks";
       }
     }
-    return true;
+    return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
 
-    if (!validateForm()) {
-      enqueueSnackbar("Please fill all required fields", { variant: "error" });
+    const validationError = validateForm();
+    if (validationError) {
+      enqueueSnackbar(validationError, { variant: "error" });
       return;
     }
 

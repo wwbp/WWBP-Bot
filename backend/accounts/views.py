@@ -26,6 +26,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseNotAllowed, JsonResponse
 from datetime import datetime
+from django.utils import timezone
 import openai
 
 logger = logging.getLogger(__name__)
@@ -187,7 +188,9 @@ class ModuleViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def assigned(self, request):
         if request.user.role == 'student' or request.session.get('student_view', False):
-            modules = Module.objects.filter(created_by=request.user)
+            current_time = timezone.now()
+            modules = Module.objects.filter(
+                start_time__lte=current_time, end_time__gte=current_time)
             serializer = self.get_serializer(modules, many=True)
             return Response(serializer.data)
         return Response(status=status.HTTP_403_FORBIDDEN)
