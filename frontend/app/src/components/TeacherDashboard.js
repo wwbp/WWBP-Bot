@@ -75,24 +75,7 @@ function TeacherDashboard() {
   };
 
   const handleCloseForm = () => {
-    enqueueSnackbar("Are you sure you want to discard changes?", {
-      variant: "warning",
-      persist: true,
-      action: (key) => (
-        <>
-          <Button
-            onClick={() => {
-              setSelectedModule(null);
-              enqueueSnackbar("Changes discarded.", { variant: "info" });
-              closeSnackbar(key);
-            }}
-          >
-            Yes
-          </Button>
-          <Button onClick={() => closeSnackbar(key)}>No</Button>
-        </>
-      ),
-    });
+    setSelectedModule(null);
   };
 
   return (

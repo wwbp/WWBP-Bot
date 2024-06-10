@@ -129,7 +129,7 @@ function ModuleForm({
   };
 
   const handleCancel = () => {
-    const key = enqueueSnackbar("Are you sure you want to discard changes?", {
+    enqueueSnackbar("Are you sure you want to discard changes?", {
       variant: "warning",
       persist: true,
       action: (key) => (
@@ -139,6 +139,7 @@ function ModuleForm({
               setModuleData(initialModuleData);
               setTasks([]);
               setSubmitted(false);
+              onClose();
               closeSnackbar(key);
               enqueueSnackbar("Changes discarded.", { variant: "info" });
             }}
