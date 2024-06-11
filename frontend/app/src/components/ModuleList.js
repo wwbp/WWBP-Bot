@@ -4,10 +4,10 @@ import {
   Box,
   Typography,
   CircularProgress,
-  Stack,
   Card,
   CardContent,
   Divider,
+  Grid,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
@@ -36,21 +36,27 @@ function ModuleList() {
 
   function moduleCard(module) {
     return (
-      <Card
-        key={module.id}
-        sx={{ borderRadius: 2, backgroundColor: "#ffcccc", color: "white" }}
-        onClick={() => handleModuleSelection(module)}
-      >
-        <CardContent>
-          <Typography variant="h5" gutterBottom>
-            {module.name}
-          </Typography>
-          <Typography variant="subtitle1" sx={{ marginBottom: 2 }}>
-            {module.description}
-          </Typography>
-          <Divider sx={{ marginBottom: 2 }} />
-        </CardContent>
-      </Card>
+      <Grid item xs={12} sm={6} md={4} lg={3} key={module.id}>
+        <Card
+          sx={{
+            borderRadius: 2,
+            backgroundColor: "#ffcccc",
+            color: "white",
+            cursor: "pointer",
+          }}
+          onClick={() => handleModuleSelection(module)}
+        >
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              {module.name}
+            </Typography>
+            <Typography variant="subtitle2" sx={{ marginBottom: 2 }}>
+              {module.description}
+            </Typography>
+            <Divider sx={{ marginBottom: 2 }} />
+          </CardContent>
+        </Card>
+      </Grid>
     );
   }
 
@@ -63,14 +69,16 @@ function ModuleList() {
   }
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
+    <Box sx={{ flexGrow: 1, padding: 2 }}>
       <Typography variant="h5" gutterBottom>
-        Active Modules
+        Modules
       </Typography>
       {modules.length === 0 ? (
         <Typography>No active modules assigned to you</Typography>
       ) : (
-        <Stack spacing={2}>{modules.map((module) => moduleCard(module))}</Stack>
+        <Grid container spacing={2}>
+          {modules.map((module) => moduleCard(module))}
+        </Grid>
       )}
     </Box>
   );

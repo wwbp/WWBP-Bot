@@ -16,16 +16,20 @@ import Grid from "@mui/material/Unstable_Grid2";
 
 function ModuleTasks() {
   const { moduleId } = useParams();
+  const [module, setModule] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
-    fetchData(`/modules/${moduleId}/tasks/`)
+    fetchData(`/modules/${moduleId}/`)
       .then((data) => {
-        console.log(data); // Debugging output to check fetched data
-        setTasks(data);
+        setModule(data);
+        return fetchData(`/modules/${moduleId}/tasks/`);
+      })
+      .then((taskData) => {
+        setTasks(taskData);
         setLoading(false);
       })
       .catch((error) => {
@@ -60,7 +64,7 @@ function ModuleTasks() {
         }}
       >
         <Typography variant="h5" gutterBottom>
-          Tasks
+          {module ? module.name : "Tasks"}
         </Typography>
         {tasks.length === 0 ? (
           <Typography>No tasks available</Typography>
