@@ -221,6 +221,13 @@ class ModuleViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def tasks(self, request, pk=None):
+        module = self.get_object()
+        tasks = module.tasks.all()
+        serializer = TaskSerializer(tasks, many=True)
+        return Response(serializer.data)
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()

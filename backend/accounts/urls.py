@@ -10,7 +10,6 @@ router.register(r'chat_sessions', ChatSessionViewSet)
 router.register(r'chat_messages', ChatMessageViewSet)
 router.register(r'system_prompts', SystemPromptViewSet)
 
-
 urlpatterns = [
     path('', include(router.urls)),
     path('csrf/', csrf, name='csrf'),
