@@ -66,7 +66,7 @@ function App() {
             <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
           )}
           {(role === "student" || isStudentView) && (
-            <Route path="/student-dashboard" element={<StudentDashboard />} />
+            <Route path="/student-dashboard/*" element={<StudentDashboard />} />
           )}
         </Routes>
       </Router>

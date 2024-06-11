@@ -19,8 +19,6 @@ function ModuleForm({
 }) {
   const initialModuleData = {
     name: "",
-    start_time: "",
-    end_time: "",
   };
 
   const [moduleData, setModuleData] = useState(initialModuleData);
@@ -34,12 +32,6 @@ function ModuleForm({
     if (module.id) {
       setModuleData({
         name: module.name || "",
-        start_time: module.start_time
-          ? new Date(module.start_time).toISOString().slice(0, 16)
-          : "",
-        end_time: module.end_time
-          ? new Date(module.end_time).toISOString().slice(0, 16)
-          : "",
       });
       setTasks(module.tasks || []);
     } else {
@@ -76,12 +68,8 @@ function ModuleForm({
   };
 
   const validateForm = () => {
-    if (!moduleData.name || !moduleData.start_time || !moduleData.end_time) {
+    if (!moduleData.name) {
       return "Please fill all required fields";
-    }
-
-    if (new Date(moduleData.end_time) <= new Date(moduleData.start_time)) {
-      return "End Time cannot be less than or equal to Start Time";
     }
 
     for (let task of tasks) {
@@ -176,44 +164,6 @@ function ModuleForm({
               required
               error={submitted && !moduleData.name}
               helperText={submitted && !moduleData.name && "Name is required"}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Start Time"
-              name="start_time"
-              type="datetime-local"
-              value={moduleData.start_time}
-              onChange={handleModuleChange}
-              margin="normal"
-              InputLabelProps={{
-                shrink: true,
-              }}
-              required
-              error={submitted && !moduleData.start_time}
-              helperText={
-                submitted && !moduleData.start_time && "Start Time is required"
-              }
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="End Time"
-              name="end_time"
-              type="datetime-local"
-              value={moduleData.end_time}
-              onChange={handleModuleChange}
-              margin="normal"
-              InputLabelProps={{
-                shrink: true,
-              }}
-              required
-              error={submitted && !moduleData.end_time}
-              helperText={
-                submitted && !moduleData.end_time && "End Time is required"
-              }
             />
           </Grid>
         </Grid>
