@@ -26,7 +26,7 @@ function StudentDashboard() {
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
-    fetchData("/modules/assigned/")
+    fetchData("/modules/")
       .then((data) => {
         setModules(data);
         setLoading(false);

@@ -22,14 +22,8 @@ class ModuleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Module
-        fields = ['id', 'name', 'created_by',
-                  'start_time', 'end_time', 'tasks']
+        fields = ['id', 'name', 'created_by', 'tasks']
         read_only_fields = ['created_by']
-
-    def validate(self, data):
-        if data['start_time'] >= data['end_time']:
-            raise ValidationError("End time must be after start time")
-        return data
 
     def create(self, validated_data):
         tasks_data = validated_data.pop('tasks', [])
@@ -41,9 +35,6 @@ class ModuleSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         tasks_data = validated_data.pop('tasks', [])
         instance.name = validated_data.get('name', instance.name)
-        instance.start_time = validated_data.get(
-            'start_time', instance.start_time)
-        instance.end_time = validated_data.get('end_time', instance.end_time)
         instance.save()
 
         keep_tasks = []

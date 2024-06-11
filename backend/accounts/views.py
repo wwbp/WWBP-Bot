@@ -185,16 +185,6 @@ class ModuleViewSet(viewsets.ModelViewSet):
     serializer_class = ModuleSerializer
     permission_classes = [IsAuthenticated]
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
-    def assigned(self, request):
-        if request.user.role == 'student' or request.session.get('student_view', False):
-            current_time = timezone.now()
-            modules = Module.objects.filter(
-                start_time__lte=current_time, end_time__gte=current_time)
-            serializer = self.get_serializer(modules, many=True)
-            return Response(serializer.data)
-        return Response(status=status.HTTP_403_FORBIDDEN)
-
     def create(self, request, *args, **kwargs):
         logger.debug(f"Module creation request data: {request.data}")
         serializer = self.get_serializer(data=request.data)
