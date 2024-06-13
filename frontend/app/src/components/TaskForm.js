@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { TextField, Box, Button, Grid } from "@mui/material";
-import { useSnackbar } from "notistack";
 
 function TaskForm({ task, onChange, onRemove, submitted }) {
   const [taskData, setTaskData] = useState(task);
@@ -41,7 +40,7 @@ function TaskForm({ task, onChange, onRemove, submitted }) {
             onChange={handleChange}
             margin="normal"
             multiline
-            rows={4}
+            rows={5}
             required
             error={submitted && !taskData.content}
             helperText={submitted && !taskData.content && "Content is required"}
@@ -55,6 +54,8 @@ function TaskForm({ task, onChange, onRemove, submitted }) {
             value={taskData.instruction_prompt}
             onChange={handleChange}
             margin="normal"
+            multiline
+            rows={5}
           />
         </Grid>
         <Grid item xs={12}>
@@ -65,6 +66,8 @@ function TaskForm({ task, onChange, onRemove, submitted }) {
             value={taskData.persona_prompt}
             onChange={handleChange}
             margin="normal"
+            multiline
+            rows={5}
           />
         </Grid>
         <Grid item xs={12}>

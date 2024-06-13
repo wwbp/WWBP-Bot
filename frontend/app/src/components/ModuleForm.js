@@ -168,14 +168,6 @@ function ModuleForm({
           </Grid>
         </Grid>
         <Box my={2}>
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={handleAddTask}
-            sx={{ mb: 2 }}
-          >
-            Add Task
-          </Button>
           <Grid container spacing={3}>
             {tasks.map((task, index) => (
               <Grid item xs={12} key={index}>
@@ -190,6 +182,14 @@ function ModuleForm({
               </Grid>
             ))}
           </Grid>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleAddTask}
+            sx={{ mt: 2 }}
+          >
+            Add Task
+          </Button>
         </Box>
         <Box display="flex" justifyContent="space-between">
           <Button variant="contained" color="primary" type="submit">
