@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'langchain_stream',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -116,6 +117,11 @@ if ENVIRONMENT == 'production':
     REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}'
 else:
     REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
+
+# Celery Configuration
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'default'
 
 CACHES = {
     "default": {
