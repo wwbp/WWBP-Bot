@@ -1,4 +1,4 @@
-name: Deploy Backend to Staging
+name: Deploy Backend and Celery to Staging
 
 on:
   push:
@@ -27,9 +27,19 @@ jobs:
         run: |
           pip install awsebcli
 
-      - name: Deploy to Elastic Beanstalk
+      - name: Deploy Django to Elastic Beanstalk
         run: |
           cd backend
           eb init -p "Docker running on 64bit Amazon Linux 2023" ${{ secrets.AWS_BACKEND_APPLICATION_NAME }} --region us-east-1
           eb use ${{ secrets.AWS_BACKEND_ENVIRONMENT_NAME }}
+          cp Dockerfile.web Dockerfile
+          eb deploy
+
+      - name: Deploy Celery to Elastic Beanstalk
+        run: |
+          cd backend
+          eb init -p "Docker running on 64bit Amazon Linux 2023" ${{ secrets.AWS_BACKEND_APPLICATION_NAME }} --region us-east-1
+          eb use ${{ secrets.AWS_CELERY_ENVIRONMENT_NAME }}
+          cp Dockerfile.worker Dockerfile
+          eb setenv WORKER_TYPE=celery
           eb deploy
