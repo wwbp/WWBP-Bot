@@ -28,15 +28,10 @@ def save_message_to_transcript(session_id, message_id, user_message, bot_message
             transcript.has_audio = True
             transcript.audio_link = audio_file_path
         elif settings.ENVIRONMENT == 'production':
-            s3 = boto3.client(
-                's3',
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_S3_REGION_NAME
-            )
+            s3 = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
             bucket_name = settings.AWS_STORAGE_BUCKET_NAME
             s3_key = f"data/audio/{audio_file_name}"
-            s3.upload_file(audio_bytes, bucket_name, s3_key)
+            s3.upload_fileobj(audio_bytes, bucket_name, s3_key)
             transcript.has_audio = True
             transcript.audio_link = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
         else:
