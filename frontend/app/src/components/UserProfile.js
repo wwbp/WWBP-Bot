@@ -6,11 +6,15 @@ import {
   Button,
   Typography,
   CircularProgress,
+  Container,
 } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function UserProfile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchData("/profile/")
@@ -19,7 +23,7 @@ function UserProfile() {
         setLoading(false);
       })
       .catch((error) => {
-        console.error("There was an error fetching the user data!", error);
+        enqueueSnackbar("Error fetching user data!", { variant: "error" });
         setLoading(false);
       });
   }, []);
@@ -33,12 +37,22 @@ function UserProfile() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitted(true);
+
+    if (!user.username || !user.email) {
+      return;
+    }
+
     putData("/profile/", user)
       .then(() => {
-        alert("Profile updated successfully!");
+        enqueueSnackbar("Profile updated successfully!", {
+          variant: "success",
+        });
       })
       .catch((error) => {
-        console.error("There was an error updating the profile!", error);
+        const message =
+          error.response?.data?.detail || "Error updating profile!";
+        enqueueSnackbar(message, { variant: "error" });
       });
   };
 
@@ -59,7 +73,7 @@ function UserProfile() {
   }
 
   return (
-    <Box py={5}>
+    <Container maxWidth="sm" sx={{ py: 5 }}>
       <Typography variant="h4" gutterBottom>
         User Profile
       </Typography>
@@ -71,6 +85,9 @@ function UserProfile() {
           value={user.username}
           onChange={handleChange}
           margin="normal"
+          required
+          error={submitted && !user.username}
+          helperText={submitted && !user.username && "Username is required"}
         />
         <TextField
           fullWidth
@@ -79,6 +96,9 @@ function UserProfile() {
           value={user.email}
           onChange={handleChange}
           margin="normal"
+          required
+          error={submitted && !user.email}
+          helperText={submitted && !user.email && "Email is required"}
         />
         <TextField
           fullWidth
@@ -108,11 +128,13 @@ function UserProfile() {
             />
           </>
         )}
-        <Button variant="contained" color="primary" type="submit">
-          Update Profile
-        </Button>
+        <Box mt={3} display="flex" justifyContent="flex-end">
+          <Button variant="contained" color="primary" type="submit">
+            Update Profile
+          </Button>
+        </Box>
       </form>
-    </Box>
+    </Container>
   );
 }
 

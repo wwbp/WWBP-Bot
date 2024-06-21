@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import { useSnackbar } from "notistack";
 
 function ChatInterface({ session, clearChat }) {
   const [messages, setMessages] = useState([]);
@@ -26,6 +27,7 @@ function ChatInterface({ session, clearChat }) {
   const remoteStream = useRef(new MediaStream());
   const mediaRecorderRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const { enqueueSnackbar } = useSnackbar();
 
   const setupWebSocket = () => {
     if (ws.current) {
@@ -64,6 +66,9 @@ function ChatInterface({ session, clearChat }) {
                 );
               }
             } catch (error) {
+              enqueueSnackbar("Failed to set remote description", {
+                variant: "error",
+              });
               console.error("Failed to set remote description:", error);
             }
           } else if (data.candidate) {
@@ -72,6 +77,9 @@ function ChatInterface({ session, clearChat }) {
                 new RTCIceCandidate(data.candidate)
               );
             } catch (error) {
+              enqueueSnackbar("Error adding received ICE candidate", {
+                variant: "error",
+              });
               console.error("Error adding received ICE candidate", error);
             }
           } else if (data.transcript) {
@@ -125,6 +133,7 @@ function ChatInterface({ session, clearChat }) {
     };
 
     ws.current.onerror = (event) => {
+      enqueueSnackbar("WebSocket error observed", { variant: "error" });
       console.error("WebSocket error observed:", event);
     };
 
@@ -199,6 +208,7 @@ function ChatInterface({ session, clearChat }) {
       };
 
       audio.play().catch((error) => {
+        enqueueSnackbar("Error playing audio", { variant: "error" });
         console.error("Error playing audio:", error);
         setIsPlaying(false);
         setAudioState("idle");
@@ -249,6 +259,7 @@ function ChatInterface({ session, clearChat }) {
             ws.current.send(JSON.stringify({ message_id: currentMessageId }));
             ws.current.send(event.data);
           } else {
+            enqueueSnackbar("WebSocket is not open", { variant: "error" });
             console.error("WebSocket is not open");
           }
         };
@@ -261,6 +272,7 @@ function ChatInterface({ session, clearChat }) {
         setAudioState("recording");
       })
       .catch((error) => {
+        enqueueSnackbar("Error accessing media devices.", { variant: "error" });
         console.error("Error accessing media devices.", error);
       });
   };

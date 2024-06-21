@@ -3,7 +3,7 @@ name: Deploy Backend and Celery to Staging
 on:
   push:
     branches:
-      - develop
+      - main
 
 permissions:
   id-token: write
@@ -31,7 +31,7 @@ jobs:
         run: |
           cd backend
           eb init -p "Docker running on 64bit Amazon Linux 2023" ${{ secrets.AWS_BACKEND_APPLICATION_NAME }} --region us-east-1
-          eb use ${{ secrets.AWS_BACKEND_ENVIRONMENT_NAME }}
+          eb use ${{ secrets.AWS_BACKEND_PRODUCTION_ENVIRONMENT_NAME }}
           cp Dockerfile.web Dockerfile
           eb deploy --timeout 30
 
@@ -39,7 +39,7 @@ jobs:
         run: |
           cd backend
           eb init -p "Docker running on 64bit Amazon Linux 2023" ${{ secrets.AWS_BACKEND_APPLICATION_NAME }} --region us-east-1
-          eb use ${{ secrets.AWS_CELERY_ENVIRONMENT_NAME }}
+          eb use ${{ secrets.AWS_CELERY_PRODUCTION_ENVIRONMENT_NAME }}
           cp Dockerfile.worker Dockerfile
           eb setenv WORKER_TYPE=celery
           eb deploy --timeout 30

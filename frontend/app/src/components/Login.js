@@ -2,30 +2,37 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { postData } from "../utils/api";
 import { Container, TextField, Button, Box, Typography } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function Login({ setLoggedIn, setRole }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setSubmitted(true);
+
+    if (!username || !password) {
+      return;
+    }
+
     try {
-      const response = await postData("/login/", {
-        username,
-        password,
-      });
+      const response = await postData("/login/", { username, password });
       if (response.message === "Login successful") {
         localStorage.setItem("token", response.token);
         localStorage.setItem("role", response.role);
         setLoggedIn(true);
         setRole(response.role);
         navigate("/");
+        enqueueSnackbar("Login successful!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to login!");
       }
     } catch (error) {
-      alert(error.message);
+      enqueueSnackbar(error.message, { variant: "error" });
     }
   };
 
@@ -42,6 +49,9 @@ function Login({ setLoggedIn, setRole }) {
             margin="normal"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            required
+            error={submitted && !username}
+            helperText={submitted && !username && "Username is required"}
           />
           <TextField
             fullWidth
@@ -50,6 +60,9 @@ function Login({ setLoggedIn, setRole }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
+            error={submitted && !password}
+            helperText={submitted && !password && "Password is required"}
           />
           <Button variant="contained" color="primary" type="submit">
             Login

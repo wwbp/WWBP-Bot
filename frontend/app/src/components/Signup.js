@@ -9,16 +9,25 @@ import {
   Typography,
   MenuItem,
 } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function Signup({ setLoggedIn, setRole }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRoleState] = useState("student");
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setSubmitted(true);
+
+    if (!username || !email || !password || !role) {
+      return;
+    }
+
     try {
       const response = await postData("/register/", {
         username,
@@ -32,11 +41,12 @@ function Signup({ setLoggedIn, setRole }) {
         setLoggedIn(true);
         setRole(role);
         navigate("/");
+        enqueueSnackbar("User created successfully!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to register!");
       }
     } catch (error) {
-      alert(error.message);
+      enqueueSnackbar(error.message, { variant: "error" });
     }
   };
 
@@ -53,6 +63,9 @@ function Signup({ setLoggedIn, setRole }) {
             margin="normal"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            required
+            error={submitted && !username}
+            helperText={submitted && !username && "Username is required"}
           />
           <TextField
             fullWidth
@@ -60,6 +73,9 @@ function Signup({ setLoggedIn, setRole }) {
             margin="normal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
+            error={submitted && !email}
+            helperText={submitted && !email && "Email is required"}
           />
           <TextField
             fullWidth
@@ -68,6 +84,9 @@ function Signup({ setLoggedIn, setRole }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
+            error={submitted && !password}
+            helperText={submitted && !password && "Password is required"}
           />
           <TextField
             select
@@ -76,6 +95,9 @@ function Signup({ setLoggedIn, setRole }) {
             margin="normal"
             value={role}
             onChange={(e) => setRoleState(e.target.value)}
+            required
+            error={submitted && !role}
+            helperText={submitted && !role && "Role is required"}
           >
             <MenuItem value="student">Student</MenuItem>
             <MenuItem value="teacher">Teacher</MenuItem>

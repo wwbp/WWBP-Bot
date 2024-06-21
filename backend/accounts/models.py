@@ -18,8 +18,6 @@ class Module(models.Model):
     name = models.CharField(max_length=100)
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='modules')
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
 
 
 class Task(models.Model):

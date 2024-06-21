@@ -4,7 +4,6 @@ import os
 import logging
 from collections import deque
 from channels.generic.websocket import AsyncWebsocketConsumer
-import django
 from google.cloud import speech, texttospeech
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -14,10 +13,9 @@ import re
 from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from asgiref.sync import sync_to_async
+from .tasks import save_message_to_transcript
+from django.apps import apps
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-django.setup()
-from accounts.models import ChatSession, SystemPrompt
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -36,6 +34,7 @@ else:
 class LangChainSessionManager:
     @sync_to_async
     def get_system_prompt(self):
+        SystemPrompt = apps.get_model('accounts', 'SystemPrompt')
         try:
             prompt = SystemPrompt.objects.latest('created_at').prompt
             return prompt
@@ -44,12 +43,14 @@ class LangChainSessionManager:
 
     @sync_to_async
     def get_task_prompts(self, session_id):
+        ChatSession = apps.get_model('accounts', 'ChatSession')
         session = ChatSession.objects.get(id=session_id)
         task = session.task
         return task.content, task.instruction_prompt, task.persona_prompt
 
     @sync_to_async
     def get_user_profile(self, session_id):
+        ChatSession = apps.get_model('accounts', 'ChatSession')
         session = ChatSession.objects.get(id=session_id)
         user = session.user
         profile_info = {
@@ -142,12 +143,15 @@ class ChatConsumer(BaseWebSocketConsumer):
             text_data_json = json.loads(text_data)
             message = text_data_json["message"]
             message_id = text_data_json["message_id"]
+            # save_message_to_transcript.delay(session_id=self.session_id, message_id=str(int(message_id)-1),
+            #                                  user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
         except Exception as e:
             logger.error(f"Error parsing message: {e}")
             return
 
         try:
             logger.debug(f"Starting chain events with message: {message}")
+            bot_message_buffer = []
             async for chunk in self.chain.astream_events(
                 {'question': message,
                  'system': self.prompt_value
@@ -160,8 +164,13 @@ class ChatConsumer(BaseWebSocketConsumer):
                 if chunk["event"] in ["on_parser_start", "on_parser_stream"]:
                     await self.send(text_data=json.dumps(chunk))
                     logger.debug(f"Chunk sent: {chunk}")
+                    if 'chunk' in chunk['data']:
+                        bot_message_buffer.append(chunk['data']['chunk'])
                 elif chunk["event"] == "on_parser_end":
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
+                    complete_bot_message = ''.join(bot_message_buffer)
+                    # save_message_to_transcript.delay(session_id=self.session_id, message_id=message_id,
+                    #                                  user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
                 else:
                     logger.error(
                         f"Unknown 'chunk' event: {chunk.get('event', 'no event')}")
@@ -172,6 +181,8 @@ class ChatConsumer(BaseWebSocketConsumer):
 class AudioConsumer(BaseWebSocketConsumer):
     current_message_id = None
     audio_queue = deque()
+    bot_audio_buffer = []
+    bot_message_buffer = []
 
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
@@ -207,6 +218,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                 return
 
             transcript = await self.process_audio(bytes_data)
+            # save_message_to_transcript.delay(session_id=self.session_id, message_id=self.current_message_id,
+            #                                  user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
             if transcript:
                 logger.debug(f"Transcript: {transcript}")
                 await self.send(text_data=json.dumps({"transcript": transcript, "message_id": self.current_message_id}))
@@ -253,6 +266,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                 elif chunk["event"] == "on_parser_stream":
                     if 'chunk' in chunk['data']:
                         buffer.append(chunk['data']['chunk'])
+                        self.bot_message_buffer.append(chunk['data']['chunk'])
                         chunk["message_id"] = message_id
                         await self.send(text_data=json.dumps(chunk))
                         if any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
@@ -261,6 +275,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                             processed_text = self.process_text_for_tts(
                                 batched_text)
                             audio_chunk = await self.text_to_speech(processed_text)
+                            self.bot_audio_buffer.append(audio_chunk)
                             self.audio_queue.append(audio_chunk)
                             asyncio.create_task(self.send_audio_chunk())
                             logger.debug(
@@ -273,9 +288,15 @@ class AudioConsumer(BaseWebSocketConsumer):
                         processed_text = self.process_text_for_tts(
                             batched_text)
                         audio_chunk = await self.text_to_speech(processed_text)
+                        self.bot_audio_buffer.append(audio_chunk)
                         self.audio_queue.append(audio_chunk)
                         asyncio.create_task(self.send_audio_chunk())
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
+                    complete_bot_message = ''.join(self.bot_message_buffer)
+                    complete_audio = b''.join(self.bot_audio_buffer)
+                    # save_message_to_transcript.delay(session_id=self.session_id, message_id=message_id,
+                    #                                  user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
+                    self.bot_audio_buffer.clear()
                 else:
                     logger.error(
                         f"Unknown 'chunk' event: {chunk.get('event', 'no event')}")

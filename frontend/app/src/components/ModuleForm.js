@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, postData, putData } from "../utils/api";
+import { postData, putData } from "../utils/api";
 import TaskForm from "./TaskForm";
 import {
   Box,
@@ -9,6 +9,7 @@ import {
   CircularProgress,
   Grid,
 } from "@mui/material";
+import { useSnackbar } from "notistack";
 
 function ModuleForm({
   module,
@@ -18,25 +19,19 @@ function ModuleForm({
 }) {
   const initialModuleData = {
     name: "",
-    start_time: "",
-    end_time: "",
   };
 
   const [moduleData, setModuleData] = useState(initialModuleData);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
   useEffect(() => {
     if (module.id) {
       setModuleData({
         name: module.name || "",
-        start_time: module.start_time
-          ? new Date(module.start_time).toISOString().slice(0, 16)
-          : "",
-        end_time: module.end_time
-          ? new Date(module.end_time).toISOString().slice(0, 16)
-          : "",
       });
       setTasks(module.tasks || []);
     } else {
@@ -72,28 +67,77 @@ function ModuleForm({
     setTasks(tasks.filter((_, i) => i !== index));
   };
 
+  const validateForm = () => {
+    if (!moduleData.name) {
+      return "Please fill all required fields";
+    }
+
+    for (let task of tasks) {
+      if (!task.title || !task.content || !task.time_allocated) {
+        return "Please fill all required fields for tasks";
+      }
+    }
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitted(true);
+
+    const validationError = validateForm();
+    if (validationError) {
+      enqueueSnackbar(validationError, { variant: "error" });
+      return;
+    }
+
     try {
       if (module.id) {
         await putData(`/modules/${module.id}/`, {
           ...moduleData,
           tasks,
         });
+        enqueueSnackbar("Module updated successfully!", { variant: "success" });
       } else {
         await postData("/modules/", {
           ...moduleData,
           tasks,
         });
+        enqueueSnackbar("Module created successfully!", { variant: "success" });
         if (resetFormAfterSubmit) {
           setModuleData(initialModuleData);
           setTasks([]);
+          setSubmitted(false); // Reset the submitted state
         }
       }
       onModuleCreated();
     } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
       setError(error.message);
     }
+  };
+
+  const handleCancel = () => {
+    enqueueSnackbar("Are you sure you want to discard changes?", {
+      variant: "warning",
+      persist: true,
+      action: (key) => (
+        <>
+          <Button
+            onClick={() => {
+              setModuleData(initialModuleData);
+              setTasks([]);
+              setSubmitted(false);
+              onClose();
+              closeSnackbar(key);
+              enqueueSnackbar("Changes discarded.", { variant: "info" });
+            }}
+          >
+            Yes
+          </Button>
+          <Button onClick={() => closeSnackbar(key)}>No</Button>
+        </>
+      ),
+    });
   };
 
   if (loading) {
@@ -117,41 +161,13 @@ function ModuleForm({
               value={moduleData.name}
               onChange={handleModuleChange}
               margin="normal"
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Start Time"
-              name="start_time"
-              type="datetime-local"
-              value={moduleData.start_time}
-              onChange={handleModuleChange}
-              margin="normal"
-              InputLabelProps={{
-                shrink: true,
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="End Time"
-              name="end_time"
-              type="datetime-local"
-              value={moduleData.end_time}
-              onChange={handleModuleChange}
-              margin="normal"
-              InputLabelProps={{
-                shrink: true,
-              }}
+              required
+              error={submitted && !moduleData.name}
+              helperText={submitted && !moduleData.name && "Name is required"}
             />
           </Grid>
         </Grid>
         <Box my={2}>
-          <Button variant="outlined" color="primary" onClick={handleAddTask}>
-            Add Task
-          </Button>
           <Grid container spacing={3}>
             {tasks.map((task, index) => (
               <Grid item xs={12} key={index}>
@@ -161,17 +177,28 @@ function ModuleForm({
                     handleTaskChange(index, updatedTask)
                   }
                   onRemove={() => handleRemoveTask(index)}
+                  submitted={submitted}
                 />
               </Grid>
             ))}
           </Grid>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleAddTask}
+            sx={{ mt: 2 }}
+          >
+            Add Task
+          </Button>
         </Box>
-        <Button variant="contained" color="primary" type="submit">
-          {module.id ? "Update Module" : "Create Module"}
-        </Button>
-        <Button variant="contained" color="secondary" onClick={onClose}>
-          Cancel
-        </Button>
+        <Box display="flex" justifyContent="space-between">
+          <Button variant="contained" color="primary" type="submit">
+            {module.id ? "Update Module" : "Create Module"}
+          </Button>
+          <Button variant="contained" color="secondary" onClick={handleCancel}>
+            Cancel
+          </Button>
+        </Box>
       </form>
     </Box>
   );

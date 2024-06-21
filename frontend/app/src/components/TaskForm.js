@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { TextField, Box, Button, Grid } from "@mui/material";
 
-function TaskForm({ task, onChange, onRemove }) {
+function TaskForm({ task, onChange, onRemove, submitted }) {
   const [taskData, setTaskData] = useState(task);
 
   useEffect(() => {
@@ -26,6 +26,9 @@ function TaskForm({ task, onChange, onRemove }) {
             value={taskData.title}
             onChange={handleChange}
             margin="normal"
+            required
+            error={submitted && !taskData.title}
+            helperText={submitted && !taskData.title && "Title is required"}
           />
         </Grid>
         <Grid item xs={12}>
@@ -37,7 +40,10 @@ function TaskForm({ task, onChange, onRemove }) {
             onChange={handleChange}
             margin="normal"
             multiline
-            rows={4}
+            rows={5}
+            required
+            error={submitted && !taskData.content}
+            helperText={submitted && !taskData.content && "Content is required"}
           />
         </Grid>
         <Grid item xs={12}>
@@ -48,6 +54,8 @@ function TaskForm({ task, onChange, onRemove }) {
             value={taskData.instruction_prompt}
             onChange={handleChange}
             margin="normal"
+            multiline
+            rows={5}
           />
         </Grid>
         <Grid item xs={12}>
@@ -58,6 +66,8 @@ function TaskForm({ task, onChange, onRemove }) {
             value={taskData.persona_prompt}
             onChange={handleChange}
             margin="normal"
+            multiline
+            rows={5}
           />
         </Grid>
         <Grid item xs={12}>
@@ -69,6 +79,13 @@ function TaskForm({ task, onChange, onRemove }) {
             value={taskData.time_allocated}
             onChange={handleChange}
             margin="normal"
+            required
+            error={submitted && !taskData.time_allocated}
+            helperText={
+              submitted &&
+              !taskData.time_allocated &&
+              "Time Allocated is required"
+            }
           />
         </Grid>
         <Grid item xs={12}>
