@@ -143,8 +143,8 @@ class ChatConsumer(BaseWebSocketConsumer):
             text_data_json = json.loads(text_data)
             message = text_data_json["message"]
             message_id = text_data_json["message_id"]
-            # save_message_to_transcript.delay(session_id=self.session_id, message_id=str(int(message_id)-1),
-            #                                  user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
+            save_message_to_transcript.delay(session_id=self.session_id, message_id=str(int(message_id)-1),
+                                             user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
         except Exception as e:
             logger.error(f"Error parsing message: {e}")
             return
@@ -169,8 +169,8 @@ class ChatConsumer(BaseWebSocketConsumer):
                 elif chunk["event"] == "on_parser_end":
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                     complete_bot_message = ''.join(bot_message_buffer)
-                    # save_message_to_transcript.delay(session_id=self.session_id, message_id=message_id,
-                    #                                  user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
+                    save_message_to_transcript.delay(session_id=self.session_id, message_id=message_id,
+                                                     user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
                 else:
                     logger.error(
                         f"Unknown 'chunk' event: {chunk.get('event', 'no event')}")
@@ -218,8 +218,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                 return
 
             transcript = await self.process_audio(bytes_data)
-            # save_message_to_transcript.delay(session_id=self.session_id, message_id=self.current_message_id,
-            #                                  user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
+            save_message_to_transcript.delay(session_id=self.session_id, message_id=self.current_message_id,
+                                             user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
             if transcript:
                 logger.debug(f"Transcript: {transcript}")
                 await self.send(text_data=json.dumps({"transcript": transcript, "message_id": self.current_message_id}))
@@ -294,8 +294,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                     complete_bot_message = ''.join(self.bot_message_buffer)
                     complete_audio = b''.join(self.bot_audio_buffer)
-                    # save_message_to_transcript.delay(session_id=self.session_id, message_id=message_id,
-                    #                                  user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
+                    save_message_to_transcript.delay(session_id=self.session_id, message_id=message_id,
+                                                     user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
                     self.bot_audio_buffer.clear()
                 else:
                     logger.error(
