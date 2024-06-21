@@ -1,4 +1,4 @@
-name: Deploy Backend and Celery to Staging
+name: Deploy Backend and Celery to Production
 
 on:
   push:
