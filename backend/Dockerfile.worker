@@ -30,6 +30,7 @@ RUN python fetch_google_credentials.py
 ENV GOOGLE_APPLICATION_CREDENTIALS ./google_credentials.json
 
 # Use the entrypoint script to run the container
-ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["celery", "-A", "config", "worker", "--loglevel=info"]
 
-EXPOSE 8000
+# unneccesary though required for aws 
+EXPOSE 8000 

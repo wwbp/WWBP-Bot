@@ -1,3 +1,4 @@
+from django.core.cache import cache
 import asyncio
 import json
 import os
@@ -134,6 +135,12 @@ class ChatConsumer(BaseWebSocketConsumer):
             self.chain, self.prompt_value = await session_manager.get_llm_instance(self.session_id)
             logger.debug(
                 f"LLM instance initialized for session_id={self.session_id}")
+
+            # Check if the initial message has already been sent
+            if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                initial_message = "Begin the conversation."
+                await self.receive(json.dumps({"message": initial_message, "message_id": 0}))
+                cache.set(f'initial_message_sent_{self.session_id}', True)
         except Exception as e:
             logger.error(f"Failed to initialize LLM instance: {e}")
 
@@ -153,9 +160,7 @@ class ChatConsumer(BaseWebSocketConsumer):
             logger.debug(f"Starting chain events with message: {message}")
             bot_message_buffer = []
             async for chunk in self.chain.astream_events(
-                {'question': message,
-                 'system': self.prompt_value
-                 },
+                {'question': message, 'system': self.prompt_value},
                 version="v1",
                 include_names=["Assistant"],
             ):
@@ -196,6 +201,13 @@ class AudioConsumer(BaseWebSocketConsumer):
             self.chain, self.prompt_value = await session_manager.get_llm_instance(self.session_id)
             logger.debug(
                 f"LLM instance initialized for session_id={self.session_id}")
+
+            # Check if the initial message has already been sent
+            if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                initial_message = "Begin the conversation."
+                await self.stream_audio_response(initial_message, 0)
+                cache.set(f'initial_message_sent_{self.session_id}', True)
+
         except Exception as e:
             logger.error(f"Failed to initialize LLM instance: {e}")
 
@@ -253,9 +265,7 @@ class AudioConsumer(BaseWebSocketConsumer):
             buffer = []  # Buffer to collect tokens
             logger.debug(f"Starting chain events with text: {text}")
             async for chunk in self.chain.astream_events(
-                {'question': text,
-                 'system': self.prompt_value
-                 },
+                {'question': text, 'system': self.prompt_value},
                 version="v1",
                 include_names=["Assistant"],
             ):
@@ -329,6 +339,5 @@ class AudioConsumer(BaseWebSocketConsumer):
             pitch=0.0,
         )
         response = client.synthesize_speech(
-            input=input_text, voice=voice, audio_config=audio_config
-        )
+            input=input_text, voice=voice, audio_config=audio_config)
         return response.audio_content
