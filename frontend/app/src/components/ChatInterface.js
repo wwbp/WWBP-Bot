@@ -13,6 +13,8 @@ import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Avatar } from "@mui/material";
+import botAvatar from "../assets/bot-avatar.png";
 
 function ChatInterface({ session, clearChat }) {
   const [messages, setMessages] = useState([]);
@@ -328,13 +330,22 @@ function ChatInterface({ session, clearChat }) {
       </Box>
       <Box flexGrow={1} overflow="auto" p={2} height="400px">
         {messages.map((msg, index) => (
-          <Box key={index} mb={2}>
-            <Typography variant="body2" color="textSecondary">
-              <strong>{msg.sender}:</strong>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {msg.message}
-              </ReactMarkdown>
-            </Typography>
+          <Box key={index} display="flex" alignItems="flex-start" mb={2}>
+            {msg.sender === "GritCoach" && (
+              <Avatar
+                alt="Bot Avatar"
+                src={botAvatar}
+                style={{ marginRight: "8px" }}
+              />
+            )}
+            <Box>
+              <Typography variant="body2" color="textSecondary">
+                <strong>{msg.sender}:</strong>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {msg.message}
+                </ReactMarkdown>
+              </Typography>
+            </Box>
           </Box>
         ))}
         <div ref={messagesEndRef} />
