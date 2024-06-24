@@ -26,7 +26,7 @@ services:
       - "8000:8000"
     depends_on:
       - db
-      - redis
+      - rabbitmq
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
@@ -39,8 +39,8 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
       - ENVIRONMENT=${ENVIRONMENT}
       - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME}
@@ -55,7 +55,7 @@ services:
       - ./backend:/app
     depends_on:
       - backend
-      - redis
+      - rabbitmq
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
@@ -68,8 +68,8 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
       - ENVIRONMENT=${ENVIRONMENT}
       - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME}
@@ -92,10 +92,14 @@ services:
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL}
 
-  redis:
-    image: redis:latest
+  rabbitmq:
+    image: "rabbitmq:3-management"
     ports:
-      - "6379:6379"
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
 
 volumes:
   mysql-data:
