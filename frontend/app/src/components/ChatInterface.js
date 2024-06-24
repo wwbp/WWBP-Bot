@@ -11,6 +11,8 @@ import {
 import MicIcon from "@mui/icons-material/Mic";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import { useSnackbar } from "notistack";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 function ChatInterface({ session, clearChat }) {
   const [messages, setMessages] = useState([]);
@@ -328,7 +330,10 @@ function ChatInterface({ session, clearChat }) {
         {messages.map((msg, index) => (
           <Box key={index} mb={2}>
             <Typography variant="body2" color="textSecondary">
-              <strong>{msg.sender}:</strong> {msg.message}
+              <strong>{msg.sender}:</strong>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {msg.message}
+              </ReactMarkdown>
             </Typography>
           </Box>
         ))}
