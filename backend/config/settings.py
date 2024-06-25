@@ -119,8 +119,11 @@ else:
     REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 
 # Celery Configuration
-# Celery Configuration
-CELERY_BROKER_URL = f'amqp://{os.getenv("RABBITMQ_DEFAULT_USER", "guest")}:{os.getenv("RABBITMQ_DEFAULT_PASS", "guest")}@{os.getenv("RABBITMQ_HOST", "guest")}:{os.getenv("RABBITMQ_PORT", "5000")}//'
+CELERY_BROKER = f'{os.getenv("RABBITMQ_DEFAULT_USER", "guest")}:{os.getenv("RABBITMQ_DEFAULT_PASS", "guest")}@{os.getenv("RABBITMQ_HOST", "guest")}:{os.getenv("RABBITMQ_PORT", "5000")}//'
+if ENVIRONMENT == 'production':
+    CELERY_BROKER_URL = f'amqps://{CELERY_BROKER}'
+else:
+    CELERY_BROKER_URL = f'amqp://{CELERY_BROKER}'
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'default'
 
