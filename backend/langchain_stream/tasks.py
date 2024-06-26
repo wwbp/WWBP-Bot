@@ -1,5 +1,6 @@
 import boto3
 import os
+import io
 from django.conf import settings
 # from celery import shared_task
 from django.apps import apps
@@ -41,7 +42,7 @@ def save_message_to_transcript(session_id, message_id, user_message, bot_message
                     's3', region_name=settings.AWS_S3_REGION_NAME)
                 bucket_name = settings.AWS_STORAGE_BUCKET_NAME
                 s3_key = f"data/audio/{audio_file_name}"
-                s3.upload_fileobj(audio_bytes, bucket_name, s3_key)
+                s3.upload_fileobj(io.BytesIO(audio_bytes), bucket_name, s3_key)
                 transcript.has_audio = True
                 transcript.audio_link = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
             else:
