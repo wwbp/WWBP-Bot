@@ -1,4 +1,6 @@
-from langchain_stream.models import Transcript
+from django.apps import apps
+
+Transcript = apps.get_model('langchain_stream', 'Transcript')
 
 # Fetch all transcripts
 transcripts = Transcript.objects.all()
