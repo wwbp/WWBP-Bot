@@ -11,6 +11,8 @@ import {
   Avatar,
   Box,
 } from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import { postData } from "../utils/api";
 import { useSnackbar } from "notistack";
 
@@ -59,7 +61,7 @@ function NavBar({
   };
 
   return (
-    <AppBar position="static">
+    <AppBar position="static" style={{ backgroundColor: "#ff1744" }}>
       <Toolbar>
         <Typography
           variant="h6"
@@ -78,24 +80,31 @@ function NavBar({
           <>
             {role === "teacher" && (
               <>
-                <Button
+                <IconButton
                   color="inherit"
                   component={Link}
-                  to={
-                    isStudentView ? "/student-dashboard" : "/teacher-dashboard"
-                  }
+                  to="/teacher-dashboard"
                 >
-                  {isStudentView ? "Student Dashboard" : "Teacher Dashboard"}
-                </Button>
-                <Button color="inherit" onClick={toggleView}>
-                  {isStudentView ? "View as Teacher" : "View as Student"}
+                  <HomeIcon />
+                </IconButton>
+                <Button
+                  color="inherit"
+                  onClick={toggleView}
+                  style={{ display: "flex", alignItems: "center" }}
+                >
+                  {isStudentView ? "Student" : "Teacher"}
+                  <SwapHorizIcon fontSize="small" style={{ marginLeft: 5 }} />
                 </Button>
               </>
             )}
             {role === "student" && (
-              <Button color="inherit" component={Link} to="/student-dashboard">
-                Student Dashboard
-              </Button>
+              <IconButton
+                color="inherit"
+                component={Link}
+                to="/student-dashboard"
+              >
+                <HomeIcon />
+              </IconButton>
             )}
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <IconButton edge="end" color="inherit" onClick={handleMenu}>
