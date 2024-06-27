@@ -81,6 +81,7 @@
 
 5. **API and WebSocket Setup**
    - In CloudFront distribution, create an origin pointing to the Elastic Beanstalk assigned load balancer.
+   - Create behavior for `/api/*` and `/ws/*` to use EBLB orgin defined above
 
 ## Miscellaneous
 
