@@ -87,14 +87,21 @@ function NavBar({
                 >
                   <HomeIcon />
                 </IconButton>
-                <Button
-                  color="inherit"
+                <Box
                   onClick={toggleView}
-                  style={{ display: "flex", alignItems: "center" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    border: "1px solid white",
+                    borderRadius: 4,
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                    marginLeft: 10,
+                  }}
                 >
                   {isStudentView ? "Student" : "Teacher"}
                   <SwapHorizIcon fontSize="small" style={{ marginLeft: 5 }} />
-                </Button>
+                </Box>
               </>
             )}
             {role === "student" && (
@@ -107,8 +114,13 @@ function NavBar({
               </IconButton>
             )}
             <Box sx={{ display: "flex", alignItems: "center" }}>
-              <IconButton edge="end" color="inherit" onClick={handleMenu}>
-                <Avatar />
+              <IconButton
+                edge="end"
+                color="inherit"
+                onClick={handleMenu}
+                size="medium"
+              >
+                <Avatar sx={{ bgcolor: "red", color: "white" }} />
               </IconButton>
               <Menu
                 anchorEl={anchorEl}
