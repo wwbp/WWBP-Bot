@@ -53,8 +53,8 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
   };
 
   return (
-    <Box py={5}>
-      <form onSubmit={handleSubmit}>
+    <Box py={5} display="flex" flexDirection="column" height="100%">
+      <form onSubmit={handleSubmit} style={{ flex: 1 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <TextField
@@ -111,9 +111,9 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
             />
           </Grid>
         </Grid>
-        <Box display="flex" justifyContent="space-between" mt={3}>
+        <Box display="flex" justifyContent="flex-end" mt={3}>
           <Button variant="contained" color="primary" type="submit">
-            {task.id ? "Update Task" : "Create Task"}
+            Save
           </Button>
         </Box>
       </form>

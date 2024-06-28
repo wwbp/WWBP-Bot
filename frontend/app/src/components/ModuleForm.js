@@ -34,8 +34,10 @@ function ModuleForm({ module, onModuleCreated }) {
         await putData(`/modules/${module.id}/`, { ...moduleData });
         enqueueSnackbar("Module updated successfully!", { variant: "success" });
       } else {
-        await postData("/modules/", { ...moduleData });
+        const newModule = await postData("/modules/", { ...moduleData });
         enqueueSnackbar("Module created successfully!", { variant: "success" });
+        onModuleCreated(newModule);
+        return;
       }
       onModuleCreated();
     } catch (error) {
@@ -44,11 +46,11 @@ function ModuleForm({ module, onModuleCreated }) {
   };
 
   return (
-    <Box py={5}>
+    <Box py={5} display="flex" flexDirection="column" height="100%">
       <Typography variant="h6" gutterBottom>
         {module.id ? "Edit Module" : "Create Module"}
       </Typography>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ flex: 1 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <TextField
@@ -64,9 +66,9 @@ function ModuleForm({ module, onModuleCreated }) {
             />
           </Grid>
         </Grid>
-        <Box display="flex" justifyContent="space-between" mt={3}>
+        <Box display="flex" justifyContent="flex-end" mt={3}>
           <Button variant="contained" color="primary" type="submit">
-            {module.id ? "Update Module" : "Create Module"}
+            Save
           </Button>
         </Box>
       </form>

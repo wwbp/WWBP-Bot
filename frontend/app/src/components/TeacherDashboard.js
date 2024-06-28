@@ -2,16 +2,29 @@ import React, { useState, useEffect } from "react";
 import { fetchData } from "../utils/api";
 import ModuleForm from "./ModuleForm";
 import TaskForm from "./TaskForm";
-import {
-  Box,
-  Typography,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  CircularProgress,
-} from "@mui/material";
+import { Box, Typography, Grid, Card, CardContent, Paper } from "@mui/material";
 import { useSnackbar } from "notistack";
+
+const cardStyle = {
+  width: "100%",
+  height: "100px",
+  backgroundColor: "#e0e0e0",
+  borderRadius: 2,
+  cursor: "pointer",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+};
+
+const selectedCardStyle = {
+  ...cardStyle,
+  backgroundColor: "#ffcccc",
+};
+
+const columnStyle = {
+  borderRight: "2px solid rgba(0,0,0,0.1)",
+  paddingRight: "10px",
+};
 
 function TeacherDashboard() {
   const [modules, setModules] = useState([]);
@@ -38,9 +51,9 @@ function TeacherDashboard() {
     fetchData("/modules/")
       .then((data) => {
         setModules(data);
-        const updatedModule =
+        const newModule =
           data.find((mod) => mod.id === selectedModule.id) || null;
-        setSelectedModule(updatedModule);
+        setSelectedModule(newModule);
       })
       .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
   };
@@ -50,13 +63,25 @@ function TeacherDashboard() {
       .then((tasks) => {
         const updatedModule = { ...selectedModule, tasks: tasks };
         setSelectedModule(updatedModule);
+        setSelectedTask(null);
+        // Ensure the UI updates with the new task list
+        fetchData("/modules/")
+          .then((data) => {
+            setModules(data);
+            const updatedModule =
+              data.find((mod) => mod.id === selectedModule.id) || null;
+            setSelectedModule(updatedModule);
+          })
+          .catch((error) =>
+            enqueueSnackbar(error.message, { variant: "error" })
+          );
       })
       .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
   };
 
   return (
     <Grid container spacing={3} py={5} px={3}>
-      <Grid item xs={12} md={3}>
+      <Grid item xs={12} md={3} sx={columnStyle}>
         <Typography variant="h5" gutterBottom>
           Modules
         </Typography>
@@ -64,14 +89,11 @@ function TeacherDashboard() {
           {modules.map((module) => (
             <Grid item xs={12} key={module.id}>
               <Card
-                sx={{
-                  backgroundColor:
-                    selectedModule && selectedModule.id === module.id
-                      ? "#ffcccc"
-                      : "#e0e0e0",
-                  borderRadius: 2,
-                  cursor: "pointer",
-                }}
+                sx={
+                  selectedModule && selectedModule.id === module.id
+                    ? selectedCardStyle
+                    : cardStyle
+                }
                 onClick={() => handleModuleSelect(module)}
               >
                 <CardContent>
@@ -82,22 +104,23 @@ function TeacherDashboard() {
           ))}
           <Grid item xs={12}>
             <Card
-              sx={{
-                backgroundColor: "#e0e0e0",
-                borderRadius: 2,
-                border: "2px dashed #9e9e9e",
-                cursor: "pointer",
-              }}
+              sx={
+                selectedModule && !selectedModule.id
+                  ? selectedCardStyle
+                  : cardStyle
+              }
               onClick={() => handleModuleSelect({})}
             >
               <CardContent>
-                <Typography variant="h6">+ Create New Module</Typography>
+                <Typography variant="h2" textAlign="center">
+                  +
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
       </Grid>
-      <Grid item xs={12} md={3}>
+      <Grid item xs={12} md={3} sx={columnStyle}>
         <Typography variant="h5" gutterBottom>
           Tasks
         </Typography>
@@ -106,14 +129,11 @@ function TeacherDashboard() {
             {selectedModule.tasks?.map((task, index) => (
               <Grid item xs={12} key={index}>
                 <Card
-                  sx={{
-                    backgroundColor:
-                      selectedTask && selectedTask.title === task.title
-                        ? "#ffcccc"
-                        : "#e0e0e0",
-                    borderRadius: 2,
-                    cursor: "pointer",
-                  }}
+                  sx={
+                    selectedTask && selectedTask.id === task.id
+                      ? selectedCardStyle
+                      : cardStyle
+                  }
                   onClick={() => handleTaskSelect(task)}
                 >
                   <CardContent>
@@ -124,16 +144,17 @@ function TeacherDashboard() {
             ))}
             <Grid item xs={12}>
               <Card
-                sx={{
-                  backgroundColor: "#e0e0e0",
-                  borderRadius: 2,
-                  border: "2px dashed #9e9e9e",
-                  cursor: "pointer",
-                }}
+                sx={
+                  selectedTask && !selectedTask.id
+                    ? selectedCardStyle
+                    : cardStyle
+                }
                 onClick={() => handleTaskSelect({})}
               >
                 <CardContent>
-                  <Typography variant="h6">+ Add Task</Typography>
+                  <Typography variant="h2" textAlign="center">
+                    +
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
