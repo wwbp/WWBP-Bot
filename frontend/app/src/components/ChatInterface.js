@@ -197,6 +197,34 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     }
   }, [audioQueue, isPlaying]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === "Space" && chatMode === "audio" && audioState === "idle") {
+        e.preventDefault(); // Prevent default space behavior (like scrolling)
+        handlePTTMouseDown();
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (
+        e.code === "Space" &&
+        chatMode === "audio" &&
+        audioState === "recording"
+      ) {
+        e.preventDefault(); // Prevent default space behavior
+        handlePTTMouseUp();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [chatMode, audioState]);
+
   const playNextAudio = () => {
     if (audioQueue.length > 0) {
       setIsPlaying(true);
@@ -353,9 +381,13 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
               onMouseUp={handlePTTMouseUp}
               color={audioState === "recording" ? "secondary" : "default"}
               aria-label="push-to-talk"
-              style={{ fontSize: "2rem" }}
+              sx={{
+                width: 80,
+                height: 80,
+                fontSize: "2rem",
+              }}
             >
-              <MicIcon style={{ fontSize: "3rem" }} />
+              <MicIcon sx={{ fontSize: "4rem" }} />
             </IconButton>
           </Box>
         ) : (
