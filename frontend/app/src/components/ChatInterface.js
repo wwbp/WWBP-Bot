@@ -6,8 +6,9 @@ import {
   Button,
   Typography,
   IconButton,
-  Switch,
   Avatar,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
@@ -16,10 +17,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import botAvatar from "../assets/bot-avatar.png";
 
-function ChatInterface({ session, clearChat }) {
+function ChatInterface({ session, clearChat, handleCompleteTask }) {
+  // Added handleCompleteTask
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
-  const [isAudioMode, setIsAudioMode] = useState(false);
+  const [chatMode, setChatMode] = useState("text");
   const [audioState, setAudioState] = useState("idle");
   const [messageId, setMessageId] = useState(1);
   const [audioQueue, setAudioQueue] = useState([]);
@@ -38,7 +40,7 @@ function ChatInterface({ session, clearChat }) {
       ws.current.close();
     }
 
-    ws.current = createWebSocket(session.id, isAudioMode);
+    ws.current = createWebSocket(session.id, chatMode === "audio");
 
     ws.current.onopen = () => {
       setIsWsConnected(true);
@@ -50,7 +52,7 @@ function ChatInterface({ session, clearChat }) {
         return;
       }
 
-      if (isAudioMode) {
+      if (chatMode === "audio") {
         if (event.data instanceof Blob) {
           setAudioQueue((prevQueue) => [...prevQueue, event.data]);
         } else if (typeof event.data === "string") {
@@ -179,7 +181,7 @@ function ChatInterface({ session, clearChat }) {
         peerConnection.current.close();
       }
     };
-  }, [session.id, isAudioMode]);
+  }, [session.id, chatMode]);
 
   useEffect(() => {
     if (clearChat) {
@@ -291,8 +293,8 @@ function ChatInterface({ session, clearChat }) {
     }
   };
 
-  const handleModeSwitch = (event) => {
-    setIsAudioMode(event.target.checked);
+  const handleModeChange = (event) => {
+    setChatMode(event.target.value);
   };
 
   const getAudioStateColor = () => {
@@ -312,21 +314,21 @@ function ChatInterface({ session, clearChat }) {
     <Box display="flex" flexDirection="column" height="100%" width="100%">
       <Box display="flex" justifyContent="space-between" p={2}>
         <Box display="flex" alignItems="center">
-          {!isAudioMode && <Typography variant="body2">Text Mode</Typography>}
-          <Switch checked={isAudioMode} onChange={handleModeSwitch} />
-          {isAudioMode && (
-            <Typography variant="body2" style={{ marginLeft: "8px" }}>
-              Audio Mode
-            </Typography>
-          )}
+          <Select value={chatMode} onChange={handleModeChange}>
+            <MenuItem value="text">Text Mode</MenuItem>
+            <MenuItem value="audio">Audio Mode</MenuItem>
+            {/* Add more modes as needed */}
+          </Select>
         </Box>
-        <Typography
-          variant="body2"
-          color={isWsConnected ? "green" : "red"}
-          style={{ marginLeft: "auto" }}
-        >
-          {isWsConnected ? "Connected" : "Disconnected"}
-        </Typography>
+        {!isWsConnected && (
+          <Typography
+            variant="body2"
+            color="red"
+            style={{ marginLeft: "auto" }}
+          >
+            Disconnected
+          </Typography>
+        )}
       </Box>
       <Box flexGrow={1} overflow="auto" p={2} sx={{ width: "100%" }}>
         {messages.map((msg, index) => (
@@ -362,8 +364,8 @@ function ChatInterface({ session, clearChat }) {
         ))}
         <div ref={messagesEndRef} />
       </Box>
-      <Box display="flex" justifyContent="center" alignItems="center" p={2}>
-        {isAudioMode ? (
+      <Box display="flex" alignItems="center" p={2}>
+        {chatMode === "audio" ? (
           <IconButton
             onMouseDown={handlePTTMouseDown}
             onMouseUp={handlePTTMouseUp}
@@ -374,19 +376,25 @@ function ChatInterface({ session, clearChat }) {
             <MicIcon style={{ fontSize: "3rem" }} />
           </IconButton>
         ) : (
-          <>
-            <TextField
-              fullWidth
-              value={message}
-              onChange={handleInputChange}
-              placeholder="Type a message..."
-              onKeyDown={onKeyPress}
-            />
-            <Button onClick={handleSubmit} color="primary" variant="contained">
-              Send
-            </Button>
-          </>
+          <TextField
+            fullWidth
+            value={message}
+            onChange={handleInputChange}
+            placeholder="Type a message..."
+            onKeyDown={onKeyPress}
+          />
         )}
+        <Button onClick={handleSubmit} color="primary" variant="contained">
+          Send
+        </Button>
+        <Button
+          onClick={handleCompleteTask}
+          color="primary"
+          variant="contained"
+          style={{ marginLeft: "8px" }}
+        >
+          Complete Task
+        </Button>
         <IconButton>
           <FiberManualRecordIcon style={{ color: getAudioStateColor() }} />
         </IconButton>

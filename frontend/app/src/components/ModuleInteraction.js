@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createChatSession } from "../utils/api";
 import ChatInterface from "./ChatInterface";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
 import confetti from "canvas-confetti";
 
@@ -112,25 +112,11 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
           p={2}
           sx={{ width: "100%" }}
         >
-          <ChatInterface session={chatSession} clearChat={clearChat} />
-          <Box display="flex" justifyContent="space-between" mt={2}>
-            <Button
-              onClick={handleCompleteTask}
-              variant="contained"
-              color="primary"
-            >
-              Complete Task
-            </Button>
-            <Button
-              onClick={() =>
-                enqueueSnackbar("Message sent!", { variant: "success" })
-              }
-              variant="contained"
-              color="primary"
-            >
-              Send
-            </Button>
-          </Box>
+          <ChatInterface
+            session={chatSession}
+            clearChat={clearChat}
+            handleCompleteTask={handleCompleteTask}
+          />
         </Box>
       ) : (
         <Typography>Loading chat session...</Typography>
