@@ -83,7 +83,9 @@ function NavBar({
                 <IconButton
                   color="inherit"
                   component={Link}
-                  to="/teacher-dashboard"
+                  to={
+                    isStudentView ? "/student-dashboard" : "/teacher-dashboard"
+                  }
                 >
                   <HomeIcon />
                 </IconButton>
