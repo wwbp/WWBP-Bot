@@ -16,18 +16,13 @@ import Grid from "@mui/material/Unstable_Grid2";
 
 function ModuleTasks() {
   const { moduleId } = useParams();
-  const [module, setModule] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
-    fetchData(`/modules/${moduleId}/`)
-      .then((data) => {
-        setModule(data);
-        return fetchData(`/modules/${moduleId}/tasks/`);
-      })
+    fetchData(`/modules/${moduleId}/tasks/`)
       .then((taskData) => {
         setTasks(taskData);
         setLoading(false);
@@ -51,25 +46,22 @@ function ModuleTasks() {
   }
 
   return (
-    <Grid container spacing={2}>
+    <Grid container spacing={0} sx={{ height: "100vh" }}>
       <Grid
         xs={12}
-        md={4}
+        md={3}
         sx={{
           backgroundColor: "white",
           color: "black",
-          overflow: "scroll",
-          height: "100vh",
-          padding: 2,
+          overflowY: "auto",
+          height: "100%",
+          borderRight: "1px solid #e0e0e0",
         }}
       >
-        <Typography variant="h5" gutterBottom>
-          {module ? module.name : "Tasks"}
-        </Typography>
         {tasks.length === 0 ? (
           <Typography>No tasks available</Typography>
         ) : (
-          <List dense>
+          <List dense sx={{ p: 2 }}>
             {tasks.map((task) => (
               <Paper
                 elevation={3}
@@ -90,19 +82,19 @@ function ModuleTasks() {
           </List>
         )}
       </Grid>
-      <Grid xs>
-        <Box p={5} sx={{ height: "100vh" }}>
-          {selectedTask ? (
-            <ModuleInteraction
-              moduleId={moduleId}
-              selectedTask={selectedTask}
-            />
-          ) : (
+      <Grid
+        xs={9}
+        sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+      >
+        {selectedTask ? (
+          <ModuleInteraction moduleId={moduleId} selectedTask={selectedTask} />
+        ) : (
+          <Box p={2} sx={{ flex: 1 }}>
             <Typography variant="h5">
               Please select a specific task from the list on the left!
             </Typography>
-          )}
-        </Box>
+          </Box>
+        )}
       </Grid>
     </Grid>
   );

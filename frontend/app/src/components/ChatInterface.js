@@ -7,13 +7,13 @@ import {
   Typography,
   IconButton,
   Switch,
+  Avatar,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Avatar } from "@mui/material";
 import botAvatar from "../assets/bot-avatar.png";
 
 function ChatInterface({ session, clearChat }) {
@@ -89,14 +89,14 @@ function ChatInterface({ session, clearChat }) {
           } else if (data.transcript) {
             setMessages((prevMessages) => [
               ...prevMessages,
-              { sender: `You`, message: data.transcript, id: data.message_id },
+              { sender: "You", message: data.transcript, id: data.message_id },
             ]);
             setMessageId((prevId) => prevId + 1);
             setMessage("");
           } else if (data.event === "on_parser_start") {
             setMessages((prevMessages) => [
               ...prevMessages,
-              { sender: `GritCoach`, message: "", id: data.message_id },
+              { sender: "GritCoach", message: "", id: data.message_id },
             ]);
           } else if (data.event === "on_parser_stream") {
             setMessages((prevMessages) =>
@@ -118,7 +118,7 @@ function ChatInterface({ session, clearChat }) {
           setAudioState("speaking");
           setMessages((prevMessages) => [
             ...prevMessages,
-            { sender: `GritCoach`, message: "", id: data.message_id },
+            { sender: "GritCoach", message: "", id: data.message_id },
           ]);
         } else if (data.event === "on_parser_stream") {
           setMessages((prevMessages) =>
@@ -229,7 +229,7 @@ function ChatInterface({ session, clearChat }) {
     e.preventDefault();
     const userMessageId = messageId;
     const userMessage = {
-      sender: `You`,
+      sender: "You",
       message: message,
       id: userMessageId.toString(),
     };
@@ -309,7 +309,7 @@ function ChatInterface({ session, clearChat }) {
   };
 
   return (
-    <Box display="flex" flexDirection="column" height="100%">
+    <Box display="flex" flexDirection="column" height="100%" width="100%">
       <Box display="flex" justifyContent="space-between" p={2}>
         <Box display="flex" alignItems="center">
           {!isAudioMode && <Typography variant="body2">Text Mode</Typography>}
@@ -328,9 +328,16 @@ function ChatInterface({ session, clearChat }) {
           {isWsConnected ? "Connected" : "Disconnected"}
         </Typography>
       </Box>
-      <Box flexGrow={1} overflow="auto" p={2} height="400px">
+      <Box flexGrow={1} overflow="auto" p={2} sx={{ width: "100%" }}>
         {messages.map((msg, index) => (
-          <Box key={index} display="flex" alignItems="flex-start" mb={2}>
+          <Box
+            key={index}
+            display="flex"
+            justifyContent={
+              msg.sender === "GritCoach" ? "flex-start" : "flex-end"
+            }
+            mb={2}
+          >
             {msg.sender === "GritCoach" && (
               <Avatar
                 alt="Bot Avatar"
@@ -338,7 +345,12 @@ function ChatInterface({ session, clearChat }) {
                 style={{ marginRight: "8px" }}
               />
             )}
-            <Box>
+            <Box
+              bgcolor={msg.sender === "GritCoach" ? "#f0f0f0" : "#cfe8fc"}
+              p={1}
+              borderRadius={2}
+              maxWidth="60%"
+            >
               <Typography variant="body2" color="textSecondary">
                 <strong>{msg.sender}:</strong>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>

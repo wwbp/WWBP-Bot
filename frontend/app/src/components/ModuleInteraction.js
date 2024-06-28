@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { createChatSession } from "../utils/api";
 import ChatInterface from "./ChatInterface";
-import { Box, Typography, Button, Paper } from "@mui/material";
+import { Box, Typography, Button } from "@mui/material";
 import { useSnackbar } from "notistack";
+import confetti from "canvas-confetti";
 
 function ModuleInteraction({ moduleId, selectedTask }) {
   const [error, setError] = useState(null);
@@ -52,6 +53,15 @@ function ModuleInteraction({ moduleId, selectedTask }) {
     return "black";
   };
 
+  const handleCompleteTask = () => {
+    enqueueSnackbar("Task completed!", { variant: "success" });
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+    });
+  };
+
   if (error) {
     return (
       <Box textAlign="center" py={5}>
@@ -69,12 +79,20 @@ function ModuleInteraction({ moduleId, selectedTask }) {
   }
 
   return (
-    <Paper elevation={3} sx={{ padding: 3, height: "90%" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        width: "100%",
+      }}
+    >
       <Box
         display="flex"
         justifyContent="space-between"
         alignItems="center"
         mb={2}
+        p={2}
       >
         <Typography variant="h6">{selectedTask.title}</Typography>
         <Typography
@@ -86,27 +104,37 @@ function ModuleInteraction({ moduleId, selectedTask }) {
       </Box>
       {chatSession ? (
         <Box
-          flexGrow={1}
           display="flex"
           flexDirection="column"
-          sx={{ height: "100%" }}
+          justifyContent="space-between"
+          flexGrow={1}
+          p={2}
+          sx={{ width: "100%" }}
         >
           <ChatInterface session={chatSession} clearChat={clearChat} />
-          <Button
-            onClick={() =>
-              enqueueSnackbar("Task completed!", { variant: "success" })
-            }
-            variant="contained"
-            color="primary"
-            sx={{ marginTop: 2 }}
-          >
-            Complete Task
-          </Button>
+          <Box display="flex" justifyContent="space-between" mt={2}>
+            <Button
+              onClick={handleCompleteTask}
+              variant="contained"
+              color="primary"
+            >
+              Complete Task
+            </Button>
+            <Button
+              onClick={() =>
+                enqueueSnackbar("Message sent!", { variant: "success" })
+              }
+              variant="contained"
+              color="primary"
+            >
+              Send
+            </Button>
+          </Box>
         </Box>
       ) : (
         <Typography>Loading chat session...</Typography>
       )}
-    </Paper>
+    </Box>
   );
 }
 
