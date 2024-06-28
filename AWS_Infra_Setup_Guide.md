@@ -89,3 +89,10 @@
    - Configure AWS WAF to manage larger payloads:
      - In AWS WAF, select the load balancer's web ACL.
      - Modify the `SizeRestrictions_BODY` rule in `AWS-AWSManagedRulesCommonRuleSet` to "Count".
+
+2. **Google Credentials for API services**
+   - Store the credentials.json in AWS Secrets Manager
+      - Download the credentials json from google cloud
+      - Go to AWS Secrets Manager and create a new secret with value as credential.json
+      - Update fetch google crediatials to Secret config: [fetch_google_credentials](backend/fetch_google_credentials.py)
+   - Ensure that the IAM role associated with EB has permission to access the secret

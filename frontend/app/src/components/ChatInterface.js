@@ -6,20 +6,23 @@ import {
   Button,
   Typography,
   IconButton,
-  Switch,
+  Avatar,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
-import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Avatar } from "@mui/material";
 import botAvatar from "../assets/bot-avatar.png";
+import EarIcon from "@mui/icons-material/Hearing"; 
+import BrainIcon from "@mui/icons-material/Memory";
+import MouthIcon from "@mui/icons-material/RecordVoiceOver"; 
 
-function ChatInterface({ session, clearChat }) {
+function ChatInterface({ session, clearChat, handleCompleteTask }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
-  const [isAudioMode, setIsAudioMode] = useState(false);
+  const [chatMode, setChatMode] = useState("text");
   const [audioState, setAudioState] = useState("idle");
   const [messageId, setMessageId] = useState(1);
   const [audioQueue, setAudioQueue] = useState([]);
@@ -38,7 +41,7 @@ function ChatInterface({ session, clearChat }) {
       ws.current.close();
     }
 
-    ws.current = createWebSocket(session.id, isAudioMode);
+    ws.current = createWebSocket(session.id, chatMode === "audio");
 
     ws.current.onopen = () => {
       setIsWsConnected(true);
@@ -50,7 +53,7 @@ function ChatInterface({ session, clearChat }) {
         return;
       }
 
-      if (isAudioMode) {
+      if (chatMode === "audio") {
         if (event.data instanceof Blob) {
           setAudioQueue((prevQueue) => [...prevQueue, event.data]);
         } else if (typeof event.data === "string") {
@@ -89,14 +92,14 @@ function ChatInterface({ session, clearChat }) {
           } else if (data.transcript) {
             setMessages((prevMessages) => [
               ...prevMessages,
-              { sender: `You`, message: data.transcript, id: data.message_id },
+              { sender: "You", message: data.transcript, id: data.message_id },
             ]);
             setMessageId((prevId) => prevId + 1);
             setMessage("");
           } else if (data.event === "on_parser_start") {
             setMessages((prevMessages) => [
               ...prevMessages,
-              { sender: `GritCoach`, message: "", id: data.message_id },
+              { sender: "GritCoach", message: "", id: data.message_id },
             ]);
           } else if (data.event === "on_parser_stream") {
             setMessages((prevMessages) =>
@@ -118,7 +121,7 @@ function ChatInterface({ session, clearChat }) {
           setAudioState("speaking");
           setMessages((prevMessages) => [
             ...prevMessages,
-            { sender: `GritCoach`, message: "", id: data.message_id },
+            { sender: "GritCoach", message: "", id: data.message_id },
           ]);
         } else if (data.event === "on_parser_stream") {
           setMessages((prevMessages) =>
@@ -179,7 +182,7 @@ function ChatInterface({ session, clearChat }) {
         peerConnection.current.close();
       }
     };
-  }, [session.id, isAudioMode]);
+  }, [session.id, chatMode]);
 
   useEffect(() => {
     if (clearChat) {
@@ -196,6 +199,34 @@ function ChatInterface({ session, clearChat }) {
       playNextAudio();
     }
   }, [audioQueue, isPlaying]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === "Space" && chatMode === "audio" && audioState === "idle") {
+        e.preventDefault(); // Prevent default space behavior (like scrolling)
+        handlePTTMouseDown();
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (
+        e.code === "Space" &&
+        chatMode === "audio" &&
+        audioState === "recording"
+      ) {
+        e.preventDefault(); // Prevent default space behavior
+        handlePTTMouseUp();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [chatMode, audioState]);
 
   const playNextAudio = () => {
     if (audioQueue.length > 0) {
@@ -229,7 +260,7 @@ function ChatInterface({ session, clearChat }) {
     e.preventDefault();
     const userMessageId = messageId;
     const userMessage = {
-      sender: `You`,
+      sender: "You",
       message: message,
       id: userMessageId.toString(),
     };
@@ -291,46 +322,49 @@ function ChatInterface({ session, clearChat }) {
     }
   };
 
-  const handleModeSwitch = (event) => {
-    setIsAudioMode(event.target.checked);
+  const handleModeChange = (event) => {
+    setChatMode(event.target.value);
   };
 
-  const getAudioStateColor = () => {
+  const getAudioStateIcon = () => {
     switch (audioState) {
       case "recording":
-        return "red";
+        return <EarIcon style={{ position: "absolute", top: "-30px" }} />;
       case "processing":
-        return "yellow";
+        return <BrainIcon style={{ position: "absolute", top: "-30px" }} />;
       case "speaking":
-        return "green";
+        return <MouthIcon style={{ position: "absolute", top: "-30px" }} />;
       default:
-        return "gray";
+        return null;
     }
   };
 
   return (
-    <Box display="flex" flexDirection="column" height="100%">
-      <Box display="flex" justifyContent="space-between" p={2}>
-        <Box display="flex" alignItems="center">
-          {!isAudioMode && <Typography variant="body2">Text Mode</Typography>}
-          <Switch checked={isAudioMode} onChange={handleModeSwitch} />
-          {isAudioMode && (
-            <Typography variant="body2" style={{ marginLeft: "8px" }}>
-              Audio Mode
-            </Typography>
-          )}
-        </Box>
-        <Typography
-          variant="body2"
-          color={isWsConnected ? "green" : "red"}
-          style={{ marginLeft: "auto" }}
+    <Box display="flex" flexDirection="column" height="100%" width="100%">
+      <Box display="flex" justifyContent="flex-end" p={2}>
+        <Select
+          value={chatMode}
+          onChange={handleModeChange}
+          variant="outlined"
+          sx={{
+            borderRadius: "50px",
+            boxShadow: 3,
+          }}
         >
-          {isWsConnected ? "Connected" : "Disconnected"}
-        </Typography>
+          <MenuItem value="text">Text Mode</MenuItem>
+          <MenuItem value="audio">Audio Mode</MenuItem>
+        </Select>
       </Box>
-      <Box flexGrow={1} overflow="auto" p={2} height="400px">
+      <Box flexGrow={1} overflow="auto" p={2} sx={{ width: "100%" }}>
         {messages.map((msg, index) => (
-          <Box key={index} display="flex" alignItems="flex-start" mb={2}>
+          <Box
+            key={index}
+            display="flex"
+            justifyContent={
+              msg.sender === "GritCoach" ? "flex-start" : "flex-end"
+            }
+            mb={2}
+          >
             {msg.sender === "GritCoach" && (
               <Avatar
                 alt="Bot Avatar"
@@ -338,7 +372,12 @@ function ChatInterface({ session, clearChat }) {
                 style={{ marginRight: "8px" }}
               />
             )}
-            <Box>
+            <Box
+              bgcolor={msg.sender === "GritCoach" ? "#f0f0f0" : "#cfe8fc"}
+              p={1}
+              borderRadius={2}
+              maxWidth="60%"
+            >
               <Typography variant="body2" color="textSecondary">
                 <strong>{msg.sender}:</strong>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -350,17 +389,29 @@ function ChatInterface({ session, clearChat }) {
         ))}
         <div ref={messagesEndRef} />
       </Box>
-      <Box display="flex" justifyContent="center" alignItems="center" p={2}>
-        {isAudioMode ? (
-          <IconButton
-            onMouseDown={handlePTTMouseDown}
-            onMouseUp={handlePTTMouseUp}
-            color={audioState === "recording" ? "secondary" : "default"}
-            aria-label="push-to-talk"
-            style={{ fontSize: "2rem" }}
+      <Box display="flex" alignItems="center" p={2}>
+        {chatMode === "audio" ? (
+          <Box
+            display="flex"
+            justifyContent="center"
+            flexGrow={1}
+            position="relative"
           >
-            <MicIcon style={{ fontSize: "3rem" }} />
-          </IconButton>
+            <IconButton
+              onMouseDown={handlePTTMouseDown}
+              onMouseUp={handlePTTMouseUp}
+              color={audioState === "recording" ? "secondary" : "default"}
+              aria-label="push-to-talk"
+              sx={{
+                width: 80,
+                height: 80,
+                fontSize: "2rem",
+              }}
+            >
+              <MicIcon sx={{ fontSize: "4rem" }} />
+              {getAudioStateIcon()}
+            </IconButton>
+          </Box>
         ) : (
           <>
             <TextField
@@ -370,14 +421,24 @@ function ChatInterface({ session, clearChat }) {
               placeholder="Type a message..."
               onKeyDown={onKeyPress}
             />
-            <Button onClick={handleSubmit} color="primary" variant="contained">
+            <Button
+              onClick={handleSubmit}
+              color="primary"
+              variant="contained"
+              style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
+            >
               Send
             </Button>
           </>
         )}
-        <IconButton>
-          <FiberManualRecordIcon style={{ color: getAudioStateColor() }} />
-        </IconButton>
+        <Button
+          onClick={handleCompleteTask}
+          color="primary"
+          variant="contained"
+          style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
+        >
+          Complete
+        </Button>
       </Box>
     </Box>
   );

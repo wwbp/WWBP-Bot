@@ -27,7 +27,6 @@ class Task(models.Model):
         Module, on_delete=models.CASCADE, related_name='tasks')
     instruction_prompt = models.TextField(blank=True, null=True)
     persona_prompt = models.TextField(blank=True, null=True)
-    time_allocated = models.IntegerField(default=60)  # Default to 60 minutes
 
 
 class ChatSession(models.Model):
