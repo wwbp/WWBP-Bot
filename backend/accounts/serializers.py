@@ -14,7 +14,7 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ['id', 'title', 'content',
-                  'instruction_prompt', 'persona_prompt']
+                  'instruction_prompt', 'persona_prompt', 'module']
 
 
 class ModuleSerializer(serializers.ModelSerializer):
@@ -37,6 +37,7 @@ class ModuleSerializer(serializers.ModelSerializer):
         instance.name = validated_data.get('name', instance.name)
         instance.save()
 
+        # Update tasks if provided
         keep_tasks = []
         for task_data in tasks_data:
             if "id" in task_data:
@@ -47,15 +48,15 @@ class ModuleSerializer(serializers.ModelSerializer):
                     "instruction_prompt", task.instruction_prompt)
                 task.persona_prompt = task_data.get(
                     "persona_prompt", task.persona_prompt)
-                task.time_allocated = task_data.get(
-                    "time_allocated", task.time_allocated)
                 task.save()
                 keep_tasks.append(task.id)
             else:
                 task = Task.objects.create(module=instance, **task_data)
                 keep_tasks.append(task.id)
 
-        instance.tasks.exclude(id__in=keep_tasks).delete()
+        # Remove tasks not in the request
+        if keep_tasks:
+            instance.tasks.exclude(id__in=keep_tasks).delete()
         return instance
 
 

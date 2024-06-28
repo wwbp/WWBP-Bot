@@ -1,81 +1,122 @@
 import React, { useState, useEffect } from "react";
+import { postData, putData } from "../utils/api";
 import { TextField, Box, Button, Grid } from "@mui/material";
+import { useSnackbar } from "notistack";
 
-function TaskForm({ task, onChange, onRemove, submitted }) {
-  const [taskData, setTaskData] = useState(task);
+function TaskForm({ task, moduleId, onTaskCreated }) {
+  const initialTaskData = {
+    title: "",
+    content: "",
+    instruction_prompt: "",
+    persona_prompt: "",
+  };
+  const [taskData, setTaskData] = useState(initialTaskData);
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
-    setTaskData(task);
+    if (task.id) {
+      setTaskData(task);
+    } else {
+      setTaskData(initialTaskData);
+    }
   }, [task]);
 
-  const handleChange = (e) => {
+  const handleTaskChange = (e) => {
     const { name, value } = e.target;
-    const updatedTask = { ...taskData, [name]: value };
-    setTaskData(updatedTask);
-    onChange(updatedTask);
+    setTaskData({ ...taskData, [name]: value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+    if (!taskData.title || !taskData.content) {
+      enqueueSnackbar("Task title and content are required", {
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      if (task.id) {
+        await putData(`/tasks/${task.id}/`, taskData);
+        enqueueSnackbar("Task updated successfully!", { variant: "success" });
+      } else {
+        const taskPayload = { ...taskData, module: moduleId };
+        await postData(`/modules/${moduleId}/add_task/`, taskPayload);
+        enqueueSnackbar("Task created successfully!", { variant: "success" });
+      }
+      onTaskCreated();
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
   };
 
   return (
-    <Box mb={2}>
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Title"
-            name="title"
-            value={taskData.title}
-            onChange={handleChange}
-            margin="normal"
-            required
-            error={submitted && !taskData.title}
-            helperText={submitted && !taskData.title && "Title is required"}
-          />
+    <Box py={5}>
+      <form onSubmit={handleSubmit}>
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Title"
+              name="title"
+              value={taskData.title}
+              onChange={handleTaskChange}
+              margin="normal"
+              required
+              error={submitted && !taskData.title}
+              helperText={submitted && !taskData.title && "Title is required"}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Content"
+              name="content"
+              value={taskData.content}
+              onChange={handleTaskChange}
+              margin="normal"
+              multiline
+              rows={5}
+              required
+              error={submitted && !taskData.content}
+              helperText={
+                submitted && !taskData.content && "Content is required"
+              }
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Instruction Prompt"
+              name="instruction_prompt"
+              value={taskData.instruction_prompt}
+              onChange={handleTaskChange}
+              margin="normal"
+              multiline
+              rows={5}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Persona Prompt"
+              name="persona_prompt"
+              value={taskData.persona_prompt}
+              onChange={handleTaskChange}
+              margin="normal"
+              multiline
+              rows={5}
+            />
+          </Grid>
         </Grid>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Content"
-            name="content"
-            value={taskData.content}
-            onChange={handleChange}
-            margin="normal"
-            multiline
-            rows={5}
-            required
-            error={submitted && !taskData.content}
-            helperText={submitted && !taskData.content && "Content is required"}
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Instruction Prompt"
-            name="instruction_prompt"
-            value={taskData.instruction_prompt}
-            onChange={handleChange}
-            margin="normal"
-            multiline
-            rows={5}
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Persona Prompt"
-            name="persona_prompt"
-            value={taskData.persona_prompt}
-            onChange={handleChange}
-            margin="normal"
-            multiline
-            rows={5}
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <Button variant="outlined" color="secondary" onClick={onRemove}>
-            Remove Task
+        <Box display="flex" justifyContent="space-between" mt={3}>
+          <Button variant="contained" color="primary" type="submit">
+            {task.id ? "Update Task" : "Create Task"}
           </Button>
-        </Grid>
-      </Grid>
+        </Box>
+      </form>
     </Box>
   );
 }

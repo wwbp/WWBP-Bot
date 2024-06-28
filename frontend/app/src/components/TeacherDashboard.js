@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, deleteData } from "../utils/api";
+import { fetchData } from "../utils/api";
 import ModuleForm from "./ModuleForm";
-import SystemPromptForm from "./SystemPromptForm";
+import TaskForm from "./TaskForm";
 import {
   Box,
   Typography,
@@ -9,131 +9,151 @@ import {
   Grid,
   Card,
   CardContent,
-  CardActions,
   CircularProgress,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 
 function TeacherDashboard() {
   const [modules, setModules] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const [selectedTask, setSelectedTask] = useState(null);
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchData("/modules/")
-      .then((data) => {
-        setModules(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        enqueueSnackbar(error.message, { variant: "error" });
-        setLoading(false);
-      });
+      .then((data) => setModules(data))
+      .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
   }, []);
+
+  const handleModuleSelect = (module) => {
+    setSelectedModule(module);
+    setSelectedTask(null);
+  };
+
+  const handleTaskSelect = (task) => {
+    setSelectedTask(task);
+  };
 
   const handleModuleCreated = () => {
     fetchData("/modules/")
-      .then(setModules)
-      .catch((error) => {
-        enqueueSnackbar(error.message, { variant: "error" });
-      });
-    setSelectedModule(null);
+      .then((data) => {
+        setModules(data);
+        const updatedModule =
+          data.find((mod) => mod.id === selectedModule.id) || null;
+        setSelectedModule(updatedModule);
+      })
+      .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
   };
 
-  const handleEditClick = (module) => {
-    setSelectedModule(module);
-  };
-
-  const handleDeleteClick = async (moduleId) => {
-    enqueueSnackbar("Are you sure you want to delete this module?", {
-      variant: "warning",
-      persist: true,
-      action: (key) => (
-        <>
-          <Button
-            onClick={async () => {
-              try {
-                await deleteData(`/modules/${moduleId}/`);
-                handleModuleCreated();
-                enqueueSnackbar("Module deleted successfully!", {
-                  variant: "success",
-                });
-                closeSnackbar(key);
-              } catch (error) {
-                enqueueSnackbar(error.message, { variant: "error" });
-              }
-            }}
-          >
-            Yes
-          </Button>
-          <Button onClick={() => closeSnackbar(key)}>No</Button>
-        </>
-      ),
-    });
-  };
-
-  const handleCloseForm = () => {
-    setSelectedModule(null);
+  const handleTaskCreated = () => {
+    fetchData(`/modules/${selectedModule.id}/tasks/`)
+      .then((tasks) => {
+        const updatedModule = { ...selectedModule, tasks: tasks };
+        setSelectedModule(updatedModule);
+      })
+      .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
   };
 
   return (
     <Grid container spacing={3} py={5} px={3}>
-      <Grid item xs={12} md={4}>
+      <Grid item xs={12} md={3}>
         <Typography variant="h5" gutterBottom>
           Modules
         </Typography>
-        {error && <Typography color="error">Error: {error}</Typography>}
-        {loading ? (
-          <Box textAlign="center" py={5}>
-            <CircularProgress />
-          </Box>
-        ) : modules.length === 0 ? (
-          <Typography>No modules available</Typography>
-        ) : (
+        <Grid container spacing={3}>
+          {modules.map((module) => (
+            <Grid item xs={12} key={module.id}>
+              <Card
+                sx={{
+                  backgroundColor:
+                    selectedModule && selectedModule.id === module.id
+                      ? "#ffcccc"
+                      : "#e0e0e0",
+                  borderRadius: 2,
+                  cursor: "pointer",
+                }}
+                onClick={() => handleModuleSelect(module)}
+              >
+                <CardContent>
+                  <Typography variant="h6">{module.name}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+          <Grid item xs={12}>
+            <Card
+              sx={{
+                backgroundColor: "#e0e0e0",
+                borderRadius: 2,
+                border: "2px dashed #9e9e9e",
+                cursor: "pointer",
+              }}
+              onClick={() => handleModuleSelect({})}
+            >
+              <CardContent>
+                <Typography variant="h6">+ Create New Module</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Grid>
+      <Grid item xs={12} md={3}>
+        <Typography variant="h5" gutterBottom>
+          Tasks
+        </Typography>
+        {selectedModule && (
           <Grid container spacing={3}>
-            {modules.map((module) => (
-              <Grid item xs={12} key={module.id}>
-                <Card sx={{ backgroundColor: "#ffcccc", borderRadius: 2 }}>
+            {selectedModule.tasks?.map((task, index) => (
+              <Grid item xs={12} key={index}>
+                <Card
+                  sx={{
+                    backgroundColor:
+                      selectedTask && selectedTask.title === task.title
+                        ? "#ffcccc"
+                        : "#e0e0e0",
+                    borderRadius: 2,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => handleTaskSelect(task)}
+                >
                   <CardContent>
-                    <Typography variant="h6">{module.name}</Typography>
+                    <Typography variant="h6">{task.title}</Typography>
                   </CardContent>
-                  <CardActions>
-                    <Button
-                      size="small"
-                      onClick={() => handleEditClick(module)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="small"
-                      color="secondary"
-                      onClick={() => handleDeleteClick(module.id)}
-                      disabled={
-                        selectedModule && selectedModule.id === module.id
-                      }
-                    >
-                      Delete
-                    </Button>
-                  </CardActions>
                 </Card>
               </Grid>
             ))}
+            <Grid item xs={12}>
+              <Card
+                sx={{
+                  backgroundColor: "#e0e0e0",
+                  borderRadius: 2,
+                  border: "2px dashed #9e9e9e",
+                  cursor: "pointer",
+                }}
+                onClick={() => handleTaskSelect({})}
+              >
+                <CardContent>
+                  <Typography variant="h6">+ Add Task</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
         )}
       </Grid>
-      <Grid item xs={12} md={8}>
-        <SystemPromptForm />
-        <Typography variant="h5" gutterBottom>
-          {selectedModule ? "Edit Module" : "Create Module"}
-        </Typography>
-        <ModuleForm
-          module={selectedModule || {}}
-          onModuleCreated={handleModuleCreated}
-          onClose={handleCloseForm}
-          resetFormAfterSubmit={true}
-        />
+      <Grid item xs={12} md={6}>
+        {selectedModule && !selectedTask && (
+          <ModuleForm
+            module={selectedModule}
+            onModuleCreated={handleModuleCreated}
+          />
+        )}
+        {selectedModule && selectedTask && (
+          <TaskForm
+            task={selectedTask}
+            moduleId={selectedModule.id}
+            onTaskCreated={handleTaskCreated}
+          />
+        )}
       </Grid>
     </Grid>
   );

@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import DescriptionIcon from "@mui/icons-material/Description";
 import { postData } from "../utils/api";
 import { useSnackbar } from "notistack";
 
@@ -104,6 +105,13 @@ function NavBar({
                   {isStudentView ? "Student" : "Teacher"}
                   <SwapHorizIcon fontSize="small" style={{ marginLeft: 5 }} />
                 </Box>
+                <IconButton
+                  color="inherit"
+                  component={Link}
+                  to="/system-prompt"
+                >
+                  <DescriptionIcon />
+                </IconButton>
               </>
             )}
             {role === "student" && (
