@@ -79,7 +79,17 @@ function NavBar({
         </Typography>
         {isLoggedIn ? (
           <>
-            <IconButton color="inherit" component={Link} to="/">
+            <IconButton
+              color="inherit"
+              component={Link}
+              to={
+                role === "teacher"
+                  ? isStudentView
+                    ? "/student-dashboard"
+                    : "/teacher-dashboard"
+                  : "/student-dashboard"
+              }
+            >
               <HomeIcon />
             </IconButton>
             {role === "teacher" && (
