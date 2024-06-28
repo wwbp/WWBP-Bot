@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { fetchData } from "../utils/api";
+import { fetchData, deleteData, postData } from "../utils/api";
 import ModuleForm from "./ModuleForm";
 import TaskForm from "./TaskForm";
-import { Box, Typography, Grid, Card, CardContent, Paper } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  IconButton,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useSnackbar } from "notistack";
 
 const cardStyle = {
@@ -14,6 +28,7 @@ const cardStyle = {
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
+  position: "relative",
 };
 
 const selectedCardStyle = {
@@ -30,6 +45,9 @@ function TeacherDashboard() {
   const [modules, setModules] = useState([]);
   const [selectedModule, setSelectedModule] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleteType, setDeleteType] = useState(""); // 'module' or 'task'
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
@@ -38,45 +56,87 @@ function TeacherDashboard() {
       .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
   }, []);
 
-  const handleModuleSelect = (module) => {
-    setSelectedModule(module);
-    setSelectedTask(null);
+  const handleModuleSelect = async (module) => {
+    if (module.id) {
+      try {
+        const tasks = await fetchData(`/modules/${module.id}/tasks/`);
+        setSelectedModule({ ...module, tasks });
+        setSelectedTask(null);
+      } catch (error) {
+        enqueueSnackbar(error.message, { variant: "error" });
+      }
+    } else {
+      setSelectedModule({ id: null, name: "", tasks: [] });
+      setSelectedTask(null);
+    }
   };
 
   const handleTaskSelect = (task) => {
     setSelectedTask(task);
   };
 
-  const handleModuleCreated = () => {
-    fetchData("/modules/")
-      .then((data) => {
-        setModules(data);
-        const newModule =
-          data.find((mod) => mod.id === selectedModule.id) || null;
-        setSelectedModule(newModule);
-      })
-      .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
+  const handleModuleCreated = async () => {
+    try {
+      const data = await fetchData("/modules/");
+      setModules(data);
+      const newModule =
+        data.find((mod) => mod.id === selectedModule.id) || null;
+      setSelectedModule(newModule);
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
   };
 
-  const handleTaskCreated = () => {
-    fetchData(`/modules/${selectedModule.id}/tasks/`)
-      .then((tasks) => {
-        const updatedModule = { ...selectedModule, tasks: tasks };
+  const handleTaskCreated = async () => {
+    if (selectedModule && selectedModule.id) {
+      try {
+        const tasks = await fetchData(`/modules/${selectedModule.id}/tasks/`);
+        const updatedModule = { ...selectedModule, tasks };
         setSelectedModule(updatedModule);
         setSelectedTask(null);
-        // Ensure the UI updates with the new task list
-        fetchData("/modules/")
-          .then((data) => {
-            setModules(data);
-            const updatedModule =
-              data.find((mod) => mod.id === selectedModule.id) || null;
-            setSelectedModule(updatedModule);
-          })
-          .catch((error) =>
-            enqueueSnackbar(error.message, { variant: "error" })
-          );
-      })
-      .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
+        const data = await fetchData("/modules/");
+        setModules(data);
+        const updatedModuleData =
+          data.find((mod) => mod.id === selectedModule.id) || null;
+        setSelectedModule(updatedModuleData);
+      } catch (error) {
+        enqueueSnackbar(error.message, { variant: "error" });
+      }
+    }
+  };
+
+  const handleDeleteClick = (item, type) => {
+    setDeleteItem(item);
+    setDeleteType(type);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      if (deleteType === "module") {
+        await deleteData(`/modules/${deleteItem.id}/`);
+        setModules(modules.filter((module) => module.id !== deleteItem.id));
+        setSelectedModule(null);
+      } else if (deleteType === "task") {
+        await deleteData(`/tasks/${deleteItem.id}/`);
+        const updatedTasks = selectedModule.tasks.filter(
+          (task) => task.id !== deleteItem.id
+        );
+        setSelectedModule({ ...selectedModule, tasks: updatedTasks });
+      }
+      enqueueSnackbar(
+        `${
+          deleteType.charAt(0).toUpperCase() + deleteType.slice(1)
+        } deleted successfully!`,
+        { variant: "success" }
+      );
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteItem(null);
+      setDeleteType("");
+    }
   };
 
   return (
@@ -99,13 +159,22 @@ function TeacherDashboard() {
                 <CardContent>
                   <Typography variant="h6">{module.name}</Typography>
                 </CardContent>
+                <IconButton
+                  sx={{ position: "absolute", bottom: 4, right: 4 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick(module, "module");
+                  }}
+                >
+                  <DeleteIcon />
+                </IconButton>
               </Card>
             </Grid>
           ))}
           <Grid item xs={12}>
             <Card
               sx={
-                selectedModule && !selectedModule.id
+                selectedModule && selectedModule.id === null
                   ? selectedCardStyle
                   : cardStyle
               }
@@ -139,13 +208,22 @@ function TeacherDashboard() {
                   <CardContent>
                     <Typography variant="h6">{task.title}</Typography>
                   </CardContent>
+                  <IconButton
+                    sx={{ position: "absolute", bottom: 4, right: 4 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(task, "task");
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
                 </Card>
               </Grid>
             ))}
             <Grid item xs={12}>
               <Card
                 sx={
-                  selectedTask && !selectedTask.id
+                  selectedTask && selectedTask.id === null
                     ? selectedCardStyle
                     : cardStyle
                 }
@@ -176,6 +254,25 @@ function TeacherDashboard() {
           />
         )}
       </Grid>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this {deleteType}?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            No
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="primary" autoFocus>
+            Yes
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Grid>
   );
 }
