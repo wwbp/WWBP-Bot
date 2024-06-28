@@ -71,24 +71,6 @@ function TaskForm({ task, onChange, onRemove, submitted }) {
           />
         </Grid>
         <Grid item xs={12}>
-          <TextField
-            fullWidth
-            label="Time Allocated (in minutes)"
-            name="time_allocated"
-            type="number"
-            value={taskData.time_allocated}
-            onChange={handleChange}
-            margin="normal"
-            required
-            error={submitted && !taskData.time_allocated}
-            helperText={
-              submitted &&
-              !taskData.time_allocated &&
-              "Time Allocated is required"
-            }
-          />
-        </Grid>
-        <Grid item xs={12}>
           <Button variant="outlined" color="secondary" onClick={onRemove}>
             Remove Task
           </Button>

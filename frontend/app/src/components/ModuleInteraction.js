@@ -9,18 +9,13 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
   const [error, setError] = useState(null);
   const [chatSession, setChatSession] = useState(null);
   const [clearChat, setClearChat] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
-    let timer;
     if (selectedTask) {
       startChatSession(selectedTask.id);
       setClearChat(true);
-      setElapsedTime(0);
-      timer = setInterval(() => setElapsedTime((prev) => prev + 1), 1000);
     }
-    return () => clearInterval(timer);
   }, [selectedTask]);
 
   const startChatSession = async (taskId) => {
@@ -33,24 +28,6 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
       enqueueSnackbar(error.message, { variant: "error" });
       setError(error.message);
     }
-  };
-
-  const formatElapsedTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-  };
-
-  const getTimerColor = () => {
-    const allocatedTimeInSeconds = selectedTask.time_allocated * 60;
-
-    if (elapsedTime >= allocatedTimeInSeconds) {
-      return "red";
-    }
-    if (elapsedTime >= allocatedTimeInSeconds - 60) {
-      return "orange";
-    }
-    return "black";
   };
 
   const handleCompleteTask = () => {
@@ -96,12 +73,6 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
         p={2}
       >
         <Typography variant="h6">{selectedTask.title}</Typography>
-        <Typography
-          variant="body1"
-          style={{ color: getTimerColor(), marginLeft: "auto" }}
-        >
-          {formatElapsedTime(elapsedTime)}
-        </Typography>
       </Box>
       {chatSession ? (
         <Box

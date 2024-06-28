@@ -13,8 +13,8 @@ class UserSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'title', 'content', 'instruction_prompt',
-                  'persona_prompt', 'time_allocated']
+        fields = ['id', 'title', 'content',
+                  'instruction_prompt', 'persona_prompt']
 
 
 class ModuleSerializer(serializers.ModelSerializer):

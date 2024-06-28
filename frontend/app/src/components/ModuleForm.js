@@ -58,7 +58,6 @@ function ModuleForm({
         content: "",
         instruction_prompt: "",
         persona_prompt: "",
-        time_allocated: "",
       },
     ]);
   };
@@ -73,7 +72,7 @@ function ModuleForm({
     }
 
     for (let task of tasks) {
-      if (!task.title || !task.content || !task.time_allocated) {
+      if (!task.title || !task.content) {
         return "Please fill all required fields for tasks";
       }
     }
