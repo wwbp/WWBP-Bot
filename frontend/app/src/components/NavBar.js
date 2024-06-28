@@ -79,16 +79,17 @@ function NavBar({
         </Typography>
         {isLoggedIn ? (
           <>
+            <IconButton color="inherit" component={Link} to="/">
+              <HomeIcon />
+            </IconButton>
             {role === "teacher" && (
               <>
                 <IconButton
                   color="inherit"
                   component={Link}
-                  to={
-                    isStudentView ? "/student-dashboard" : "/teacher-dashboard"
-                  }
+                  to="/system-prompt"
                 >
-                  <HomeIcon />
+                  <DescriptionIcon />
                 </IconButton>
                 <Box
                   onClick={toggleView}
@@ -105,23 +106,7 @@ function NavBar({
                   {isStudentView ? "Student" : "Teacher"}
                   <SwapHorizIcon fontSize="small" style={{ marginLeft: 5 }} />
                 </Box>
-                <IconButton
-                  color="inherit"
-                  component={Link}
-                  to="/system-prompt"
-                >
-                  <DescriptionIcon />
-                </IconButton>
               </>
-            )}
-            {role === "student" && (
-              <IconButton
-                color="inherit"
-                component={Link}
-                to="/student-dashboard"
-              >
-                <HomeIcon />
-              </IconButton>
             )}
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <IconButton
