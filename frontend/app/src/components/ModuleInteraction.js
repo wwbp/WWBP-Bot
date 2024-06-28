@@ -5,7 +5,7 @@ import { Box, Typography, Button } from "@mui/material";
 import { useSnackbar } from "notistack";
 import confetti from "canvas-confetti";
 
-function ModuleInteraction({ moduleId, selectedTask }) {
+function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
   const [error, setError] = useState(null);
   const [chatSession, setChatSession] = useState(null);
   const [clearChat, setClearChat] = useState(false);
@@ -60,6 +60,7 @@ function ModuleInteraction({ moduleId, selectedTask }) {
       spread: 70,
       origin: { y: 0.6 },
     });
+    onCompleteTask(selectedTask.id);
   };
 
   if (error) {
