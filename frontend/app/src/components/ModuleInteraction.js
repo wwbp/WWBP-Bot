@@ -65,15 +65,6 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
         width: "100%",
       }}
     >
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-        p={2}
-      >
-        <Typography variant="h6">{selectedTask.title}</Typography>
-      </Box>
       {chatSession ? (
         <Box
           display="flex"

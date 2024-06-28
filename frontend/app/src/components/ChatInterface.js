@@ -11,7 +11,6 @@ import {
   Select,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
-import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -296,38 +295,21 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     setChatMode(event.target.value);
   };
 
-  const getAudioStateColor = () => {
-    switch (audioState) {
-      case "recording":
-        return "red";
-      case "processing":
-        return "yellow";
-      case "speaking":
-        return "green";
-      default:
-        return "gray";
-    }
-  };
-
   return (
     <Box display="flex" flexDirection="column" height="100%" width="100%">
-      <Box display="flex" justifyContent="space-between" p={2}>
-        <Box display="flex" alignItems="center">
-          <Select value={chatMode} onChange={handleModeChange}>
-            <MenuItem value="text">Text Mode</MenuItem>
-            <MenuItem value="audio">Audio Mode</MenuItem>
-            {/* Add more modes as needed */}
-          </Select>
-        </Box>
-        {!isWsConnected && (
-          <Typography
-            variant="body2"
-            color="red"
-            style={{ marginLeft: "auto" }}
-          >
-            Disconnected
-          </Typography>
-        )}
+      <Box display="flex" justifyContent="flex-end" p={2}>
+        <Select
+          value={chatMode}
+          onChange={handleModeChange}
+          variant="outlined"
+          sx={{
+            borderRadius: "50px",
+            boxShadow: 3,
+          }}
+        >
+          <MenuItem value="text">Text Mode</MenuItem>
+          <MenuItem value="audio">Audio Mode</MenuItem>
+        </Select>
       </Box>
       <Box flexGrow={1} overflow="auto" p={2} sx={{ width: "100%" }}>
         {messages.map((msg, index) => (
@@ -365,15 +347,17 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
       </Box>
       <Box display="flex" alignItems="center" p={2}>
         {chatMode === "audio" ? (
-          <IconButton
-            onMouseDown={handlePTTMouseDown}
-            onMouseUp={handlePTTMouseUp}
-            color={audioState === "recording" ? "secondary" : "default"}
-            aria-label="push-to-talk"
-            style={{ fontSize: "2rem" }}
-          >
-            <MicIcon style={{ fontSize: "3rem" }} />
-          </IconButton>
+          <Box display="flex" justifyContent="center" flexGrow={1}>
+            <IconButton
+              onMouseDown={handlePTTMouseDown}
+              onMouseUp={handlePTTMouseUp}
+              color={audioState === "recording" ? "secondary" : "default"}
+              aria-label="push-to-talk"
+              style={{ fontSize: "2rem" }}
+            >
+              <MicIcon style={{ fontSize: "3rem" }} />
+            </IconButton>
+          </Box>
         ) : (
           <TextField
             fullWidth
@@ -399,9 +383,6 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
         >
           Complete
         </Button>
-        <IconButton>
-          <FiberManualRecordIcon style={{ color: getAudioStateColor() }} />
-        </IconButton>
       </Box>
     </Box>
   );
