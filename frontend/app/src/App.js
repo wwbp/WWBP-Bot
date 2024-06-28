@@ -8,6 +8,7 @@ import NavBar from "./components/NavBar";
 import Signup from "./components/Signup";
 import TeacherDashboard from "./components/TeacherDashboard";
 import StudentDashboard from "./components/StudentDashboard";
+import SystemPromptPage from "./components/SystemPromptPage";
 import { SnackbarProvider } from "notistack";
 
 function App() {
@@ -67,6 +68,9 @@ function App() {
           )}
           {(role === "student" || isStudentView) && (
             <Route path="/student-dashboard/*" element={<StudentDashboard />} />
+          )}
+          {role === "teacher" && (
+            <Route path="/system-prompt" element={<SystemPromptPage />} />
           )}
         </Routes>
       </Router>

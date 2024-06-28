@@ -4,10 +4,11 @@ import {
   Box,
   Typography,
   CircularProgress,
-  Card,
-  CardContent,
+  List,
+  ListItem,
+  ListItemText,
   Divider,
-  Grid,
+  Paper,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
@@ -28,36 +29,10 @@ function ModuleList() {
         enqueueSnackbar(error.message, { variant: "error" });
         setLoading(false);
       });
-  }, []);
+  }, [enqueueSnackbar]);
 
   function handleModuleSelection(module) {
     navigate(`/student-dashboard/module/${module.id}`);
-  }
-
-  function moduleCard(module) {
-    return (
-      <Grid item xs={12} sm={6} md={4} lg={3} key={module.id}>
-        <Card
-          sx={{
-            borderRadius: 2,
-            backgroundColor: "#ffcccc",
-            color: "white",
-            cursor: "pointer",
-          }}
-          onClick={() => handleModuleSelection(module)}
-        >
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              {module.name}
-            </Typography>
-            <Typography variant="subtitle2" sx={{ marginBottom: 2 }}>
-              {module.description}
-            </Typography>
-            <Divider sx={{ marginBottom: 2 }} />
-          </CardContent>
-        </Card>
-      </Grid>
-    );
   }
 
   if (loading) {
@@ -69,16 +44,43 @@ function ModuleList() {
   }
 
   return (
-    <Box sx={{ flexGrow: 1, padding: 2 }}>
+    <Box
+      sx={{
+        flexGrow: 1,
+        padding: 2,
+        backgroundColor: "#ffe6e6",
+        borderRadius: 2,
+      }}
+    >
       <Typography variant="h5" gutterBottom>
         Modules
       </Typography>
       {modules.length === 0 ? (
         <Typography>No active modules assigned to you</Typography>
       ) : (
-        <Grid container spacing={2}>
-          {modules.map((module) => moduleCard(module))}
-        </Grid>
+        <List>
+          {modules.map((module) => (
+            <React.Fragment key={module.id}>
+              <Paper
+                elevation={3}
+                sx={{
+                  backgroundColor: "white",
+                  borderRadius: "50px",
+                  margin: "10px 0",
+                  padding: "10px 20px",
+                }}
+              >
+                <ListItem button onClick={() => handleModuleSelection(module)}>
+                  <ListItemText
+                    primary={module.name}
+                    secondary={module.description}
+                  />
+                </ListItem>
+              </Paper>
+              <Divider component="li" />
+            </React.Fragment>
+          ))}
+        </List>
       )}
     </Box>
   );

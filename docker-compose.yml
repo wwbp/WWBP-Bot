@@ -27,6 +27,7 @@ services:
     depends_on:
       - db
       - redis
+      # - rabbitmq
     environment:
       - DEBUG=${DEBUG}
       - SECRET_KEY=${SECRET_KEY}
@@ -39,41 +40,55 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
       - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
       - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
       - ENVIRONMENT=${ENVIRONMENT}
       - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME}
       - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
 
-  celery:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.local
-    command: celery -A config worker -l info
-    volumes:
-      - ./backend:/app
-    depends_on:
-      - backend
-      - redis
-    environment:
-      - DEBUG=${DEBUG}
-      - SECRET_KEY=${SECRET_KEY}
-      - DATABASE_ENGINE=${DATABASE_ENGINE}
-      - DATABASE_NAME=${DATABASE_NAME}
-      - DATABASE_USER=${DATABASE_USER}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
-      - DATABASE_HOST=${DATABASE_HOST}
-      - DATABASE_PORT=${DATABASE_PORT}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
-      - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
-      - ENVIRONMENT=${ENVIRONMENT}
-      - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME}
-      - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  # celery:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile.local
+  #   command: celery -A config worker -l info
+  #   volumes:
+  #     - ./backend:/app
+  #   depends_on:
+  #     - backend
+  #     - rabbitmq
+  #   environment:
+  #     - DEBUG=${DEBUG}
+  #     - SECRET_KEY=${SECRET_KEY}
+  #     - DATABASE_ENGINE=${DATABASE_ENGINE}
+  #     - DATABASE_NAME=${DATABASE_NAME}
+  #     - DATABASE_USER=${DATABASE_USER}
+  #     - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+  #     - DATABASE_HOST=${DATABASE_HOST}
+  #     - DATABASE_PORT=${DATABASE_PORT}
+  #     - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+  #     - CORS_ALLOW_ALL_ORIGINS=${CORS_ALLOW_ALL_ORIGINS}
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #     - RABBITMQ_HOST=${RABBITMQ_HOST}
+  #     - RABBITMQ_PORT=${RABBITMQ_PORT}
+  #     - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+  #     - ENVIRONMENT=${ENVIRONMENT}
+  #     - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME}
+  #     - AWS_STORAGE_BUCKET_NAME=${AWS_STORAGE_BUCKET_NAME}
+
+  # rabbitmq:
+  #   image: "rabbitmq:3-management-alpine"
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+  #     RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
 
   frontend:
     build:
@@ -91,11 +106,6 @@ services:
       - backend
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL}
-
-  redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
 
 volumes:
   mysql-data:

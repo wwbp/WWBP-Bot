@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 import requests
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -108,8 +107,7 @@ MIDDLEWARE = [
 
 
 # Redis Configuration
-REDIS_HOST = os.getenv(
-    'REDIS_HOST', 'redis')
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
 
@@ -119,7 +117,20 @@ else:
     REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 
 # Celery Configuration
-CELERY_BROKER_URL = REDIS_URL
+rabbitmq_user = os.getenv('RABBITMQ_DEFAULT_USER', 'guest')
+rabbitmq_password = os.getenv('RABBITMQ_DEFAULT_PASS', 'guest')
+rabbitmq_host = os.getenv('RABBITMQ_HOST', 'guest')
+rabbitmq_port = os.getenv('RABBITMQ_PORT', '5672')
+
+CELERY_BROKER = f'{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}:{rabbitmq_port}'
+if ENVIRONMENT == 'production':
+    CELERY_BROKER_URL = f'amqps://{CELERY_BROKER}'
+    CELERY_BROKER_USE_SSL = {
+        'ssl_cert_reqs': ssl.CERT_NONE,
+    }
+else:
+    CELERY_BROKER_URL = f'amqp://{CELERY_BROKER}'
+
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'default'
 
@@ -149,7 +160,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
-
 
 # Consider restricting in production
 # CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'

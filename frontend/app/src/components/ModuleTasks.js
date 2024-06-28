@@ -12,24 +12,27 @@ import {
 } from "@mui/material";
 import ModuleInteraction from "./ModuleInteraction";
 import { useSnackbar } from "notistack";
-import Grid from "@mui/material/Unstable_Grid2";
+import Grid from "@mui/material/Grid";
+import LockIcon from "@mui/icons-material/Lock";
+import RedoIcon from "@mui/icons-material/Redo";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 function ModuleTasks() {
   const { moduleId } = useParams();
-  const [module, setModule] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
-    fetchData(`/modules/${moduleId}/`)
-      .then((data) => {
-        setModule(data);
-        return fetchData(`/modules/${moduleId}/tasks/`);
-      })
+    fetchData(`/modules/${moduleId}/tasks/`)
       .then((taskData) => {
-        setTasks(taskData);
+        const updatedTasks = taskData.map((task, index) => ({
+          ...task,
+          locked: index !== 0,
+          completed: false,
+        }));
+        setTasks(updatedTasks);
         setLoading(false);
       })
       .catch((error) => {
@@ -38,9 +41,28 @@ function ModuleTasks() {
       });
   }, [moduleId]);
 
-  function handleTaskSelection(task) {
-    setSelectedTask(task);
-  }
+  const handleTaskSelection = (task) => {
+    if (!task.locked) {
+      setSelectedTask(task);
+    }
+  };
+
+  const handleCompleteTask = (taskId) => {
+    const updatedTasks = tasks.map((task, index) => {
+      if (task.id === taskId) {
+        task.completed = true;
+      }
+      if (index === tasks.findIndex((t) => t.id === taskId) + 1) {
+        task.locked = false;
+      }
+      return task;
+    });
+    setTasks(updatedTasks);
+    const nextTask = updatedTasks.find(
+      (task, index) => index === tasks.findIndex((t) => t.id === taskId) + 1
+    );
+    setSelectedTask(nextTask);
+  };
 
   if (loading) {
     return (
@@ -51,58 +73,101 @@ function ModuleTasks() {
   }
 
   return (
-    <Grid container spacing={2}>
+    <Grid container sx={{ height: "100vh" }}>
       <Grid
+        item
         xs={12}
-        md={4}
+        md={3}
         sx={{
           backgroundColor: "white",
           color: "black",
-          overflow: "scroll",
-          height: "100vh",
-          padding: 2,
+          overflowY: "auto",
+          borderRight: "1px solid #e0e0e0",
+          height: "100%",
         }}
       >
-        <Typography variant="h5" gutterBottom>
-          {module ? module.name : "Tasks"}
-        </Typography>
         {tasks.length === 0 ? (
           <Typography>No tasks available</Typography>
         ) : (
-          <List dense>
-            {tasks.map((task) => (
+          <List dense sx={{ p: 2 }}>
+            {tasks.map((task, index) => (
               <Paper
                 elevation={3}
                 sx={{
-                  ":hover": { backgroundColor: "#e0e0e0", cursor: "pointer" },
-                  marginBottom: 1,
-                  padding: 1,
+                  ":hover": {
+                    backgroundColor: "#e0e0e0",
+                    cursor: task.locked ? "default" : "pointer",
+                  },
+                  marginBottom: 2,
+                  padding: 2,
                   borderRadius: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  height: "120px",
+                  backgroundColor: task.locked
+                    ? "#f0f0f0"
+                    : task.completed
+                    ? "#d3d3d3"
+                    : "white",
+                  position: "relative",
+                  width: "100%", // Make the card occupy full width of the column
+                  pointerEvents: task.locked ? "none" : "auto",
+                  color: task.locked ? "grey" : "black",
                 }}
                 onClick={() => handleTaskSelection(task)}
                 key={task.id}
               >
-                <ListItem key={task.id}>
-                  <ListItemText primary={task.title} />
+                {task.locked && (
+                  <LockIcon style={{ position: "absolute", top: 8, left: 8 }} />
+                )}
+                {task.completed && (
+                  <RedoIcon style={{ position: "absolute", top: 8, left: 8 }} />
+                )}
+                {task.completed && (
+                  <CheckCircleIcon
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      color: "green",
+                    }}
+                  />
+                )}
+                <ListItem>
+                  <ListItemText
+                    primary={task.title}
+                    sx={{ textAlign: "center" }}
+                  />
                 </ListItem>
               </Paper>
             ))}
           </List>
         )}
       </Grid>
-      <Grid xs>
-        <Box p={5} sx={{ height: "100vh" }}>
-          {selectedTask ? (
-            <ModuleInteraction
-              moduleId={moduleId}
-              selectedTask={selectedTask}
-            />
-          ) : (
+      <Grid item xs={12} md={9} sx={{ height: "100%" }}>
+        {selectedTask ? (
+          <ModuleInteraction
+            moduleId={moduleId}
+            selectedTask={selectedTask}
+            onCompleteTask={handleCompleteTask}
+          />
+        ) : (
+          <Box
+            p={2}
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
             <Typography variant="h5">
-              Please select a specific task from the list on the left!
+              Please select the first task to begin!
             </Typography>
-          )}
-        </Box>
+          </Box>
+        )}
       </Grid>
     </Grid>
   );

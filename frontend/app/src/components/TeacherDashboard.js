@@ -1,140 +1,278 @@
 import React, { useState, useEffect } from "react";
-import { fetchData, deleteData } from "../utils/api";
+import { fetchData, deleteData, postData } from "../utils/api";
 import ModuleForm from "./ModuleForm";
-import SystemPromptForm from "./SystemPromptForm";
+import TaskForm from "./TaskForm";
 import {
   Box,
   Typography,
-  Button,
   Grid,
   Card,
   CardContent,
-  CardActions,
-  CircularProgress,
+  IconButton,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useSnackbar } from "notistack";
+
+const cardStyle = {
+  width: "100%",
+  height: "100px",
+  backgroundColor: "#e0e0e0",
+  borderRadius: 2,
+  cursor: "pointer",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  position: "relative",
+};
+
+const selectedCardStyle = {
+  ...cardStyle,
+  backgroundColor: "#ffcccc",
+};
+
+const columnStyle = {
+  borderRight: "2px solid rgba(0,0,0,0.1)",
+  paddingRight: "10px",
+};
 
 function TeacherDashboard() {
   const [modules, setModules] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleteType, setDeleteType] = useState(""); // 'module' or 'task'
+  const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchData("/modules/")
-      .then((data) => {
-        setModules(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        enqueueSnackbar(error.message, { variant: "error" });
-        setLoading(false);
-      });
+      .then((data) => setModules(data))
+      .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
   }, []);
 
-  const handleModuleCreated = () => {
-    fetchData("/modules/")
-      .then(setModules)
-      .catch((error) => {
+  const handleModuleSelect = async (module) => {
+    if (module.id) {
+      try {
+        const tasks = await fetchData(`/modules/${module.id}/tasks/`);
+        setSelectedModule({ ...module, tasks });
+        setSelectedTask(null);
+      } catch (error) {
         enqueueSnackbar(error.message, { variant: "error" });
-      });
-    setSelectedModule(null);
+      }
+    } else {
+      setSelectedModule({ id: null, name: "", tasks: [] });
+      setSelectedTask(null);
+    }
   };
 
-  const handleEditClick = (module) => {
-    setSelectedModule(module);
+  const handleTaskSelect = (task) => {
+    setSelectedTask(task);
   };
 
-  const handleDeleteClick = async (moduleId) => {
-    enqueueSnackbar("Are you sure you want to delete this module?", {
-      variant: "warning",
-      persist: true,
-      action: (key) => (
-        <>
-          <Button
-            onClick={async () => {
-              try {
-                await deleteData(`/modules/${moduleId}/`);
-                handleModuleCreated();
-                enqueueSnackbar("Module deleted successfully!", {
-                  variant: "success",
-                });
-                closeSnackbar(key);
-              } catch (error) {
-                enqueueSnackbar(error.message, { variant: "error" });
-              }
-            }}
-          >
-            Yes
-          </Button>
-          <Button onClick={() => closeSnackbar(key)}>No</Button>
-        </>
-      ),
-    });
+  const handleModuleCreated = async () => {
+    try {
+      const data = await fetchData("/modules/");
+      setModules(data);
+      const newModule =
+        data.find((mod) => mod.id === selectedModule.id) || null;
+      setSelectedModule(newModule);
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
   };
 
-  const handleCloseForm = () => {
-    setSelectedModule(null);
+  const handleTaskCreated = async () => {
+    if (selectedModule && selectedModule.id) {
+      try {
+        const tasks = await fetchData(`/modules/${selectedModule.id}/tasks/`);
+        const updatedModule = { ...selectedModule, tasks };
+        setSelectedModule(updatedModule);
+        setSelectedTask(null);
+        const data = await fetchData("/modules/");
+        setModules(data);
+        const updatedModuleData =
+          data.find((mod) => mod.id === selectedModule.id) || null;
+        setSelectedModule(updatedModuleData);
+      } catch (error) {
+        enqueueSnackbar(error.message, { variant: "error" });
+      }
+    }
+  };
+
+  const handleDeleteClick = (item, type) => {
+    setDeleteItem(item);
+    setDeleteType(type);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      if (deleteType === "module") {
+        await deleteData(`/modules/${deleteItem.id}/`);
+        setModules(modules.filter((module) => module.id !== deleteItem.id));
+        setSelectedModule(null);
+      } else if (deleteType === "task") {
+        await deleteData(`/tasks/${deleteItem.id}/`);
+        const updatedTasks = selectedModule.tasks.filter(
+          (task) => task.id !== deleteItem.id
+        );
+        setSelectedModule({ ...selectedModule, tasks: updatedTasks });
+      }
+      enqueueSnackbar(
+        `${
+          deleteType.charAt(0).toUpperCase() + deleteType.slice(1)
+        } deleted successfully!`,
+        { variant: "success" }
+      );
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteItem(null);
+      setDeleteType("");
+    }
   };
 
   return (
     <Grid container spacing={3} py={5} px={3}>
-      <Grid item xs={12} md={4}>
+      <Grid item xs={12} md={3} sx={columnStyle}>
         <Typography variant="h5" gutterBottom>
           Modules
         </Typography>
-        {error && <Typography color="error">Error: {error}</Typography>}
-        {loading ? (
-          <Box textAlign="center" py={5}>
-            <CircularProgress />
-          </Box>
-        ) : modules.length === 0 ? (
-          <Typography>No modules available</Typography>
-        ) : (
+        <Grid container spacing={3}>
+          {modules.map((module) => (
+            <Grid item xs={12} key={module.id}>
+              <Card
+                sx={
+                  selectedModule && selectedModule.id === module.id
+                    ? selectedCardStyle
+                    : cardStyle
+                }
+                onClick={() => handleModuleSelect(module)}
+              >
+                <CardContent>
+                  <Typography variant="h6">{module.name}</Typography>
+                </CardContent>
+                <IconButton
+                  sx={{ position: "absolute", bottom: 4, right: 4 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick(module, "module");
+                  }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Card>
+            </Grid>
+          ))}
+          <Grid item xs={12}>
+            <Card
+              sx={
+                selectedModule && selectedModule.id === null
+                  ? selectedCardStyle
+                  : cardStyle
+              }
+              onClick={() => handleModuleSelect({})}
+            >
+              <CardContent>
+                <Typography variant="h2" textAlign="center">
+                  +
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Grid>
+      <Grid item xs={12} md={3} sx={columnStyle}>
+        <Typography variant="h5" gutterBottom>
+          Tasks
+        </Typography>
+        {selectedModule && (
           <Grid container spacing={3}>
-            {modules.map((module) => (
-              <Grid item xs={12} key={module.id}>
-                <Card sx={{ backgroundColor: "#ffcccc", borderRadius: 2 }}>
+            {selectedModule.tasks?.map((task, index) => (
+              <Grid item xs={12} key={index}>
+                <Card
+                  sx={
+                    selectedTask && selectedTask.id === task.id
+                      ? selectedCardStyle
+                      : cardStyle
+                  }
+                  onClick={() => handleTaskSelect(task)}
+                >
                   <CardContent>
-                    <Typography variant="h6">{module.name}</Typography>
+                    <Typography variant="h6">{task.title}</Typography>
                   </CardContent>
-                  <CardActions>
-                    <Button
-                      size="small"
-                      onClick={() => handleEditClick(module)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      size="small"
-                      color="secondary"
-                      onClick={() => handleDeleteClick(module.id)}
-                      disabled={
-                        selectedModule && selectedModule.id === module.id
-                      }
-                    >
-                      Delete
-                    </Button>
-                  </CardActions>
+                  <IconButton
+                    sx={{ position: "absolute", bottom: 4, right: 4 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(task, "task");
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
                 </Card>
               </Grid>
             ))}
+            <Grid item xs={12}>
+              <Card
+                sx={
+                  selectedTask && selectedTask.id === null
+                    ? selectedCardStyle
+                    : cardStyle
+                }
+                onClick={() => handleTaskSelect({})}
+              >
+                <CardContent>
+                  <Typography variant="h2" textAlign="center">
+                    +
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
         )}
       </Grid>
-      <Grid item xs={12} md={8}>
-        <SystemPromptForm />
-        <Typography variant="h5" gutterBottom>
-          {selectedModule ? "Edit Module" : "Create Module"}
-        </Typography>
-        <ModuleForm
-          module={selectedModule || {}}
-          onModuleCreated={handleModuleCreated}
-          onClose={handleCloseForm}
-          resetFormAfterSubmit={true}
-        />
+      <Grid item xs={12} md={6}>
+        {selectedModule && !selectedTask && (
+          <ModuleForm
+            module={selectedModule}
+            onModuleCreated={handleModuleCreated}
+          />
+        )}
+        {selectedModule && selectedTask && (
+          <TaskForm
+            task={selectedTask}
+            moduleId={selectedModule.id}
+            onTaskCreated={handleTaskCreated}
+          />
+        )}
       </Grid>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this {deleteType}?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            No
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="primary" autoFocus>
+            Yes
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Grid>
   );
 }

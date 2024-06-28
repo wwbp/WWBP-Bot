@@ -11,6 +11,9 @@ import {
   Avatar,
   Box,
 } from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import DescriptionIcon from "@mui/icons-material/Description";
 import { postData } from "../utils/api";
 import { useSnackbar } from "notistack";
 
@@ -59,7 +62,7 @@ function NavBar({
   };
 
   return (
-    <AppBar position="static">
+    <AppBar position="static" style={{ backgroundColor: "#ff1744" }}>
       <Toolbar>
         <Typography
           variant="h6"
@@ -76,30 +79,53 @@ function NavBar({
         </Typography>
         {isLoggedIn ? (
           <>
+            <IconButton
+              color="inherit"
+              component={Link}
+              to={
+                role === "teacher"
+                  ? isStudentView
+                    ? "/student-dashboard"
+                    : "/teacher-dashboard"
+                  : "/student-dashboard"
+              }
+            >
+              <HomeIcon />
+            </IconButton>
             {role === "teacher" && (
               <>
-                <Button
+                <IconButton
                   color="inherit"
                   component={Link}
-                  to={
-                    isStudentView ? "/student-dashboard" : "/teacher-dashboard"
-                  }
+                  to="/system-prompt"
                 >
-                  {isStudentView ? "Student Dashboard" : "Teacher Dashboard"}
-                </Button>
-                <Button color="inherit" onClick={toggleView}>
-                  {isStudentView ? "View as Teacher" : "View as Student"}
-                </Button>
+                  <DescriptionIcon />
+                </IconButton>
+                <Box
+                  onClick={toggleView}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    border: "1px solid white",
+                    borderRadius: 4,
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                    marginLeft: 10,
+                  }}
+                >
+                  {isStudentView ? "Student" : "Teacher"}
+                  <SwapHorizIcon fontSize="small" style={{ marginLeft: 5 }} />
+                </Box>
               </>
             )}
-            {role === "student" && (
-              <Button color="inherit" component={Link} to="/student-dashboard">
-                Student Dashboard
-              </Button>
-            )}
             <Box sx={{ display: "flex", alignItems: "center" }}>
-              <IconButton edge="end" color="inherit" onClick={handleMenu}>
-                <Avatar />
+              <IconButton
+                edge="end"
+                color="inherit"
+                onClick={handleMenu}
+                size="medium"
+              >
+                <Avatar sx={{ bgcolor: "red", color: "white" }} />
               </IconButton>
               <Menu
                 anchorEl={anchorEl}

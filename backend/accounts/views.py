@@ -1,3 +1,4 @@
+from rest_framework.decorators import action
 from rest_framework.views import exception_handler
 from .serializers import ModuleSerializer
 from .models import Module
@@ -186,40 +187,25 @@ class ModuleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        logger.debug(f"Module creation request data: {request.data}")
         serializer = self.get_serializer(data=request.data)
-        try:
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
-            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-        except Exception as e:
-            logger.error(f"Error creating module: {e}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
+    def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(
-            instance, data=request.data, partial=partial)
-        try:
-            serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-            return Response(serializer.data)
-        except Exception as e:
-            logger.error(f"Error updating module: {e}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
     def perform_update(self, serializer):
         serializer.save()
-
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def tasks(self, request, pk=None):
@@ -228,11 +214,41 @@ class ModuleViewSet(viewsets.ModelViewSet):
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def add_task(self, request, pk=None):
+        module = self.get_object()
+        data = request.data.copy()
+        data['module'] = module.id
+        serializer = TaskSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(module=module)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        module_id = data.get('module')
+        if not module_id:
+            return Response({"detail": "Module is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
 
 # Initialize OpenAI client

@@ -24,6 +24,7 @@ django-redis = "*"
 boto3 = "*"
 celery = "*"
 django-celery-results = "*"
+pika = "*"
 
 [dev-packages]
 
