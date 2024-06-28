@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import ModuleInteraction from "./ModuleInteraction";
 import { useSnackbar } from "notistack";
-import Grid from "@mui/material/Unstable_Grid2";
+import Grid from "@mui/material/Grid";
 
 function ModuleTasks() {
   const { moduleId } = useParams();
@@ -46,16 +46,17 @@ function ModuleTasks() {
   }
 
   return (
-    <Grid container spacing={0} sx={{ height: "100vh" }}>
+    <Grid container sx={{ height: "100vh" }}>
       <Grid
+        item
         xs={12}
         md={3}
         sx={{
           backgroundColor: "white",
           color: "black",
           overflowY: "auto",
-          height: "100%",
           borderRight: "1px solid #e0e0e0",
+          height: "100%",
         }}
       >
         {tasks.length === 0 ? (
@@ -82,14 +83,19 @@ function ModuleTasks() {
           </List>
         )}
       </Grid>
-      <Grid
-        xs={9}
-        sx={{ display: "flex", flexDirection: "column", height: "100%" }}
-      >
+      <Grid item xs={12} md={9} sx={{ height: "100%" }}>
         {selectedTask ? (
           <ModuleInteraction moduleId={moduleId} selectedTask={selectedTask} />
         ) : (
-          <Box p={2} sx={{ flex: 1 }}>
+          <Box
+            p={2}
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
             <Typography variant="h5">
               Please select a specific task from the list on the left!
             </Typography>
