@@ -15,6 +15,9 @@ import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import botAvatar from "../assets/bot-avatar.png";
+import EarIcon from "@mui/icons-material/Hearing"; 
+import BrainIcon from "@mui/icons-material/Memory";
+import MouthIcon from "@mui/icons-material/RecordVoiceOver"; 
 
 function ChatInterface({ session, clearChat, handleCompleteTask }) {
   const [messages, setMessages] = useState([]);
@@ -323,6 +326,19 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     setChatMode(event.target.value);
   };
 
+  const getAudioStateIcon = () => {
+    switch (audioState) {
+      case "recording":
+        return <EarIcon style={{ position: "absolute", top: "-30px" }} />;
+      case "processing":
+        return <BrainIcon style={{ position: "absolute", top: "-30px" }} />;
+      case "speaking":
+        return <MouthIcon style={{ position: "absolute", top: "-30px" }} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <Box display="flex" flexDirection="column" height="100%" width="100%">
       <Box display="flex" justifyContent="flex-end" p={2}>
@@ -375,7 +391,12 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
       </Box>
       <Box display="flex" alignItems="center" p={2}>
         {chatMode === "audio" ? (
-          <Box display="flex" justifyContent="center" flexGrow={1}>
+          <Box
+            display="flex"
+            justifyContent="center"
+            flexGrow={1}
+            position="relative"
+          >
             <IconButton
               onMouseDown={handlePTTMouseDown}
               onMouseUp={handlePTTMouseUp}
@@ -388,25 +409,28 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
               }}
             >
               <MicIcon sx={{ fontSize: "4rem" }} />
+              {getAudioStateIcon()}
             </IconButton>
           </Box>
         ) : (
-          <TextField
-            fullWidth
-            value={message}
-            onChange={handleInputChange}
-            placeholder="Type a message..."
-            onKeyDown={onKeyPress}
-          />
+          <>
+            <TextField
+              fullWidth
+              value={message}
+              onChange={handleInputChange}
+              placeholder="Type a message..."
+              onKeyDown={onKeyPress}
+            />
+            <Button
+              onClick={handleSubmit}
+              color="primary"
+              variant="contained"
+              style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
+            >
+              Send
+            </Button>
+          </>
         )}
-        <Button
-          onClick={handleSubmit}
-          color="primary"
-          variant="contained"
-          style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
-        >
-          Send
-        </Button>
         <Button
           onClick={handleCompleteTask}
           color="primary"
