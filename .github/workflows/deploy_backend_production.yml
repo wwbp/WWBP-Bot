@@ -1,4 +1,4 @@
-name: Deploy Backend and Celery to Production
+name: Deploy Backend to Production
 
 on:
   push:
