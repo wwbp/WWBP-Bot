@@ -2,16 +2,14 @@ import boto3
 import os
 import io
 from django.conf import settings
-# from celery import shared_task
 from django.apps import apps
 from asgiref.sync import sync_to_async
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-# todo complete celery + rabbitmq on aws setup
-# @shared_task
 @sync_to_async
 def save_message_to_transcript(session_id, message_id, user_message, bot_message, has_audio=False, audio_bytes=None):
     try:
