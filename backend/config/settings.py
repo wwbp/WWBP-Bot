@@ -91,7 +91,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'langchain_stream',
-    'django_celery_results',
 ]
 
 MIDDLEWARE = [
