@@ -154,12 +154,17 @@ class AssisstantSessionManager(PromptHook):
             thread_id=self.thread.id, role="user", content=message)
 
     async def get_run_stream(self):
-        stream = self.client.beta.threads.create_and_run(
+        stream = self.client.beta.threads.runs.create(
             assistant_id=self.assistant.id,
             thread_id=self.thread.id,
             stream=True
         )
         return stream
+
+    async def async_stream(self, stream):
+        loop = asyncio.get_running_loop()
+        for event in stream:
+            yield await loop.run_in_executor(None, lambda: event)
 
 
 session_manager = AssisstantSessionManager()
@@ -193,7 +198,7 @@ class ChatConsumer(BaseWebSocketConsumer):
                     initial_message = "Begin the conversation."
                     await session_manager.create_user_message(
                         message=initial_message)
-                    self.stream_text_response(message_id=0)
+                    await self.stream_text_response(message_id=0)
                     cache.set(f'initial_message_sent_{self.session_id}', True)
             except Exception as e:
                 logger.error(f"Failed to initialize LLM instance: {e}")
@@ -209,13 +214,13 @@ class ChatConsumer(BaseWebSocketConsumer):
                                          user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
 
         await session_manager.create_user_message(message=message)
-        self.stream_text_response(message_id)
+        await self.stream_text_response(message_id)
 
     async def stream_text_response(self, message_id):
-        stream = session_manager.get_run_stream()
+        stream = await session_manager.get_run_stream()
         bot_message_buffer = []
         try:
-            for event in stream:
+            async for event in session_manager.async_stream(stream):
                 chunk = {}
                 chunk["message_id"] = message_id
                 if event.event == 'thread.run.created':
@@ -223,12 +228,14 @@ class ChatConsumer(BaseWebSocketConsumer):
                     await self.send(text_data=json.dumps(chunk))
 
                 elif event.event == 'thread.message.delta':
+                    chunk["event"] = "on_parser_stream"
                     chunk["value"] = event.data.delta.content[0].text.value
                     await self.send(text_data=json.dumps(chunk))
                     bot_message_buffer.append(chunk["value"])
 
                 elif event.event == 'thread.run.completed':
-                    await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
+                    chunk["event"] = "on_parser_end"
+                    await self.send(text_data=json.dumps(chunk))
                     complete_bot_message = ''.join(bot_message_buffer)
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
