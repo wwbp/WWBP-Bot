@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 @sync_to_async
 def save_message_to_transcript(session_id, message_id, user_message, bot_message, has_audio=False, audio_bytes=None):
     try:
-        logger.debug(f"@@@@@@@Inside save message")
         ChatSession = apps.get_model('accounts', 'ChatSession')
         Transcript = apps.get_model('langchain_stream', 'Transcript')
         session = ChatSession.objects.get(id=session_id)
