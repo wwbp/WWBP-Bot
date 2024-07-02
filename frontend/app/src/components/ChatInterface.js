@@ -15,9 +15,9 @@ import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import botAvatar from "../assets/bot-avatar.png";
-import EarIcon from "@mui/icons-material/Hearing"; 
+import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
-import MouthIcon from "@mui/icons-material/RecordVoiceOver"; 
+import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 
 function ChatInterface({ session, clearChat, handleCompleteTask }) {
   const [messages, setMessages] = useState([]);
@@ -127,7 +127,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
           setMessages((prevMessages) =>
             prevMessages.map((msg) =>
               msg.id === data.message_id
-                ? { ...msg, message: msg.message + data.data.chunk }
+                ? { ...msg, message: msg.message + data.value }
                 : msg
             )
           );
