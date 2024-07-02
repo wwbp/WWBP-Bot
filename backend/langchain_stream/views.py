@@ -28,21 +28,27 @@ else:
 
 class PromptHook:
 
-    async def get_system_prompt(self):
+    @sync_to_async
+    def get_system_prompt(self):
         SystemPrompt = apps.get_model('accounts', 'SystemPrompt')
         try:
-            prompt = SystemPrompt.objects.latest('created_at').prompt
-            return prompt
+            prompt = SystemPrompt.objects.latest('created_at')
+            return prompt.prompt
         except SystemPrompt.DoesNotExist:
             return "You are a helpful assistant."
 
-    async def get_task_prompts(self, session_id):
+    @sync_to_async
+    def get_task_prompts(self, session_id):
         ChatSession = apps.get_model('accounts', 'ChatSession')
-        session = ChatSession.objects.get(id=session_id)
-        task = session.task
-        return task.content, task.instruction_prompt, task.persona_prompt
+        try:
+            session = ChatSession.objects.get(id=session_id)
+            task = session.task
+            return task.content, task.instruction_prompt, task.persona_prompt
+        except Exception as e:
+            logger.error(f"failed due to {e}")
 
-    async def get_user_profile(self, session_id):
+    @sync_to_async
+    def get_user_profile(self, session_id):
         ChatSession = apps.get_model('accounts', 'ChatSession')
         session = ChatSession.objects.get(id=session_id)
         user = session.user
@@ -56,8 +62,7 @@ class PromptHook:
 
     async def get_cumulative_setup_intructions(self, session_id):
         system_prompts = await self.get_system_prompt()
-        task_content, task_instruction, task_persona = await self.get_task_prompts(
-            session_id)
+        task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
         user_profile_details = await self.get_user_profile(session_id)
 
         # Combine and format the prompts
@@ -79,22 +84,19 @@ class AssisstantSessionManager(PromptHook):
         self.assistant = None
 
     async def setup(self, session_id):
-        logger.debug(f"@@@@@@@@@setting up {session_id}")
         try:
             self.assistant = await self.get_assistant(session_id=session_id)
             self.thread = await self.get_thread(session_id=session_id)
             if self.assistant is None or self.thread is None:
-                raise Exception("Failed to set up assistant or thread")
-            logger.debug(
-                f"#######got assistant id: {self.assistant.id} and thread id: {self.thread.id}")
+                raise Exception(
+                    f"Failed to assistant id: {self.assistant.id} and thread id: {self.thread.id}")
         except Exception as e:
             logger.error(f"Error setting up session manager: {e}")
 
     async def get_assistant(self, session_id):
-        logger.debug(f"@@@@@@@@@setting up assistant for id {session_id}")
+        ChatSession = apps.get_model('accounts', 'ChatSession')
+        session = await sync_to_async(ChatSession.objects.get)(id=session_id)
         try:
-            ChatSession = apps.get_model('accounts', 'ChatSession')
-            session = await sync_to_async(ChatSession.objects.get)(id=session_id)
             if session.assistant_id:
                 assistant = self.client.beta.assistants.retrieve(
                     session.assistant_id)
@@ -105,15 +107,18 @@ class AssisstantSessionManager(PromptHook):
             logger.error(f"Failed to fetch assistant: {e}")
 
         try:
-            instruction_prompt = await self.get_cumulative_setup_intructions(
-                session_id=session_id)
+            instruction_prompt = await self.get_cumulative_setup_intructions(session_id=session_id)
             assistant = self.client.beta.assistants.create(
                 model="gpt-4o",
                 instructions=instruction_prompt
             )
-            logger.debug(f"Created new assistant: {assistant.id}")
             session.assistant_id = assistant.id
-            await sync_to_async(session.save())
+
+            @sync_to_async
+            def _session_save():
+                session.save()
+            await _session_save()
+            logger.debug(f"Created new assistant: {assistant.id}")
             return assistant
         except Exception as e:
             logger.error(f"Error creating new assistant: {e}")
@@ -133,18 +138,22 @@ class AssisstantSessionManager(PromptHook):
         try:
             thread = self.client.beta.threads.create()
             session.thread_id = thread.id
-            await sync_to_async(session.save())
+
+            @sync_to_async
+            def _session_save():
+                session.save()
+            await _session_save()
             logger.debug(f"Created new thread: {thread.id}")
             return thread
         except Exception as e:
             logger.error(f"Error creating new thread: {e}")
             return None
 
-    def create_user_message(self, message):
+    async def create_user_message(self, message):
         self.client.beta.threads.messages.create(
             thread_id=self.thread.id, role="user", content=message)
 
-    def get_run_stream(self):
+    async def get_run_stream(self):
         stream = self.client.beta.threads.create_and_run(
             assistant_id=self.assistant.id,
             thread_id=self.thread.id,
@@ -182,7 +191,7 @@ class ChatConsumer(BaseWebSocketConsumer):
             try:
                 if not cache.get(f'initial_message_sent_{self.session_id}', False):
                     initial_message = "Begin the conversation."
-                    session_manager.create_user_message(
+                    await session_manager.create_user_message(
                         message=initial_message)
                     self.stream_text_response(message_id=0)
                     cache.set(f'initial_message_sent_{self.session_id}', True)
@@ -199,7 +208,7 @@ class ChatConsumer(BaseWebSocketConsumer):
         await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
                                          user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
 
-        session_manager.create_user_message(message=message)
+        await session_manager.create_user_message(message=message)
         self.stream_text_response(message_id)
 
     async def stream_text_response(self, message_id):
