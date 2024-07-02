@@ -52,11 +52,6 @@ LOGGING = {
         'level': 'DEBUG',
     },
     'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
         'config': {
             'handlers': ['console'],
             'level': 'DEBUG',
