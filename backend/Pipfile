@@ -23,6 +23,7 @@ channels-redis = "*"
 django-redis = "*"
 boto3 = "*"
 pika = "*"
+jupyter = "*"
 
 [dev-packages]
 
