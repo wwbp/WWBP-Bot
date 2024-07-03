@@ -18,6 +18,9 @@ class Module(models.Model):
     name = models.CharField(max_length=100)
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='modules')
+    content = models.TextField(blank=True, null=True)
+    files = models.JSONField(default=list, blank=True,
+                             null=True)
 
 
 class Task(models.Model):
@@ -27,6 +30,8 @@ class Task(models.Model):
         Module, on_delete=models.CASCADE, related_name='tasks')
     instruction_prompt = models.TextField(blank=True, null=True)
     persona_prompt = models.TextField(blank=True, null=True)
+    files = models.JSONField(default=list, blank=True,
+                             null=True)
 
 
 class ChatSession(models.Model):

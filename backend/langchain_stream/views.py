@@ -8,7 +8,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from google.cloud import speech, texttospeech
 import re
 from asgiref.sync import sync_to_async
-from langchain_stream.tasks import save_message_to_transcript
+from langchain_stream.tasks import save_message_to_transcript, get_file_streams
 from django.apps import apps
 from openai import OpenAI
 
@@ -38,6 +38,16 @@ class PromptHook:
             return "You are a helpful assistant."
 
     @sync_to_async
+    def get_module_prompts(self, session_id):
+        ChatSession = apps.get_model('accounts', 'ChatSession')
+        try:
+            session = ChatSession.objects.get(id=session_id)
+            module = session.module
+            return module.content
+        except Exception as e:
+            logger.error(f"failed due to {e}")
+
+    @sync_to_async
     def get_task_prompts(self, session_id):
         ChatSession = apps.get_model('accounts', 'ChatSession')
         try:
@@ -64,10 +74,12 @@ class PromptHook:
         system_prompts = await self.get_system_prompt()
         task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
         user_profile_details = await self.get_user_profile(session_id)
+        module_content = await self.get_module_prompts(session_id)
 
         # Combine and format the prompts
         prompt_value = f"""
             System: {system_prompts}
+            Module Content: {module_content}
             Task Content: {task_content}
             Task Instruction: {task_instruction}
             Task Persona: {task_persona}
@@ -82,6 +94,7 @@ class AssisstantSessionManager(PromptHook):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
         self.thread = None
         self.assistant = None
+        self.vector_store = None
 
     async def setup(self, session_id):
         try:
@@ -90,6 +103,11 @@ class AssisstantSessionManager(PromptHook):
             if self.assistant is None or self.thread is None:
                 raise Exception(
                     f"Failed to assistant id: {self.assistant.id} and thread id: {self.thread.id}")
+
+            # Initialize vector store and upload files
+            self.vector_store = await self.initialize_vector_store()
+            await self.upload_files_to_vector_store(session_id)
+            await self.update_assistant_with_vector_store()
         except Exception as e:
             logger.error(f"Error setting up session manager: {e}")
 
@@ -110,7 +128,8 @@ class AssisstantSessionManager(PromptHook):
             instruction_prompt = await self.get_cumulative_setup_intructions(session_id=session_id)
             assistant = self.client.beta.assistants.create(
                 model="gpt-4o",
-                instructions=instruction_prompt
+                instructions=instruction_prompt,
+                tools=[{"type": "file_search"}],
             )
             session.assistant_id = assistant.id
 
@@ -165,6 +184,43 @@ class AssisstantSessionManager(PromptHook):
         loop = asyncio.get_running_loop()
         for event in stream:
             yield await loop.run_in_executor(None, lambda: event)
+
+    async def initialize_vector_store(self):
+        try:
+            vector_store = self.client.beta.vector_stores.create(
+                name="Educational Content", expires_after={
+                    "anchor": "last_active_at",
+                    "days": 2
+                }
+            )
+            logger.debug(f"Created vector store: {vector_store.id}")
+            return vector_store
+        except Exception as e:
+            logger.error(f"Error creating vector store: {e}")
+            return None
+
+    async def upload_files_to_vector_store(self, session_id):
+        try:
+            file_streams = await get_file_streams(session_id)
+            file_batch = self.client.beta.vector_stores.file_batches.upload_and_poll(
+                vector_store_id=self.vector_store.id, files=file_streams
+            )
+            logger.debug(
+                f"Uploaded files to vector store: {file_batch.status}")
+        except Exception as e:
+            logger.error(f"Error uploading files to vector store: {e}")
+
+    async def update_assistant_with_vector_store(self):
+        try:
+            self.client.beta.assistants.update(
+                assistant_id=self.assistant.id,
+                tool_resources={"file_search": {
+                    "vector_store_ids": [self.vector_store.id]}},
+            )
+            logger.debug(
+                f"Updated assistant with vector store: {self.vector_store.id}")
+        except Exception as e:
+            logger.error(f"Error updating assistant with vector store: {e}")
 
 
 session_manager = AssisstantSessionManager()

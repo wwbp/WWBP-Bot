@@ -1,3 +1,9 @@
+import boto3
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.conf import settings
 from rest_framework.decorators import action
 from rest_framework.views import exception_handler
 from .serializers import ModuleSerializer
@@ -321,3 +327,41 @@ class SystemPromptViewSet(viewsets.ModelViewSet):
     queryset = SystemPrompt.objects.all()
     serializer_class = SystemPromptSerializer
     permission_classes = [IsAuthenticated]
+
+
+class FileUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        if 'file' not in request.FILES:
+            return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        file = request.FILES['file']
+        allowed_mime_types = [
+            "text/x-c", "text/x-csharp", "text/x-c++", "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "text/html", "text/x-java", "application/json", "text/markdown",
+            "application/pdf", "text/x-php",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "text/x-python", "text/x-script.python", "text/x-ruby",
+            "text/x-tex", "text/plain", "text/css", "text/javascript",
+            "application/x-sh", "application/typescript"
+        ]
+        if file.content_type not in allowed_mime_types:
+            return Response({"detail": "Unsupported file type."}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+        if settings.ENVIRONMENT == 'local':
+            local_upload_dir = os.path.join(settings.BASE_DIR, 'data/upload/')
+            os.makedirs(local_upload_dir, exist_ok=True)
+            file_path = default_storage.save(
+                local_upload_dir + file.name, ContentFile(file.read()))
+        else:
+            s3 = boto3.client(
+                's3', region_name=settings.AWS_S3_REGION_NAME)
+            bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+            s3_key = f"data/upload/{file.name}"
+            s3.upload_fileobj(file, bucket_name, s3_key)
+            file_path = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+
+        return Response({'file_path': file_path}, status=status.HTTP_201_CREATED)

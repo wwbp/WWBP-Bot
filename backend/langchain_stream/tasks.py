@@ -11,6 +11,38 @@ logger = logging.getLogger(__name__)
 
 
 @sync_to_async
+def get_file_streams(session_id):
+    file_streams = []
+    try:
+        ChatSession = apps.get_model('accounts', 'ChatSession')
+        session = ChatSession.objects.get(id=session_id)
+        module = session.module
+        task = session.task
+
+        file_paths = module.files if module else []
+        if task:
+            file_paths += task.files
+
+        for file_path in file_paths:
+            if file_path.startswith('s3://'):
+                # Download file from S3
+                key = file_path[5:].split('/', 1)[-1]
+                s3 = boto3.client(
+                    's3', region_name=settings.AWS_S3_REGION_NAME)
+                bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+                s3.download_file(
+                    bucket_name, key, '/tmp/' + key.split('/')[-1])
+                file_streams.append(open('/tmp/' + key.split('/')[-1], 'rb'))
+            else:
+                # Local file
+                file_streams.append(open(file_path, 'rb'))
+    except Exception as e:
+        logger.error(f"Error retrieving file streams: {e}")
+
+    return file_streams
+
+
+@sync_to_async
 def save_message_to_transcript(session_id, message_id, user_message, bot_message, has_audio=False, audio_bytes=None):
     try:
         ChatSession = apps.get_model('accounts', 'ChatSession')
