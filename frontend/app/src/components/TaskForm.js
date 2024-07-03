@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { postData, putData } from "../utils/api";
 import { TextField, Box, Button, Grid } from "@mui/material";
 import { useSnackbar } from "notistack";
+import FileUpload from "./FileUpload";
 
 function TaskForm({ task, moduleId, onTaskCreated }) {
   const initialTaskData = {
@@ -9,6 +10,7 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
     content: "",
     instruction_prompt: "",
     persona_prompt: "",
+    files: [],
   };
   const [taskData, setTaskData] = useState(initialTaskData);
   const [submitted, setSubmitted] = useState(false);
@@ -25,6 +27,10 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
   const handleTaskChange = (e) => {
     const { name, value } = e.target;
     setTaskData({ ...taskData, [name]: value });
+  };
+
+  const handleFileUploaded = (filePath) => {
+    setTaskData({ ...taskData, files: [...taskData.files, filePath] });
   };
 
   const handleSubmit = async (e) => {
@@ -109,6 +115,9 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
               multiline
               rows={5}
             />
+          </Grid>
+          <Grid item xs={12}>
+            <FileUpload onFileUploaded={handleFileUploaded} />
           </Grid>
         </Grid>
         <Box display="flex" justifyContent="flex-end" mt={3}>

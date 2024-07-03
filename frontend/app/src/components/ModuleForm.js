@@ -2,16 +2,21 @@ import React, { useState, useEffect } from "react";
 import { postData, putData } from "../utils/api";
 import { Box, TextField, Button, Typography, Grid } from "@mui/material";
 import { useSnackbar } from "notistack";
+import FileUpload from "./FileUpload";
 
 function ModuleForm({ module, onModuleCreated }) {
-  const initialModuleData = { name: "" };
+  const initialModuleData = { name: "", content: "", files: [] };
   const [moduleData, setModuleData] = useState(initialModuleData);
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     if (module.id) {
-      setModuleData({ name: module.name || "" });
+      setModuleData({
+        name: module.name || "",
+        content: module.content || "",
+        files: module.files || [],
+      });
     } else {
       setModuleData(initialModuleData);
     }
@@ -19,6 +24,10 @@ function ModuleForm({ module, onModuleCreated }) {
 
   const handleModuleChange = (e) => {
     setModuleData({ ...moduleData, [e.target.name]: e.target.value });
+  };
+
+  const handleFileUploaded = (filePath) => {
+    setModuleData({ ...moduleData, files: [...moduleData.files, filePath] });
   };
 
   const handleSubmit = async (e) => {
@@ -64,6 +73,21 @@ function ModuleForm({ module, onModuleCreated }) {
               error={submitted && !moduleData.name}
               helperText={submitted && !moduleData.name && "Name is required"}
             />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Content"
+              name="content"
+              value={moduleData.content}
+              onChange={handleModuleChange}
+              margin="normal"
+              multiline
+              rows={5}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <FileUpload onFileUploaded={handleFileUploaded} />
           </Grid>
         </Grid>
         <Box display="flex" justifyContent="flex-end" mt={3}>
