@@ -198,7 +198,7 @@ class ChatConsumer(BaseWebSocketConsumer):
                     initial_message = "Begin the conversation."
                     await session_manager.create_user_message(
                         message=initial_message)
-                    await self.stream_text_response(message_id=0)
+                    await self.stream_text_response(message_id=1)
                     cache.set(f'initial_message_sent_{self.session_id}', True)
             except Exception as e:
                 logger.error(f"Failed to initialize LLM instance: {e}")
@@ -267,7 +267,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                     initial_message = "Begin the conversation."
                     await session_manager.create_user_message(
                         message=initial_message)
-                    await self.stream_audio_response(message_id=0)
+                    await self.stream_audio_response(message_id=1)
                     cache.set(f'initial_message_sent_{self.session_id}', True)
 
             except Exception as e:
