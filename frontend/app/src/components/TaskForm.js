@@ -4,7 +4,7 @@ import { TextField, Box, Button, Grid } from "@mui/material";
 import { useSnackbar } from "notistack";
 import FileUpload from "./FileUpload";
 
-function TaskForm({ task, moduleId, onTaskCreated }) {
+const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   const initialTaskData = {
     title: "",
     content: "",
@@ -18,7 +18,13 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
 
   useEffect(() => {
     if (task.id) {
-      setTaskData(task);
+      setTaskData({
+        title: task.title,
+        content: task.content,
+        instruction_prompt: task.instruction_prompt,
+        persona_prompt: task.persona_prompt,
+        files: task.files || [],
+      });
     } else {
       setTaskData(initialTaskData);
     }
@@ -31,6 +37,13 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
 
   const handleFileUploaded = (filePath) => {
     setTaskData({ ...taskData, files: [...taskData.files, filePath] });
+  };
+
+  const handleFileRemoved = (filePath) => {
+    setTaskData({
+      ...taskData,
+      files: taskData.files.filter((file) => file !== filePath),
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -117,7 +130,11 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
             />
           </Grid>
           <Grid item xs={12}>
-            <FileUpload onFileUploaded={handleFileUploaded} />
+            <FileUpload
+              existingFiles={taskData.files}
+              onFileUploaded={handleFileUploaded}
+              onFileRemoved={handleFileRemoved}
+            />
           </Grid>
         </Grid>
         <Box display="flex" justifyContent="flex-end" mt={3}>
@@ -128,6 +145,6 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
       </form>
     </Box>
   );
-}
+};
 
 export default TaskForm;

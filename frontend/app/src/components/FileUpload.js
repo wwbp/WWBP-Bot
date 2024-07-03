@@ -1,46 +1,67 @@
-import React, { useState } from "react";
-import { Box, Button, Typography, Grid, IconButton } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Grid,
+  IconButton,
+  Card,
+  CardContent,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { postFile } from "../utils/api";
 
-const FileUpload = ({ onFileUploaded }) => {
-  const [files, setFiles] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+const FileUpload = ({ existingFiles = [], onFileUploaded, onFileRemoved }) => {
+  const [uploadedFiles, setUploadedFiles] = useState(existingFiles);
 
-  const handleFileChange = (e) => {
-    setFiles([...e.target.files]);
-  };
+  useEffect(() => {
+    setUploadedFiles(existingFiles);
+  }, [existingFiles]);
 
-  const handleUpload = async () => {
-    try {
-      for (const file of files) {
+  const handleFileChange = async (e) => {
+    const files = [...e.target.files];
+    for (const file of files) {
+      try {
         const response = await postFile("/upload/", file);
         setUploadedFiles([...uploadedFiles, response.file_path]);
         onFileUploaded(response.file_path);
+      } catch (error) {
+        console.error("Error uploading file:", error);
       }
-      setFiles([]);
-    } catch (error) {
-      console.error("Error uploading file:", error);
     }
   };
 
   const handleRemoveFile = (filePath) => {
     setUploadedFiles(uploadedFiles.filter((file) => file !== filePath));
+    onFileRemoved(filePath);
   };
 
   return (
     <Box>
-      <input type="file" multiple onChange={handleFileChange} />
-      <Button onClick={handleUpload}>Upload</Button>
+      <input
+        accept=".txt,.pdf,.doc,.docx,.json,.pptx,.html,.md,.tex,.c,.cpp,.cs,.java,.js,.php,.py,.rb,.sh,.ts,.css"
+        style={{ display: "none" }}
+        id="file-upload"
+        multiple
+        type="file"
+        onChange={handleFileChange}
+      />
+      <label htmlFor="file-upload">
+        <IconButton component="span">
+          <UploadFileIcon />
+        </IconButton>
+      </label>
       <Grid container spacing={2} mt={2}>
         {uploadedFiles.map((file, index) => (
           <Grid item key={index}>
-            <Box display="flex" alignItems="center">
-              <Typography variant="body2">{file}</Typography>
-              <IconButton onClick={() => handleRemoveFile(file)}>
-                <DeleteIcon />
-              </IconButton>
-            </Box>
+            <Card>
+              <CardContent>
+                <Typography variant="body2">{file}</Typography>
+                <IconButton onClick={() => handleRemoveFile(file)}>
+                  <DeleteIcon />
+                </IconButton>
+              </CardContent>
+            </Card>
           </Grid>
         ))}
       </Grid>

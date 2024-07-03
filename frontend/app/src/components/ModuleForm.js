@@ -4,7 +4,7 @@ import { Box, TextField, Button, Typography, Grid } from "@mui/material";
 import { useSnackbar } from "notistack";
 import FileUpload from "./FileUpload";
 
-function ModuleForm({ module, onModuleCreated }) {
+const ModuleForm = ({ module, onModuleCreated }) => {
   const initialModuleData = { name: "", content: "", files: [] };
   const [moduleData, setModuleData] = useState(initialModuleData);
   const [submitted, setSubmitted] = useState(false);
@@ -28,6 +28,13 @@ function ModuleForm({ module, onModuleCreated }) {
 
   const handleFileUploaded = (filePath) => {
     setModuleData({ ...moduleData, files: [...moduleData.files, filePath] });
+  };
+
+  const handleFileRemoved = (filePath) => {
+    setModuleData({
+      ...moduleData,
+      files: moduleData.files.filter((file) => file !== filePath),
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -87,7 +94,11 @@ function ModuleForm({ module, onModuleCreated }) {
             />
           </Grid>
           <Grid item xs={12}>
-            <FileUpload onFileUploaded={handleFileUploaded} />
+            <FileUpload
+              existingFiles={moduleData.files}
+              onFileUploaded={handleFileUploaded}
+              onFileRemoved={handleFileRemoved}
+            />
           </Grid>
         </Grid>
         <Box display="flex" justifyContent="flex-end" mt={3}>
@@ -98,6 +109,6 @@ function ModuleForm({ module, onModuleCreated }) {
       </form>
     </Box>
   );
-}
+};
 
 export default ModuleForm;
