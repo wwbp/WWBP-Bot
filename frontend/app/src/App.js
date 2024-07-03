@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { fetchData } from "./utils/api";
 import Login from "./components/Login";
 import UserProfile from "./components/UserProfile";
@@ -9,6 +15,17 @@ import TeacherDashboard from "./components/TeacherDashboard";
 import StudentDashboard from "./components/StudentDashboard";
 import SystemPromptPage from "./components/SystemPromptPage";
 import { SnackbarProvider } from "notistack";
+
+function RequireAuth({ children }) {
+  const location = useLocation();
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} />;
+  }
+
+  return children;
+}
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -52,6 +69,7 @@ function App() {
           }}
         />
         <Routes>
+          <Route path="/" element={<Navigate to="/login" />} />
           <Route
             path="/login"
             element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}
@@ -61,15 +79,30 @@ function App() {
             path="/signup"
             element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
           />
-          {role === "teacher" && !isStudentView && (
-            <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-          )}
-          {(role === "student" || isStudentView) && (
-            <Route path="/student-dashboard/*" element={<StudentDashboard />} />
-          )}
-          {role === "teacher" && (
-            <Route path="/system-prompt" element={<SystemPromptPage />} />
-          )}
+          <Route
+            path="/teacher-dashboard/*"
+            element={
+              <RequireAuth>
+                <TeacherDashboard />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/student-dashboard/*"
+            element={
+              <RequireAuth>
+                <StudentDashboard />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/system-prompt"
+            element={
+              <RequireAuth>
+                <SystemPromptPage />
+              </RequireAuth>
+            }
+          />
         </Routes>
       </Router>
     </SnackbarProvider>

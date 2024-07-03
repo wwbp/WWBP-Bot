@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { postData } from "../utils/api";
 import { Container, TextField, Button, Box, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
@@ -10,6 +10,8 @@ function Login({ setLoggedIn, setRole }) {
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -26,11 +28,7 @@ function Login({ setLoggedIn, setRole }) {
         localStorage.setItem("role", response.role);
         setLoggedIn(true);
         setRole(response.role);
-        if (response.role === "teacher") {
-          navigate("/teacher-dashboard");
-        } else {
-          navigate("/student-dashboard");
-        }
+        navigate(from, { replace: true });
         enqueueSnackbar("Login successful!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to login!");
