@@ -72,7 +72,10 @@ function Login({ setLoggedIn, setRole }) {
         </form>
         <Box mt={2}>
           <Typography variant="body2">
-            Don't have an account? <Link to="/signup">Sign Up</Link>
+            Don't have an account?{" "}
+            <Link to="/signup" state={{ from }}>
+              Sign Up
+            </Link>
           </Typography>
         </Box>
       </Box>
