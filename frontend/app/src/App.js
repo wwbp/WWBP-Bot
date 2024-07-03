@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { fetchData } from "./utils/api";
-import HomePage from "./components/HomePage";
 import Login from "./components/Login";
 import UserProfile from "./components/UserProfile";
 import NavBar from "./components/NavBar";
@@ -53,7 +52,6 @@ function App() {
           }}
         />
         <Routes>
-          <Route path="/" element={<HomePage isLoggedIn={isLoggedIn} />} />
           <Route
             path="/login"
             element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}

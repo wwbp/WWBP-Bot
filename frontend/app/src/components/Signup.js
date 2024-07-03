@@ -40,7 +40,11 @@ function Signup({ setLoggedIn, setRole }) {
         localStorage.setItem("role", role);
         setLoggedIn(true);
         setRole(role);
-        navigate("/");
+        if (role === "teacher") {
+          navigate("/teacher-dashboard");
+        } else {
+          navigate("/student-dashboard");
+        }
         enqueueSnackbar("User created successfully!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to register!");

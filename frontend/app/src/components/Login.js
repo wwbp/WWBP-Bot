@@ -26,7 +26,11 @@ function Login({ setLoggedIn, setRole }) {
         localStorage.setItem("role", response.role);
         setLoggedIn(true);
         setRole(response.role);
-        navigate("/");
+        if (response.role === "teacher") {
+          navigate("/teacher-dashboard");
+        } else {
+          navigate("/student-dashboard");
+        }
         enqueueSnackbar("Login successful!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to login!");
