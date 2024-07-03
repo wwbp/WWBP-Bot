@@ -67,7 +67,13 @@ function NavBar({
         <Typography
           variant="h6"
           component={Link}
-          to="/"
+          to={
+            role === "teacher"
+              ? isStudentView
+                ? "/student-dashboard"
+                : "/teacher-dashboard"
+              : "/student-dashboard"
+          }
           style={{
             flexGrow: 1,
             color: "white",

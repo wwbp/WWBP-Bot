@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { postData } from "../utils/api";
 import {
   Container,
@@ -19,6 +19,8 @@ function Signup({ setLoggedIn, setRole }) {
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -40,7 +42,13 @@ function Signup({ setLoggedIn, setRole }) {
         localStorage.setItem("role", role);
         setLoggedIn(true);
         setRole(role);
-        navigate("/");
+        if (from === "/") {
+          navigate(
+            role === "teacher" ? "/teacher-dashboard" : "/student-dashboard"
+          );
+        } else {
+          navigate(from, { replace: true });
+        }
         enqueueSnackbar("User created successfully!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to register!");
