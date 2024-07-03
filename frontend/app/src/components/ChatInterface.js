@@ -105,7 +105,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
             setMessages((prevMessages) =>
               prevMessages.map((msg) =>
                 msg.id === data.message_id
-                  ? { ...msg, message: msg.message + data.data.chunk }
+                  ? { ...msg, message: msg.message + data.value }
                   : msg
               )
             );

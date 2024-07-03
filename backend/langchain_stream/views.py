@@ -254,25 +254,27 @@ class AudioConsumer(BaseWebSocketConsumer):
 
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
-        await self.accept()
-        logger.debug(
-            f"Audio WebSocket connected: session_id={self.session_id}")
-        asyncio.create_task(self.ping())
-
-        # Initialize LLM with memory for this session
         try:
-            self.chain, self.prompt_value = await session_manager.get_llm_instance(self.session_id)
+            await session_manager.setup(session_id=self.session_id)
+            if session_manager.assistant is None or session_manager.thread is None:
+                raise Exception("Assistant or thread setup failed")
+            await self.accept()
             logger.debug(
-                f"LLM instance initialized for session_id={self.session_id}")
+                f"Audio WebSocket connected: session_id={self.session_id}")
+            asyncio.create_task(self.ping())
+            try:
+                if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                    initial_message = "Begin the conversation."
+                    await session_manager.create_user_message(
+                        message=initial_message)
+                    await self.stream_audio_response(message_id=0)
+                    cache.set(f'initial_message_sent_{self.session_id}', True)
 
-            # Check if the initial message has already been sent
-            if not cache.get(f'initial_message_sent_{self.session_id}', False):
-                initial_message = "Begin the conversation."
-                await self.stream_audio_response(initial_message, 0)
-                cache.set(f'initial_message_sent_{self.session_id}', True)
-
+            except Exception as e:
+                logger.error(f"Failed to initialize LLM instance: {e}")
         except Exception as e:
-            logger.error(f"Failed to initialize LLM instance: {e}")
+            logger.error(f"WebSocket connection failed: {e}")
+            await self.close()
 
     async def receive(self, bytes_data=None, text_data=None):
         if text_data:
@@ -296,10 +298,10 @@ class AudioConsumer(BaseWebSocketConsumer):
             await save_message_to_transcript(session_id=self.session_id, message_id=self.current_message_id,
                                              user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
             if transcript:
-                logger.debug(f"Transcript: {transcript}")
+                await session_manager.create_user_message(message=transcript)
                 await self.send(text_data=json.dumps({"transcript": transcript, "message_id": self.current_message_id}))
                 assistant_message_id = str(int(self.current_message_id) + 1)
-                await self.stream_audio_response(transcript, assistant_message_id)
+                await self.stream_audio_response(assistant_message_id)
             else:
                 await self.send_audio_chunk(await self.text_to_speech("Sorry, I couldn't hear you."))
 
@@ -323,39 +325,34 @@ class AudioConsumer(BaseWebSocketConsumer):
             logger.error(f"Error during speech recognition: {e}")
             return ""
 
-    async def stream_audio_response(self, text, message_id):
+    async def stream_audio_response(self, message_id):
+        stream = await session_manager.get_run_stream()
         try:
-            buffer = []  # Buffer to collect tokens
-            logger.debug(f"Starting chain events with text: {text}")
-            async for chunk in self.chain.astream_events(
-                {'question': text, 'system': self.prompt_value},
-                version="v1",
-                include_names=["Assistant"],
-            ):
-                logger.debug(f"Chunk received: {chunk}")
-                if chunk["event"] == "on_parser_start":
-                    chunk["message_id"] = message_id
+            buffer = []
+            async for event in session_manager.async_stream(stream):
+                chunk = {}
+                chunk["message_id"] = message_id
+                if event.event == 'thread.run.created':
+                    chunk["event"] = "on_parser_start"
                     await self.send(text_data=json.dumps(chunk))
-                elif chunk["event"] == "on_parser_stream":
-                    if 'chunk' in chunk['data']:
-                        buffer.append(chunk['data']['chunk'])
-                        self.bot_message_buffer.append(chunk['data']['chunk'])
-                        chunk["message_id"] = message_id
-                        await self.send(text_data=json.dumps(chunk))
-                        if any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
-                            batched_text = ' '.join(buffer)
-                            buffer = []
-                            processed_text = self.process_text_for_tts(
-                                batched_text)
-                            audio_chunk = await self.text_to_speech(processed_text)
-                            self.bot_audio_buffer.append(audio_chunk)
-                            self.audio_queue.append(audio_chunk)
-                            asyncio.create_task(self.send_audio_chunk())
-                            logger.debug(
-                                f"Audio chunk queued: {len(audio_chunk)} bytes")
-                    else:
-                        logger.error(f"Missing 'chunk' in data: {chunk}")
-                elif chunk["event"] == "on_parser_end":
+                elif event.event == 'thread.message.delta':
+                    chunk["event"] = "on_parser_stream"
+                    chunk["value"] = event.data.delta.content[0].text.value
+                    buffer.append(chunk["value"])
+                    self.bot_message_buffer.append(chunk["value"])
+                    await self.send(text_data=json.dumps(chunk))
+                    if any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
+                        batched_text = ' '.join(buffer)
+                        buffer = []
+                        processed_text = self.process_text_for_tts(
+                            batched_text)
+                        audio_chunk = await self.text_to_speech(processed_text)
+                        self.bot_audio_buffer.append(audio_chunk)
+                        self.audio_queue.append(audio_chunk)
+                        asyncio.create_task(self.send_audio_chunk())
+                        logger.debug(
+                            f"Audio chunk queued: {len(audio_chunk)} bytes")
+                elif event.event == 'thread.run.completed':
                     if buffer:
                         batched_text = ' '.join(buffer)
                         processed_text = self.process_text_for_tts(
