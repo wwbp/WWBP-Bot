@@ -1,4 +1,3 @@
-from django.forms import ValidationError
 from rest_framework import serializers
 from .models import User, Module, Task, ChatSession, ChatMessage, SystemPrompt
 
@@ -13,8 +12,8 @@ class UserSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'title', 'content',
-                  'instruction_prompt', 'persona_prompt', 'module']
+        fields = ['id', 'title', 'content', 'instruction_prompt',
+                  'persona_prompt', 'module', 'files']
 
 
 class ModuleSerializer(serializers.ModelSerializer):
@@ -22,7 +21,8 @@ class ModuleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Module
-        fields = ['id', 'name', 'created_by', 'tasks']
+        fields = ['id', 'name', 'created_by', 'content',
+                  'files', 'tasks']
         read_only_fields = ['created_by']
 
     def create(self, validated_data):
@@ -35,6 +35,8 @@ class ModuleSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         tasks_data = validated_data.pop('tasks', [])
         instance.name = validated_data.get('name', instance.name)
+        instance.content = validated_data.get('content', instance.content)
+        instance.files = validated_data.get('files', instance.files)
         instance.save()
 
         # Update tasks if provided
@@ -48,6 +50,7 @@ class ModuleSerializer(serializers.ModelSerializer):
                     "instruction_prompt", task.instruction_prompt)
                 task.persona_prompt = task_data.get(
                     "persona_prompt", task.persona_prompt)
+                task.files = task_data.get("files", task.files)
                 task.save()
                 keep_tasks.append(task.id)
             else:
