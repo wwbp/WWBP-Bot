@@ -28,7 +28,22 @@ function Login({ setLoggedIn, setRole }) {
         localStorage.setItem("role", response.role);
         setLoggedIn(true);
         setRole(response.role);
-        navigate(from, { replace: true });
+
+        // Determine the dashboard based on the user's role
+        let dashboardPath;
+        switch (response.role) {
+          case "teacher":
+            dashboardPath = "/teacher-dashboard";
+            break;
+          default:
+            dashboardPath = "/student-dashboard";
+            break;
+        }
+
+        // Redirect to the dashboard or the intended page
+        navigate(from === "/" || from === "/login" ? dashboardPath : from, {
+          replace: true,
+        });
         enqueueSnackbar("Login successful!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to login!");
