@@ -351,17 +351,21 @@ class FileUploadView(APIView):
         if file.content_type not in allowed_mime_types:
             return Response({"detail": "Unsupported file type."}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
-        if settings.ENVIRONMENT == 'local':
-            local_upload_dir = os.path.join(settings.BASE_DIR, 'data/upload/')
-            os.makedirs(local_upload_dir, exist_ok=True)
-            file_path = default_storage.save(
-                local_upload_dir + file.name, ContentFile(file.read()))
-        else:
-            s3 = boto3.client(
-                's3', region_name=settings.AWS_S3_REGION_NAME)
-            bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-            s3_key = f"data/upload/{file.name}"
-            s3.upload_fileobj(file, bucket_name, s3_key)
-            file_path = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+        try:
+            if settings.ENVIRONMENT == 'local':
+                local_upload_dir = os.path.join(
+                    settings.BASE_DIR, 'data/upload/')
+                os.makedirs(local_upload_dir, exist_ok=True)
+                file_path = default_storage.save(
+                    local_upload_dir + file.name, ContentFile(file.read()))
+            else:
+                s3 = boto3.client(
+                    's3', region_name=settings.AWS_S3_REGION_NAME)
+                bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+                s3_key = f"data/upload/{file.name}"
+                s3.upload_fileobj(file, bucket_name, s3_key)
+                file_path = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+        except Exception as e:
+            logger.error(f"Error saving the file: {e}")
 
         return Response({'file_path': file_path}, status=status.HTTP_201_CREATED)
