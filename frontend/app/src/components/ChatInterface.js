@@ -367,7 +367,17 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
             <MenuItem value="audio">Audio Mode</MenuItem>
           </Select>
         </Box>
-        <Box flexGrow={1} overflow="auto" p={2} sx={{ width: "100%" }}>
+        <Box
+          flexGrow={1}
+          overflow="auto"
+          p={2}
+          sx={{
+            width: "100%",
+            height: "500px",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {messages.map((msg, index) => (
             <Box
               key={index}
