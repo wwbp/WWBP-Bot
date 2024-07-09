@@ -428,10 +428,35 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
                   width: 80,
                   height: 80,
                   fontSize: "2rem",
+                  position: "relative", // Ensure the circular text is positioned correctly
                 }}
               >
                 <MicIcon sx={{ fontSize: "4rem" }} />
                 {getAudioStateIcon()}
+                <svg
+                  width="120"
+                  height="120"
+                  viewBox="0 0 120 120"
+                  style={{ position: "absolute", bottom: -15, left: 0 }}
+                >
+                  <path
+                    id="circlePath"
+                    d="M 60, 60
+                       m -50, 0
+                       a 50,50 0 1,1 100,0
+                       a 50,50 0 1,1 -100,0"
+                    fill="transparent"
+                  />
+                  <text fontSize="10" fill="#000">
+                    <textPath
+                      href="#circlePath"
+                      startOffset="50%"
+                      textAnchor="middle"
+                    >
+                      hold to talk
+                    </textPath>
+                  </text>
+                </svg>
               </IconButton>
             </Box>
           ) : (
