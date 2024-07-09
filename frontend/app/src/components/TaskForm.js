@@ -2,13 +2,15 @@ import React, { useState, useEffect } from "react";
 import { postData, putData } from "../utils/api";
 import { TextField, Box, Button, Grid } from "@mui/material";
 import { useSnackbar } from "notistack";
+import FileUpload from "./FileUpload";
 
-function TaskForm({ task, moduleId, onTaskCreated }) {
+const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   const initialTaskData = {
     title: "",
     content: "",
     instruction_prompt: "",
     persona_prompt: "",
+    files: [],
   };
   const [taskData, setTaskData] = useState(initialTaskData);
   const [submitted, setSubmitted] = useState(false);
@@ -16,7 +18,13 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
 
   useEffect(() => {
     if (task.id) {
-      setTaskData(task);
+      setTaskData({
+        title: task.title,
+        content: task.content,
+        instruction_prompt: task.instruction_prompt,
+        persona_prompt: task.persona_prompt,
+        files: task.files || [],
+      });
     } else {
       setTaskData(initialTaskData);
     }
@@ -25,6 +33,17 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
   const handleTaskChange = (e) => {
     const { name, value } = e.target;
     setTaskData({ ...taskData, [name]: value });
+  };
+
+  const handleFileUploaded = (filePath) => {
+    setTaskData({ ...taskData, files: [...taskData.files, filePath] });
+  };
+
+  const handleFileRemoved = (filePath) => {
+    setTaskData({
+      ...taskData,
+      files: taskData.files.filter((file) => file !== filePath),
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -39,7 +58,8 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
 
     try {
       if (task.id) {
-        await putData(`/tasks/${task.id}/`, taskData);
+        const updatedTaskData = { ...taskData, module: moduleId };
+        await putData(`/tasks/${task.id}/`, updatedTaskData);
         enqueueSnackbar("Task updated successfully!", { variant: "success" });
       } else {
         const taskPayload = { ...taskData, module: moduleId };
@@ -110,6 +130,13 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
               rows={5}
             />
           </Grid>
+          <Grid item xs={12}>
+            <FileUpload
+              existingFiles={taskData.files}
+              onFileUploaded={handleFileUploaded}
+              onFileRemoved={handleFileRemoved}
+            />
+          </Grid>
         </Grid>
         <Box display="flex" justifyContent="flex-end" mt={3}>
           <Button variant="contained" color="primary" type="submit">
@@ -119,6 +146,6 @@ function TaskForm({ task, moduleId, onTaskCreated }) {
       </form>
     </Box>
   );
-}
+};
 
 export default TaskForm;

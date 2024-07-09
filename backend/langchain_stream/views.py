@@ -6,17 +6,11 @@ import logging
 from collections import deque
 from channels.generic.websocket import AsyncWebsocketConsumer
 from google.cloud import speech, texttospeech
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.prompts.chat import MessagesPlaceholder
-from langchain_core.output_parsers import StrOutputParser
 import re
-from langchain_community.chat_message_histories import RedisChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
 from asgiref.sync import sync_to_async
-from langchain_stream.tasks import save_message_to_transcript
+from langchain_stream.tasks import save_message_to_transcript, get_file_streams
 from django.apps import apps
-
+from openai import OpenAI
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -32,22 +26,36 @@ else:
     REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 
 
-class LangChainSessionManager:
+class PromptHook:
+
     @sync_to_async
     def get_system_prompt(self):
         SystemPrompt = apps.get_model('accounts', 'SystemPrompt')
         try:
-            prompt = SystemPrompt.objects.latest('created_at').prompt
-            return prompt
+            prompt = SystemPrompt.objects.latest('created_at')
+            return prompt.prompt
         except SystemPrompt.DoesNotExist:
             return "You are a helpful assistant."
 
     @sync_to_async
+    def get_module_prompts(self, session_id):
+        ChatSession = apps.get_model('accounts', 'ChatSession')
+        try:
+            session = ChatSession.objects.get(id=session_id)
+            module = session.module
+            return module.content
+        except Exception as e:
+            logger.error(f"failed due to {e}")
+
+    @sync_to_async
     def get_task_prompts(self, session_id):
         ChatSession = apps.get_model('accounts', 'ChatSession')
-        session = ChatSession.objects.get(id=session_id)
-        task = session.task
-        return task.content, task.instruction_prompt, task.persona_prompt
+        try:
+            session = ChatSession.objects.get(id=session_id)
+            task = session.task
+            return task.content, task.instruction_prompt, task.persona_prompt
+        except Exception as e:
+            logger.error(f"failed due to {e}")
 
     @sync_to_async
     def get_user_profile(self, session_id):
@@ -62,53 +70,160 @@ class LangChainSessionManager:
         }
         return profile_info
 
-    async def get_llm_instance(self, session_id):
-        try:
-            llm = ChatOpenAI(
-                model="gpt-4o", api_key=os.getenv("OPENAI_API_KEY", ""))
+    async def get_cumulative_setup_intructions(self, session_id):
+        system_prompts = await self.get_system_prompt()
+        task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
+        user_profile_details = await self.get_user_profile(session_id)
+        module_content = await self.get_module_prompts(session_id)
 
-            # prompt library
-            system_prompts = await self.get_system_prompt()
-            task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
-            user_profile_details = await self.get_user_profile(session_id)
-
-            # Combine and format the prompts
-            prompt_value = f"""
+        # Combine and format the prompts
+        prompt_value = f"""
             System: {system_prompts}
+            Module Content: {module_content}
             Task Content: {task_content}
             Task Instruction: {task_instruction}
             Task Persona: {task_persona}
             User Profile: {user_profile_details}
             """
+        return prompt_value
 
-            prompt = ChatPromptTemplate.from_messages([
-                ("system", "{system}"),
-                MessagesPlaceholder("history"),
-                ("user", "{question}")
-            ])
-            output_parser = StrOutputParser()
-            chain = prompt | llm.with_config(
-                {"run_name": "model"}) | output_parser.with_config({"run_name": "Assistant"})
-            chain_with_history = RunnableWithMessageHistory(
-                chain,
-                lambda session_id: RedisChatMessageHistory(
-                    session_id,
-                    url=REDIS_URL
-                ),
-                input_messages_key="question",
-                history_messages_key="history",
+
+class AssisstantSessionManager(PromptHook):
+    def __init__(self) -> None:
+        super().__init__()
+        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
+        self.thread = None
+        self.assistant = None
+        self.vector_store = None
+
+    async def setup(self, session_id):
+        try:
+            self.assistant = await self.get_assistant(session_id=session_id)
+            self.thread = await self.get_thread(session_id=session_id)
+            if self.assistant is None or self.thread is None:
+                raise Exception(
+                    f"Failed to assistant id: {self.assistant.id} and thread id: {self.thread.id}")
+
+            # Initialize vector store and upload files
+            self.vector_store = await self.initialize_vector_store()
+            await self.upload_files_to_vector_store(session_id)
+            await self.update_assistant_with_vector_store()
+        except Exception as e:
+            logger.error(f"Error setting up session manager: {e}")
+
+    async def get_assistant(self, session_id):
+        ChatSession = apps.get_model('accounts', 'ChatSession')
+        session = await sync_to_async(ChatSession.objects.get)(id=session_id)
+        try:
+            if session.assistant_id:
+                assistant = self.client.beta.assistants.retrieve(
+                    session.assistant_id)
+                logger.debug(
+                    f"Retrieved existing assistant id: {assistant.id}")
+                return assistant
+        except Exception as e:
+            logger.error(f"Failed to fetch assistant: {e}")
+
+        try:
+            instruction_prompt = await self.get_cumulative_setup_intructions(session_id=session_id)
+            assistant = self.client.beta.assistants.create(
+                model="gpt-4o",
+                instructions=instruction_prompt,
+                tools=[{"type": "file_search"}],
+            )
+            session.assistant_id = assistant.id
+
+            @sync_to_async
+            def _session_save():
+                session.save()
+            await _session_save()
+            logger.debug(f"Created new assistant: {assistant.id}")
+            return assistant
+        except Exception as e:
+            logger.error(f"Error creating new assistant: {e}")
+            return None
+
+    async def get_thread(self, session_id):
+        ChatSession = apps.get_model('accounts', 'ChatSession')
+        session = await sync_to_async(ChatSession.objects.get)(id=session_id)
+        try:
+            if session.thread_id:
+                thread = self.client.beta.threads.retrieve(session.thread_id)
+                logger.debug(f"Retrieved existing thread id: {thread.id}")
+                return thread
+        except Exception as e:
+            logger.error(f"Failed to retrieve existing thread: {e}")
+
+        try:
+            thread = self.client.beta.threads.create()
+            session.thread_id = thread.id
+
+            @sync_to_async
+            def _session_save():
+                session.save()
+            await _session_save()
+            logger.debug(f"Created new thread: {thread.id}")
+            return thread
+        except Exception as e:
+            logger.error(f"Error creating new thread: {e}")
+            return None
+
+    async def create_user_message(self, message):
+        self.client.beta.threads.messages.create(
+            thread_id=self.thread.id, role="user", content=message)
+
+    async def get_run_stream(self):
+        stream = self.client.beta.threads.runs.create(
+            assistant_id=self.assistant.id,
+            thread_id=self.thread.id,
+            stream=True
+        )
+        return stream
+
+    async def async_stream(self, stream):
+        loop = asyncio.get_running_loop()
+        for event in stream:
+            yield await loop.run_in_executor(None, lambda: event)
+
+    async def initialize_vector_store(self):
+        try:
+            vector_store = self.client.beta.vector_stores.create(
+                name="Educational Content", expires_after={
+                    "anchor": "last_active_at",
+                    "days": 2
+                }
+            )
+            logger.debug(f"Created vector store: {vector_store.id}")
+            return vector_store
+        except Exception as e:
+            logger.error(f"Error creating vector store: {e}")
+            return None
+
+    async def upload_files_to_vector_store(self, session_id):
+        try:
+            file_streams = await get_file_streams(session_id)
+            file_batch = self.client.beta.vector_stores.file_batches.upload_and_poll(
+                vector_store_id=self.vector_store.id, files=file_streams
             )
             logger.debug(
-                f"Chain with history created for session_id={session_id}")
-            return chain_with_history.with_config({
-                'configurable': {"session_id": session_id}}), prompt_value
+                f"Uploaded files to vector store: {file_batch.status}")
         except Exception as e:
-            logger.error(
-                f"Error creating LLM instance for session_id {session_id}: {e}")
-            raise
+            logger.error(f"Error uploading files to vector store: {e}")
+
+    async def update_assistant_with_vector_store(self):
+        try:
+            self.client.beta.assistants.update(
+                assistant_id=self.assistant.id,
+                tool_resources={"file_search": {
+                    "vector_store_ids": [self.vector_store.id]}},
+            )
+            logger.debug(
+                f"Updated assistant with vector store: {self.vector_store.id}")
+        except Exception as e:
+            logger.error(f"Error updating assistant with vector store: {e}")
 
 
-session_manager = LangChainSessionManager()
+session_manager = AssisstantSessionManager()
 
 
 class BaseWebSocketConsumer(AsyncWebsocketConsumer):
@@ -124,64 +239,65 @@ class BaseWebSocketConsumer(AsyncWebsocketConsumer):
 
 
 class ChatConsumer(BaseWebSocketConsumer):
+
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
-        await self.accept()
-        logger.debug(f"WebSocket connected: session_id={self.session_id}")
-        asyncio.create_task(self.ping())
-
-        # Initialize LLM with memory for this session
         try:
-            self.chain, self.prompt_value = await session_manager.get_llm_instance(self.session_id)
-            logger.debug(
-                f"LLM instance initialized for session_id={self.session_id}")
-
-            # Check if the initial message has already been sent
-            if not cache.get(f'initial_message_sent_{self.session_id}', False):
-                initial_message = "Begin the conversation."
-                await self.stream_text_response(initial_message, 0)
-                cache.set(f'initial_message_sent_{self.session_id}', True)
+            await session_manager.setup(session_id=self.session_id)
+            if session_manager.assistant is None or session_manager.thread is None:
+                raise Exception("Assistant or thread setup failed")
+            await self.accept()
+            logger.debug(f"WebSocket connected: session_id={self.session_id}")
+            asyncio.create_task(self.ping())
+            try:
+                if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                    initial_message = "Begin the conversation."
+                    await session_manager.create_user_message(
+                        message=initial_message)
+                    await self.stream_text_response(message_id=1)
+                    cache.set(f'initial_message_sent_{self.session_id}', True)
+            except Exception as e:
+                logger.error(f"Failed to initialize LLM instance: {e}")
         except Exception as e:
-            logger.error(f"Failed to initialize LLM instance: {e}")
+            logger.error(f"WebSocket connection failed: {e}")
+            await self.close()
 
     async def receive(self, text_data):
-        logger.debug(f"Message received: {text_data}")
-        try:
-            text_data_json = json.loads(text_data)
-            message = text_data_json["message"]
-            message_id = text_data_json["message_id"]
-            await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
-                                             user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
-        except Exception as e:
-            logger.error(f"Error parsing message: {e}")
-            return
+        text_data_json = json.loads(text_data)
+        message = text_data_json["message"]
+        message_id = text_data_json["message_id"]
+        await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
+                                         user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
 
-        await self.stream_text_response(message, message_id)
+        await session_manager.create_user_message(message=message)
+        await self.stream_text_response(message_id)
 
-    async def stream_text_response(self, message, message_id):
+    async def stream_text_response(self, message_id):
+        stream = await session_manager.get_run_stream()
+        bot_message_buffer = []
         try:
-            logger.debug(f"Starting chain events with message: {message}")
-            bot_message_buffer = []
-            async for chunk in self.chain.astream_events(
-                {'question': message, 'system': self.prompt_value},
-                version="v1",
-                include_names=["Assistant"],
-            ):
-                logger.debug(f"Chunk received: {chunk}")
+            async for event in session_manager.async_stream(stream):
+                chunk = {}
                 chunk["message_id"] = message_id
-                if chunk["event"] in ["on_parser_start", "on_parser_stream"]:
+                if event.event == 'thread.run.created':
+                    chunk["event"] = "on_parser_start"
                     await self.send(text_data=json.dumps(chunk))
-                    logger.debug(f"Chunk sent: {chunk}")
-                    if 'chunk' in chunk['data']:
-                        bot_message_buffer.append(chunk['data']['chunk'])
-                elif chunk["event"] == "on_parser_end":
-                    await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
+
+                elif event.event == 'thread.message.delta':
+                    chunk["event"] = "on_parser_stream"
+                    chunk["value"] = event.data.delta.content[0].text.value
+                    await self.send(text_data=json.dumps(chunk))
+                    bot_message_buffer.append(chunk["value"])
+
+                elif event.event == 'thread.run.completed':
+                    chunk["event"] = "on_parser_end"
+                    await self.send(text_data=json.dumps(chunk))
                     complete_bot_message = ''.join(bot_message_buffer)
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
                 else:
-                    logger.error(
-                        f"Unknown 'chunk' event: {chunk.get('event', 'no event')}")
+                    # ignoring other response handlers
+                    continue
         except Exception as e:
             logger.error(f"Error in chain events: {e}")
 
@@ -194,25 +310,27 @@ class AudioConsumer(BaseWebSocketConsumer):
 
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
-        await self.accept()
-        logger.debug(
-            f"Audio WebSocket connected: session_id={self.session_id}")
-        asyncio.create_task(self.ping())
-
-        # Initialize LLM with memory for this session
         try:
-            self.chain, self.prompt_value = await session_manager.get_llm_instance(self.session_id)
+            await session_manager.setup(session_id=self.session_id)
+            if session_manager.assistant is None or session_manager.thread is None:
+                raise Exception("Assistant or thread setup failed")
+            await self.accept()
             logger.debug(
-                f"LLM instance initialized for session_id={self.session_id}")
+                f"Audio WebSocket connected: session_id={self.session_id}")
+            asyncio.create_task(self.ping())
+            try:
+                if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                    initial_message = "Begin the conversation."
+                    await session_manager.create_user_message(
+                        message=initial_message)
+                    await self.stream_audio_response(message_id=1)
+                    cache.set(f'initial_message_sent_{self.session_id}', True)
 
-            # Check if the initial message has already been sent
-            if not cache.get(f'initial_message_sent_{self.session_id}', False):
-                initial_message = "Begin the conversation."
-                await self.stream_audio_response(initial_message, 0)
-                cache.set(f'initial_message_sent_{self.session_id}', True)
-
+            except Exception as e:
+                logger.error(f"Failed to initialize LLM instance: {e}")
         except Exception as e:
-            logger.error(f"Failed to initialize LLM instance: {e}")
+            logger.error(f"WebSocket connection failed: {e}")
+            await self.close()
 
     async def receive(self, bytes_data=None, text_data=None):
         if text_data:
@@ -236,10 +354,10 @@ class AudioConsumer(BaseWebSocketConsumer):
             await save_message_to_transcript(session_id=self.session_id, message_id=self.current_message_id,
                                              user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
             if transcript:
-                logger.debug(f"Transcript: {transcript}")
+                await session_manager.create_user_message(message=transcript)
                 await self.send(text_data=json.dumps({"transcript": transcript, "message_id": self.current_message_id}))
                 assistant_message_id = str(int(self.current_message_id) + 1)
-                await self.stream_audio_response(transcript, assistant_message_id)
+                await self.stream_audio_response(assistant_message_id)
             else:
                 await self.send_audio_chunk(await self.text_to_speech("Sorry, I couldn't hear you."))
 
@@ -263,39 +381,34 @@ class AudioConsumer(BaseWebSocketConsumer):
             logger.error(f"Error during speech recognition: {e}")
             return ""
 
-    async def stream_audio_response(self, text, message_id):
+    async def stream_audio_response(self, message_id):
+        stream = await session_manager.get_run_stream()
         try:
-            buffer = []  # Buffer to collect tokens
-            logger.debug(f"Starting chain events with text: {text}")
-            async for chunk in self.chain.astream_events(
-                {'question': text, 'system': self.prompt_value},
-                version="v1",
-                include_names=["Assistant"],
-            ):
-                logger.debug(f"Chunk received: {chunk}")
-                if chunk["event"] == "on_parser_start":
-                    chunk["message_id"] = message_id
+            buffer = []
+            async for event in session_manager.async_stream(stream):
+                chunk = {}
+                chunk["message_id"] = message_id
+                if event.event == 'thread.run.created':
+                    chunk["event"] = "on_parser_start"
                     await self.send(text_data=json.dumps(chunk))
-                elif chunk["event"] == "on_parser_stream":
-                    if 'chunk' in chunk['data']:
-                        buffer.append(chunk['data']['chunk'])
-                        self.bot_message_buffer.append(chunk['data']['chunk'])
-                        chunk["message_id"] = message_id
-                        await self.send(text_data=json.dumps(chunk))
-                        if any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
-                            batched_text = ' '.join(buffer)
-                            buffer = []
-                            processed_text = self.process_text_for_tts(
-                                batched_text)
-                            audio_chunk = await self.text_to_speech(processed_text)
-                            self.bot_audio_buffer.append(audio_chunk)
-                            self.audio_queue.append(audio_chunk)
-                            asyncio.create_task(self.send_audio_chunk())
-                            logger.debug(
-                                f"Audio chunk queued: {len(audio_chunk)} bytes")
-                    else:
-                        logger.error(f"Missing 'chunk' in data: {chunk}")
-                elif chunk["event"] == "on_parser_end":
+                elif event.event == 'thread.message.delta':
+                    chunk["event"] = "on_parser_stream"
+                    chunk["value"] = event.data.delta.content[0].text.value
+                    buffer.append(chunk["value"])
+                    self.bot_message_buffer.append(chunk["value"])
+                    await self.send(text_data=json.dumps(chunk))
+                    if any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
+                        batched_text = ' '.join(buffer)
+                        buffer = []
+                        processed_text = self.process_text_for_tts(
+                            batched_text)
+                        audio_chunk = await self.text_to_speech(processed_text)
+                        self.bot_audio_buffer.append(audio_chunk)
+                        self.audio_queue.append(audio_chunk)
+                        asyncio.create_task(self.send_audio_chunk())
+                        logger.debug(
+                            f"Audio chunk queued: {len(audio_chunk)} bytes")
+                elif event.event == 'thread.run.completed':
                     if buffer:
                         batched_text = ' '.join(buffer)
                         processed_text = self.process_text_for_tts(

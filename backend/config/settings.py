@@ -52,11 +52,6 @@ LOGGING = {
         'level': 'DEBUG',
     },
     'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
         'config': {
             'handlers': ['console'],
             'level': 'DEBUG',
@@ -91,7 +86,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'langchain_stream',
-    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -116,23 +110,6 @@ if ENVIRONMENT == 'production':
 else:
     REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 
-# Celery Configuration
-rabbitmq_user = os.getenv('RABBITMQ_DEFAULT_USER', 'guest')
-rabbitmq_password = os.getenv('RABBITMQ_DEFAULT_PASS', 'guest')
-rabbitmq_host = os.getenv('RABBITMQ_HOST', 'guest')
-rabbitmq_port = os.getenv('RABBITMQ_PORT', '5672')
-
-CELERY_BROKER = f'{rabbitmq_user}:{rabbitmq_password}@{rabbitmq_host}:{rabbitmq_port}'
-if ENVIRONMENT == 'production':
-    CELERY_BROKER_URL = f'amqps://{CELERY_BROKER}'
-    CELERY_BROKER_USE_SSL = {
-        'ssl_cert_reqs': ssl.CERT_NONE,
-    }
-else:
-    CELERY_BROKER_URL = f'amqp://{CELERY_BROKER}'
-
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_CACHE_BACKEND = 'default'
 
 # AWS Configuration
 AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'a')
@@ -173,6 +150,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication'
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
     ),
 }
 

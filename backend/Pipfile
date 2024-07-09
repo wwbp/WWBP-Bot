@@ -22,9 +22,8 @@ redis = "*"
 channels-redis = "*"
 django-redis = "*"
 boto3 = "*"
-celery = "*"
-django-celery-results = "*"
 pika = "*"
+jupyter = "*"
 
 [dev-packages]
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { postData } from "../utils/api";
 import { Container, TextField, Button, Box, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
@@ -10,6 +10,8 @@ function Login({ setLoggedIn, setRole }) {
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -26,7 +28,22 @@ function Login({ setLoggedIn, setRole }) {
         localStorage.setItem("role", response.role);
         setLoggedIn(true);
         setRole(response.role);
-        navigate("/");
+
+        // Determine the dashboard based on the user's role
+        let dashboardPath;
+        switch (response.role) {
+          case "teacher":
+            dashboardPath = "/teacher-dashboard";
+            break;
+          default:
+            dashboardPath = "/student-dashboard";
+            break;
+        }
+
+        // Redirect to the dashboard or the intended page
+        navigate(from === "/" || from === "/login" ? dashboardPath : from, {
+          replace: true,
+        });
         enqueueSnackbar("Login successful!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to login!");
@@ -70,7 +87,10 @@ function Login({ setLoggedIn, setRole }) {
         </form>
         <Box mt={2}>
           <Typography variant="body2">
-            Don't have an account? <Link to="/signup">Sign Up</Link>
+            Don't have an account?{" "}
+            <Link to="/signup" state={{ from }}>
+              Sign Up
+            </Link>
           </Typography>
         </Box>
       </Box>
