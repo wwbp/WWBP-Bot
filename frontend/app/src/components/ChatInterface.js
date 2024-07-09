@@ -352,11 +352,6 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
         height="100%"
         width="100%"
         maxWidth="800px"
-        sx={{
-          border: "1px solid #e0e0e0",
-          borderRadius: "8px",
-          backgroundColor: "white",
-        }}
       >
         <Box display="flex" justifyContent="flex-end" p={2}>
           <Select
