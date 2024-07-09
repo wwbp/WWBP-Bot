@@ -340,105 +340,123 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
   };
 
   return (
-    <Box display="flex" flexDirection="column" height="100%" width="100%">
-      <Box display="flex" justifyContent="flex-end" p={2}>
-        <Select
-          value={chatMode}
-          onChange={handleModeChange}
-          variant="outlined"
-          sx={{
-            borderRadius: "50px",
-            boxShadow: 3,
-          }}
-        >
-          <MenuItem value="text">Text Mode</MenuItem>
-          <MenuItem value="audio">Audio Mode</MenuItem>
-        </Select>
-      </Box>
-      <Box flexGrow={1} overflow="auto" p={2} sx={{ width: "100%" }}>
-        {messages.map((msg, index) => (
-          <Box
-            key={index}
-            display="flex"
-            justifyContent={
-              msg.sender === "GritCoach" ? "flex-start" : "flex-end"
-            }
-            mb={2}
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      sx={{ width: "100%", height: "100%" }}
+    >
+      <Box
+        display="flex"
+        flexDirection="column"
+        height="100%"
+        width="100%"
+        maxWidth="800px"
+        sx={{
+          border: "1px solid #e0e0e0",
+          borderRadius: "8px",
+          backgroundColor: "white",
+        }}
+      >
+        <Box display="flex" justifyContent="flex-end" p={2}>
+          <Select
+            value={chatMode}
+            onChange={handleModeChange}
+            variant="outlined"
+            sx={{
+              borderRadius: "50px",
+              boxShadow: 3,
+            }}
           >
-            {msg.sender === "GritCoach" && (
-              <Avatar
-                alt="Bot Avatar"
-                src={botAvatar}
-                style={{ marginRight: "8px" }}
-              />
-            )}
+            <MenuItem value="text">Text Mode</MenuItem>
+            <MenuItem value="audio">Audio Mode</MenuItem>
+          </Select>
+        </Box>
+        <Box flexGrow={1} overflow="auto" p={2} sx={{ width: "100%" }}>
+          {messages.map((msg, index) => (
             <Box
-              bgcolor={msg.sender === "GritCoach" ? "#f0f0f0" : "#cfe8fc"}
-              p={1}
-              borderRadius={2}
-              maxWidth="60%"
+              key={index}
+              display="flex"
+              justifyContent={
+                msg.sender === "GritCoach" ? "flex-start" : "flex-end"
+              }
+              mb={2}
             >
-              <Typography variant="body2" color="textSecondary">
-                <strong>{msg.sender}:</strong>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {msg.message}
-                </ReactMarkdown>
-              </Typography>
+              {msg.sender === "GritCoach" && (
+                <Avatar
+                  alt="Bot Avatar"
+                  src={botAvatar}
+                  style={{ marginRight: "8px" }}
+                />
+              )}
+              <Box
+                bgcolor={msg.sender === "GritCoach" ? "#f0f0f0" : "#cfe8fc"}
+                p={1}
+                borderRadius={2}
+                maxWidth="60%"
+              >
+                <Typography variant="body2" color="textSecondary">
+                  <strong>{msg.sender}:</strong>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.message}
+                  </ReactMarkdown>
+                </Typography>
+              </Box>
             </Box>
-          </Box>
-        ))}
-        <div ref={messagesEndRef} />
-      </Box>
-      <Box display="flex" alignItems="center" p={2}>
-        {chatMode === "audio" ? (
-          <Box
-            display="flex"
-            justifyContent="center"
-            flexGrow={1}
-            position="relative"
+          ))}
+          <div ref={messagesEndRef} />
+        </Box>
+        <Box display="flex" alignItems="center" p={2}>
+          {chatMode === "audio" ? (
+            <Box
+              display="flex"
+              justifyContent="center"
+              flexGrow={1}
+              position="relative"
+            >
+              <IconButton
+                onMouseDown={handlePTTMouseDown}
+                onMouseUp={handlePTTMouseUp}
+                color={audioState === "recording" ? "secondary" : "default"}
+                aria-label="push-to-talk"
+                sx={{
+                  width: 80,
+                  height: 80,
+                  fontSize: "2rem",
+                }}
+              >
+                <MicIcon sx={{ fontSize: "4rem" }} />
+                {getAudioStateIcon()}
+              </IconButton>
+            </Box>
+          ) : (
+            <>
+              <TextField
+                fullWidth
+                value={message}
+                onChange={handleInputChange}
+                placeholder="Type a message..."
+                onKeyDown={onKeyPress}
+              />
+              <Button
+                onClick={handleSubmit}
+                color="primary"
+                variant="contained"
+                style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
+              >
+                Send
+              </Button>
+            </>
+          )}
+          <Button
+            onClick={handleCompleteTask}
+            color="primary"
+            variant="contained"
+            style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
           >
-            <IconButton
-              onMouseDown={handlePTTMouseDown}
-              onMouseUp={handlePTTMouseUp}
-              color={audioState === "recording" ? "secondary" : "default"}
-              aria-label="push-to-talk"
-              sx={{
-                width: 80,
-                height: 80,
-                fontSize: "2rem",
-              }}
-            >
-              <MicIcon sx={{ fontSize: "4rem" }} />
-              {getAudioStateIcon()}
-            </IconButton>
-          </Box>
-        ) : (
-          <>
-            <TextField
-              fullWidth
-              value={message}
-              onChange={handleInputChange}
-              placeholder="Type a message..."
-              onKeyDown={onKeyPress}
-            />
-            <Button
-              onClick={handleSubmit}
-              color="primary"
-              variant="contained"
-              style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
-            >
-              Send
-            </Button>
-          </>
-        )}
-        <Button
-          onClick={handleCompleteTask}
-          color="primary"
-          variant="contained"
-          style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
-        >
-          Complete
-        </Button>
+            Complete
+          </Button>
+        </Box>
       </Box>
     </Box>
   );
