@@ -58,7 +58,8 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
 
     try {
       if (task.id) {
-        await putData(`/tasks/${task.id}/`, taskData);
+        const updatedTaskData = { ...taskData, module: moduleId };
+        await putData(`/tasks/${task.id}/`, updatedTaskData);
         enqueueSnackbar("Task updated successfully!", { variant: "success" });
       } else {
         const taskPayload = { ...taskData, module: moduleId };
