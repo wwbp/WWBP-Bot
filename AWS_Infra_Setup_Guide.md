@@ -96,3 +96,7 @@
       - Go to AWS Secrets Manager and create a new secret with value as credential.json
       - Update fetch google crediatials to Secret config: [fetch_google_credentials](backend/fetch_google_credentials.py)
    - Ensure that the IAM role associated with EB has permission to access the secret
+3. **[EB Deployment Flake] “The following instances have not responded in the allowed command timeout time”**
+   - NTP – Instances in your Elastic Beanstalk environment use Network Time Protocol (NTP) to synchronize the system clock. If instances are unable to communicate on UDP port 123, the clock may go out of sync, causing issues with Elastic Beanstalk health reporting. Ensure that your VPC security groups and network ACLs allow inbound and outbound UDP traffic on port 123 to avoid these issues.
+      - Security Groups: Modify the security group associated with your Elastic Beanstalk environment to allow inbound and outbound UDP traffic on port 123.
+      - Network ACLs: Ensure your network ACLs also allow this traffic. Add entries to allow UDP traffic on port 123 for both inbound and outbound rules.
