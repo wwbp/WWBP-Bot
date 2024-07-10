@@ -62,7 +62,7 @@ function NavBar({
   };
 
   return (
-    <AppBar position="static" style={{ backgroundColor: "#ff1744" }}>
+    <AppBar position="static" style={{ backgroundColor: "#d30000" }}>
       <Toolbar>
         <Typography
           variant="h6"

@@ -22,7 +22,7 @@ import { useSnackbar } from "notistack";
 const cardStyle = {
   width: "100%",
   height: "100px",
-  backgroundColor: "#e0e0e0",
+  backgroundColor: "#909090",
   borderRadius: 2,
   cursor: "pointer",
   display: "flex",
@@ -33,7 +33,7 @@ const cardStyle = {
 
 const selectedCardStyle = {
   ...cardStyle,
-  backgroundColor: "#ffcccc",
+  backgroundColor: "#d30000",
 };
 
 const columnStyle = {

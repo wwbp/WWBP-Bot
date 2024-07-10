@@ -34,6 +34,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
   const remoteStream = useRef(new MediaStream());
   const mediaRecorderRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const tempMessageRef = useRef(""); // Temporary buffer for user's message
   const { enqueueSnackbar } = useSnackbar();
 
   const setupWebSocket = () => {
@@ -111,7 +112,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
             );
           } else if (data.event === "on_parser_end") {
             setMessageId((prevId) => prevId + 1);
-            setMessage("");
+            setMessage(tempMessageRef.current); // Restore temporary buffer
           }
         }
       } else {
@@ -134,7 +135,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
         } else if (data.event === "on_parser_end") {
           setAudioState("idle");
           setMessageId((prevId) => prevId + 1);
-          setMessage("");
+          setMessage(tempMessageRef.current); // Restore temporary buffer
         }
       }
     };
@@ -254,6 +255,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
 
   const handleInputChange = (e) => {
     setMessage(e.target.value);
+    tempMessageRef.current = e.target.value; // Save user's message to temporary buffer
   };
 
   const handleSubmit = (e) => {
@@ -270,6 +272,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     );
     setMessageId((prevId) => prevId + 1);
     setMessage("");
+    tempMessageRef.current = ""; // Clear temporary buffer
   };
 
   const onKeyPress = (e) => {

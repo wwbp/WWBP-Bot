@@ -6,6 +6,11 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+import { SnackbarProvider } from "notistack";
+import { ThemeProvider } from "@mui/material/styles";
+import GlobalStyles from "./GlobalStyles";
+import theme from "./theme";
+import "./App.css";
 import { fetchData } from "./utils/api";
 import Login from "./components/Login";
 import UserProfile from "./components/UserProfile";
@@ -14,7 +19,6 @@ import Signup from "./components/Signup";
 import TeacherDashboard from "./components/TeacherDashboard";
 import StudentDashboard from "./components/StudentDashboard";
 import SystemPromptPage from "./components/SystemPromptPage";
-import { SnackbarProvider } from "notistack";
 
 function RequireAuth({ children }) {
   const location = useLocation();
@@ -54,58 +58,61 @@ function App() {
   }, []);
 
   return (
-    <SnackbarProvider maxSnack={3}>
-      <Router>
-        <NavBar
-          isLoggedIn={isLoggedIn}
-          role={role}
-          isStudentView={isStudentView}
-          setIsStudentView={setIsStudentView}
-          handleLogout={() => {
-            localStorage.removeItem("token");
-            localStorage.removeItem("role");
-            setIsLoggedIn(false);
-            setRole("");
-          }}
-        />
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" />} />
-          <Route
-            path="/login"
-            element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+    <ThemeProvider theme={theme}>
+      <GlobalStyles />
+      <SnackbarProvider maxSnack={3}>
+        <Router>
+          <NavBar
+            isLoggedIn={isLoggedIn}
+            role={role}
+            isStudentView={isStudentView}
+            setIsStudentView={setIsStudentView}
+            handleLogout={() => {
+              localStorage.removeItem("token");
+              localStorage.removeItem("role");
+              setIsLoggedIn(false);
+              setRole("");
+            }}
           />
-          <Route path="/profile" element={<UserProfile />} />
-          <Route
-            path="/signup"
-            element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
-          />
-          <Route
-            path="/teacher-dashboard/*"
-            element={
-              <RequireAuth>
-                <TeacherDashboard />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/student-dashboard/*"
-            element={
-              <RequireAuth>
-                <StudentDashboard />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/system-prompt"
-            element={
-              <RequireAuth>
-                <SystemPromptPage />
-              </RequireAuth>
-            }
-          />
-        </Routes>
-      </Router>
-    </SnackbarProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" />} />
+            <Route
+              path="/login"
+              element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+            />
+            <Route path="/profile" element={<UserProfile />} />
+            <Route
+              path="/signup"
+              element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+            />
+            <Route
+              path="/teacher-dashboard/*"
+              element={
+                <RequireAuth>
+                  <TeacherDashboard />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/student-dashboard/*"
+              element={
+                <RequireAuth>
+                  <StudentDashboard />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/system-prompt"
+              element={
+                <RequireAuth>
+                  <SystemPromptPage />
+                </RequireAuth>
+              }
+            />
+          </Routes>
+        </Router>
+      </SnackbarProvider>
+    </ThemeProvider>
   );
 }
 
