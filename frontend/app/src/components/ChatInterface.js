@@ -437,7 +437,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
                   width="120"
                   height="120"
                   viewBox="0 0 120 120"
-                  style={{ position: "absolute", bottom: -15, left: 0 }}
+                  style={{ position: "absolute", top: -50, left: -20 }}
                 >
                   <path
                     id="circlePath"
@@ -447,11 +447,12 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
                        a 50,50 0 1,1 -100,0"
                     fill="transparent"
                   />
-                  <text fontSize="10" fill="#000">
+                  <text fontSize="12" fill="#000">
                     <textPath
                       href="#circlePath"
-                      startOffset="50%"
+                      startOffset="25%"
                       textAnchor="middle"
+                      transform="rotate(180 60 60)"
                     >
                       hold to talk
                     </textPath>
