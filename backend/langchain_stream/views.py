@@ -1,29 +1,25 @@
-from django.core.cache import cache
 import asyncio
 import json
-import os
 import logging
-from collections import deque
-from channels.generic.websocket import AsyncWebsocketConsumer
-from google.cloud import speech, texttospeech
+import os
 import re
+from collections import deque
+
 from asgiref.sync import sync_to_async
-from langchain_stream.tasks import save_message_to_transcript, get_file_streams
+from channels.generic.websocket import AsyncWebsocketConsumer
 from django.apps import apps
+from django.core.cache import cache
+from google.cloud import speech, texttospeech
+from langchain_stream.tasks import save_message_to_transcript, get_file_streams
 from openai import OpenAI
 
 logging.basicConfig(level=logging.DEBUG)
-
 logger = logging.getLogger(__name__)
 
 REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
 REDIS_PORT = os.getenv('REDIS_PORT', '6379')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
-
-if ENVIRONMENT == 'production':
-    REDIS_URL = f'rediss://{REDIS_HOST}:{REDIS_PORT}'
-else:
-    REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}" if ENVIRONMENT == 'local' else f"rediss://{REDIS_HOST}:{REDIS_PORT}"
 
 
 def get_cached_data(key, fetch_function, timeout=300):
@@ -35,7 +31,6 @@ def get_cached_data(key, fetch_function, timeout=300):
 
 
 class PromptHook:
-
     @sync_to_async
     def get_system_prompt(self):
         def fetch_prompt():
@@ -55,7 +50,7 @@ class PromptHook:
             module = session.module
             return module.content
         except Exception as e:
-            logger.error(f"failed due to {e}")
+            logger.error(f"Error fetching module prompts: {e}")
 
     @sync_to_async
     def get_task_prompts(self, session_id):
@@ -65,41 +60,44 @@ class PromptHook:
             task = session.task
             return task.content, task.instruction_prompt, task.persona_prompt
         except Exception as e:
-            logger.error(f"failed due to {e}")
+            logger.error(f"Error fetching task prompts: {e}")
 
     @sync_to_async
     def get_user_profile(self, session_id):
         ChatSession = apps.get_model('accounts', 'ChatSession')
-        session = ChatSession.objects.get(id=session_id)
-        user = session.user
-        profile_info = {
-            "username": user.username,
-            "role": user.role,
-            "grade": user.grade,
-            "preferred_language": user.preferred_language
-        }
-        return profile_info
+        try:
+            session = ChatSession.objects.get(id=session_id)
+            user = session.user
+            return {
+                "username": user.username,
+                "role": user.role,
+                "grade": user.grade,
+                "preferred_language": user.preferred_language
+            }
+        except Exception as e:
+            logger.error(f"Error fetching user profile: {e}")
 
     async def get_cumulative_setup_instructions(self, session_id):
-        system_prompts = await self.get_system_prompt()
-        task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
-        user_profile_details = await self.get_user_profile(session_id)
-        module_content = await self.get_module_prompts(session_id)
-
-        # Combine and format the prompts
-        prompt_value = f"""
-            System: {system_prompts}
-            Module Content: {module_content}
-            Task Content: {task_content}
-            Task Instruction: {task_instruction}
-            Task Persona: {task_persona}
-            User Profile: {user_profile_details}
+        try:
+            system_prompts = await self.get_system_prompt()
+            task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
+            user_profile_details = await self.get_user_profile(session_id)
+            module_content = await self.get_module_prompts(session_id)
+            return f"""
+                System: {system_prompts}
+                Module Content: {module_content}
+                Task Content: {task_content}
+                Task Instruction: {task_instruction}
+                Task Persona: {task_persona}
+                User Profile: {user_profile_details}
             """
-        return prompt_value
+        except Exception as e:
+            logger.error(f"Error creating cumulative setup instructions: {e}")
+            return "Error in generating instructions."
 
 
-class AssisstantSessionManager(PromptHook):
-    def __init__(self) -> None:
+class AssistantSessionManager(PromptHook):
+    def __init__(self):
         super().__init__()
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
         self.thread = None
@@ -110,10 +108,8 @@ class AssisstantSessionManager(PromptHook):
         try:
             self.assistant = await self.get_assistant(session_id=session_id)
             self.thread = await self.get_thread(session_id=session_id)
-            if self.assistant is None or self.thread is None:
+            if not self.assistant or not self.thread:
                 raise Exception("Assistant or thread setup failed")
-
-            # Initialize vector store and upload files
             file_streams = await self.upload_files_to_vector_store(session_id)
             if file_streams:
                 await self.update_assistant_with_vector_store()
@@ -138,11 +134,7 @@ class AssisstantSessionManager(PromptHook):
                 tools=[{"type": "file_search"}],
             )
             session.assistant_id = assistant.id
-
-            @sync_to_async
-            def _session_save():
-                session.save()
-            await _session_save()
+            await sync_to_async(session.save)()
             logger.debug(f"Created new assistant: {assistant.id}")
             return assistant
         except Exception as e:
@@ -160,11 +152,7 @@ class AssisstantSessionManager(PromptHook):
 
             thread = self.client.beta.threads.create()
             session.thread_id = thread.id
-
-            @sync_to_async
-            def _session_save():
-                session.save()
-            await _session_save()
+            await sync_to_async(session.save)()
             logger.debug(f"Created new thread: {thread.id}")
             return thread
         except Exception as e:
@@ -172,21 +160,32 @@ class AssisstantSessionManager(PromptHook):
             return None
 
     async def create_user_message(self, message):
-        self.client.beta.threads.messages.create(
-            thread_id=self.thread.id, role="user", content=message)
+        try:
+            self.client.beta.threads.messages.create(
+                thread_id=self.thread.id, role="user", content=message
+            )
+        except Exception as e:
+            logger.error(f"Error creating user message: {e}")
 
     async def get_run_stream(self):
-        stream = self.client.beta.threads.runs.create(
-            assistant_id=self.assistant.id,
-            thread_id=self.thread.id,
-            stream=True
-        )
-        return stream
+        try:
+            stream = self.client.beta.threads.runs.create(
+                assistant_id=self.assistant.id,
+                thread_id=self.thread.id,
+                stream=True
+            )
+            return stream
+        except Exception as e:
+            logger.error(f"Error getting run stream: {e}")
+            return None
 
     async def async_stream(self, stream):
-        loop = asyncio.get_running_loop()
-        for event in stream:
-            yield await loop.run_in_executor(None, lambda: event)
+        try:
+            loop = asyncio.get_running_loop()
+            for event in stream:
+                yield await loop.run_in_executor(None, lambda: event)
+        except Exception as e:
+            logger.error(f"Error in async stream: {e}")
 
     async def initialize_vector_store(self):
         try:
@@ -234,7 +233,7 @@ class AssisstantSessionManager(PromptHook):
             logger.error(f"Error updating assistant with vector store: {e}")
 
 
-session_manager = AssisstantSessionManager()
+session_manager = AssistantSessionManager()
 
 
 class BaseWebSocketConsumer(AsyncWebsocketConsumer):
@@ -247,19 +246,17 @@ class BaseWebSocketConsumer(AsyncWebsocketConsumer):
                 logger.error(f"Error in ping: {e}")
                 await self.close()
                 break
-            await asyncio.sleep(30)  # Ping every 30 seconds
+            await asyncio.sleep(30)
 
     async def connect(self):
         try:
             await self.accept()
             asyncio.create_task(self.ping())
-            # Other setup code
         except Exception as e:
             logger.error(f"WebSocket connection failed: {e}")
             await self.close()
 
     async def disconnect(self, close_code):
-        # Cleanup code
         await super().disconnect(close_code)
 
 
@@ -271,7 +268,7 @@ class ChatConsumer(BaseWebSocketConsumer):
 
         try:
             await session_manager.setup(session_id=self.session_id)
-            if session_manager.assistant is None or session_manager.thread is None:
+            if not session_manager.assistant or not session_manager.thread:
                 raise Exception("Assistant or thread setup failed")
             await self.channel_layer.group_add(
                 self.room_group_name,
@@ -306,7 +303,6 @@ class ChatConsumer(BaseWebSocketConsumer):
         try:
             await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
                                              user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
-
             await session_manager.create_user_message(message=message)
             await self.stream_text_response(message_id)
         except Exception as e:
@@ -322,13 +318,11 @@ class ChatConsumer(BaseWebSocketConsumer):
                 if event.event == 'thread.run.created':
                     chunk["event"] = "on_parser_start"
                     await self.send(text_data=json.dumps(chunk))
-
                 elif event.event == 'thread.message.delta':
                     chunk["event"] = "on_parser_stream"
                     chunk["value"] = event.data.delta.content[0].text.value
                     await self.send(text_data=json.dumps(chunk))
                     bot_message_buffer.append(chunk["value"])
-
                 elif event.event == 'thread.run.completed':
                     chunk["event"] = "on_parser_end"
                     await self.send(text_data=json.dumps(chunk))
@@ -336,7 +330,6 @@ class ChatConsumer(BaseWebSocketConsumer):
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
                 else:
-                    # ignoring other response handlers
                     continue
         except Exception as e:
             logger.error(f"Error in chain events: {e}")
@@ -352,21 +345,19 @@ class AudioConsumer(BaseWebSocketConsumer):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
         try:
             await session_manager.setup(session_id=self.session_id)
-            if session_manager.assistant is None or session_manager.thread is None:
+            if not session_manager.assistant or not session_manager.thread:
                 raise Exception("Assistant or thread setup failed")
             await self.accept()
             logger.debug(
                 f"Audio WebSocket connected: session_id={self.session_id}")
             asyncio.create_task(self.ping())
-            try:
-                if not cache.get(f'initial_message_sent_{self.session_id}', False):
-                    initial_message = "Begin the conversation."
-                    await session_manager.create_user_message(message=initial_message)
-                    await self.stream_audio_response(message_id=1)
-                    cache.set(f'initial_message_sent_{self.session_id}', True)
 
-            except Exception as e:
-                logger.error(f"Failed to initialize LLM instance: {e}")
+            if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                initial_message = "Begin the conversation."
+                await session_manager.create_user_message(message=initial_message)
+                await self.stream_audio_response(message_id=1)
+                cache.set(f'initial_message_sent_{self.session_id}', True)
+
         except Exception as e:
             logger.error(f"WebSocket connection failed: {e}")
             await self.close()
@@ -493,6 +484,10 @@ class AudioConsumer(BaseWebSocketConsumer):
             speaking_rate=1,
             pitch=0.0,
         )
-        response = client.synthesize_speech(
-            input=input_text, voice=voice, audio_config=audio_config)
-        return response.audio_content
+        try:
+            response = client.synthesize_speech(
+                input=input_text, voice=voice, audio_config=audio_config)
+            return response.audio_content
+        except Exception as e:
+            logger.error(f"Error during text-to-speech synthesis: {e}")
+            return b""
