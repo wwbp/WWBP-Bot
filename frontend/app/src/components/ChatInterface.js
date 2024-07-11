@@ -260,6 +260,11 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!message.trim()) {
+      enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
+      return;
+    }
+
     const userMessageId = messageId;
     const userMessage = {
       sender: "You",
