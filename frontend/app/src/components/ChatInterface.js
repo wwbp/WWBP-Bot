@@ -54,100 +54,109 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
         return;
       }
 
+      // Handle incoming messages based on chat mode (audio or text)
       if (chatMode === "audio") {
-        if (event.data instanceof Blob) {
-          setAudioQueue((prevQueue) => [...prevQueue, event.data]);
-        } else if (typeof event.data === "string") {
-          const data = JSON.parse(event.data);
-          if (data.sdp) {
-            try {
-              await peerConnection.current.setRemoteDescription(
-                new RTCSessionDescription(data.sdp)
-              );
-              if (data.sdp.type === "offer") {
-                const answer = await peerConnection.current.createAnswer();
-                await peerConnection.current.setLocalDescription(answer);
-                ws.current.send(
-                  JSON.stringify({
-                    sdp: peerConnection.current.localDescription,
-                  })
-                );
-              }
-            } catch (error) {
-              enqueueSnackbar("Failed to set remote description", {
-                variant: "error",
-              });
-              console.error("Failed to set remote description:", error);
-            }
-          } else if (data.candidate) {
-            try {
-              await peerConnection.current.addIceCandidate(
-                new RTCIceCandidate(data.candidate)
-              );
-            } catch (error) {
-              enqueueSnackbar("Error adding received ICE candidate", {
-                variant: "error",
-              });
-              console.error("Error adding received ICE candidate", error);
-            }
-          } else if (data.transcript) {
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              { sender: "You", message: data.transcript, id: data.message_id },
-            ]);
-            setMessageId((prevId) => prevId + 1);
-            setMessage("");
-          } else if (data.event === "on_parser_start") {
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              { sender: "GritCoach", message: "", id: data.message_id },
-            ]);
-          } else if (data.event === "on_parser_stream") {
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg.id === data.message_id
-                  ? { ...msg, message: msg.message + data.value }
-                  : msg
-              )
-            );
-          } else if (data.event === "on_parser_end") {
-            setMessageId((prevId) => prevId + 1);
-            setMessage(tempMessageRef.current); // Restore temporary buffer
-          }
-        }
+        handleAudioMessage(event);
       } else {
-        const data = JSON.parse(event.data);
-
-        if (data.event === "on_parser_start") {
-          setAudioState("speaking");
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: "GritCoach", message: "", id: data.message_id },
-          ]);
-        } else if (data.event === "on_parser_stream") {
-          setMessages((prevMessages) =>
-            prevMessages.map((msg) =>
-              msg.id === data.message_id
-                ? { ...msg, message: msg.message + data.value }
-                : msg
-            )
-          );
-        } else if (data.event === "on_parser_end") {
-          setAudioState("idle");
-          setMessageId((prevId) => prevId + 1);
-          setMessage(tempMessageRef.current); // Restore temporary buffer
-        }
+        handleTextMessage(event);
       }
     };
 
     ws.current.onerror = (event) => {
       enqueueSnackbar("WebSocket error observed", { variant: "error" });
       console.error("WebSocket error observed:", event);
+      setIsWsConnected(false); // Reset connection status
     };
 
     ws.current.onclose = (event) => {
+      enqueueSnackbar("WebSocket connection closed", { variant: "info" });
+      console.log("WebSocket connection closed:", event);
       setIsWsConnected(false);
     };
+  };
+
+  const handleTextMessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.event === "on_parser_start") {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender: "GritCoach", message: "", id: data.message_id },
+      ]);
+    } else if (data.event === "on_parser_stream") {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === data.message_id
+            ? { ...msg, message: msg.message + data.value }
+            : msg
+        )
+      );
+    } else if (data.event === "on_parser_end") {
+      setMessageId((prevId) => prevId + 1);
+      setMessage(tempMessageRef.current); // Restore temporary buffer
+    }
+  };
+
+  const handleAudioMessage = async (event) => {
+    if (event.data instanceof Blob) {
+      setAudioQueue((prevQueue) => [...prevQueue, event.data]);
+    } else if (typeof event.data === "string") {
+      const data = JSON.parse(event.data);
+      if (data.sdp) {
+        try {
+          await peerConnection.current.setRemoteDescription(
+            new RTCSessionDescription(data.sdp)
+          );
+          if (data.sdp.type === "offer") {
+            const answer = await peerConnection.current.createAnswer();
+            await peerConnection.current.setLocalDescription(answer);
+            ws.current.send(
+              JSON.stringify({
+                sdp: peerConnection.current.localDescription,
+              })
+            );
+          }
+        } catch (error) {
+          enqueueSnackbar("Failed to set remote description", {
+            variant: "error",
+          });
+          console.error("Failed to set remote description:", error);
+        }
+      } else if (data.candidate) {
+        try {
+          await peerConnection.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+        } catch (error) {
+          enqueueSnackbar("Error adding received ICE candidate", {
+            variant: "error",
+          });
+          console.error("Error adding received ICE candidate", error);
+        }
+      } else if (data.transcript) {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: "You", message: data.transcript, id: data.message_id },
+        ]);
+        setMessageId((prevId) => prevId + 1);
+        setMessage("");
+      } else if (data.event === "on_parser_start") {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: "GritCoach", message: "", id: data.message_id },
+        ]);
+      } else if (data.event === "on_parser_stream") {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === data.message_id
+              ? { ...msg, message: msg.message + data.value }
+              : msg
+          )
+        );
+      } else if (data.event === "on_parser_end") {
+        setMessageId((prevId) => prevId + 1);
+        setMessage(tempMessageRef.current); // Restore temporary buffer
+      }
+    }
   };
 
   const setupPeerConnection = () => {

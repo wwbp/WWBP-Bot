@@ -239,38 +239,54 @@ class BaseWebSocketConsumer(AsyncWebsocketConsumer):
 
 
 class ChatConsumer(BaseWebSocketConsumer):
-
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
+        self.user = self.scope["user"]
+        self.room_group_name = f"chat_{self.session_id}"
+
         try:
             await session_manager.setup(session_id=self.session_id)
             if session_manager.assistant is None or session_manager.thread is None:
                 raise Exception("Assistant or thread setup failed")
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
             await self.accept()
             logger.debug(f"WebSocket connected: session_id={self.session_id}")
             asyncio.create_task(self.ping())
-            try:
-                if not cache.get(f'initial_message_sent_{self.session_id}', False):
-                    initial_message = "Begin the conversation."
-                    await session_manager.create_user_message(
-                        message=initial_message)
-                    await self.stream_text_response(message_id=1)
-                    cache.set(f'initial_message_sent_{self.session_id}', True)
-            except Exception as e:
-                logger.error(f"Failed to initialize LLM instance: {e}")
+
+            if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                initial_message = "Begin the conversation."
+                await session_manager.create_user_message(
+                    message=initial_message)
+                await self.stream_text_response(message_id=1)
+                cache.set(f'initial_message_sent_{self.session_id}', True)
+
         except Exception as e:
             logger.error(f"WebSocket connection failed: {e}")
             await self.close()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
+        logger.debug(f"WebSocket disconnected: session_id={self.session_id}")
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json["message"]
         message_id = text_data_json["message_id"]
-        await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
-                                         user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
 
-        await session_manager.create_user_message(message=message)
-        await self.stream_text_response(message_id)
+        try:
+            await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
+                                            user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
+
+            await session_manager.create_user_message(message=message)
+            await self.stream_text_response(message_id)
+        except Exception as e:
+            logger.error(f"Error processing received message: {e}")
 
     async def stream_text_response(self, message_id):
         stream = await session_manager.get_run_stream()
