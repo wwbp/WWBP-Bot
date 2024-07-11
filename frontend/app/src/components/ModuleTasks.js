@@ -95,7 +95,7 @@ function ModuleTasks() {
                 elevation={3}
                 sx={{
                   ":hover": {
-                    backgroundColor: "#e0e0e0",
+                    backgroundColor: "#909090",
                     cursor: task.locked ? "default" : "pointer",
                   },
                   marginBottom: 2,

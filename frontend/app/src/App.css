@@ -1,3 +1,58 @@
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-Demi.ttf') format('truetype');
+  font-weight: 600; /* Adjust the weight if necessary */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-Light.ttf') format('truetype');
+  font-weight: 300; /* Adjust the weight if necessary */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-TF.ttf') format('truetype');
+  font-weight: 400; /* Adjust the weight if necessary */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-BoldItalic.otf') format('opentype');
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-Book.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-BookItalic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Apply the font to your body or other elements as needed */
+body {
+  font-family: 'NeutraText';
+}
+
+/* Existing CSS */
 .App {
   text-align: center;
 }
@@ -14,7 +69,7 @@
 }
 
 .App-header {
-  background-color: #282c34;
+  background-color: #000000;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
