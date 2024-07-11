@@ -26,16 +26,26 @@ else:
     REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 
 
+def get_cached_data(key, fetch_function, timeout=300):
+    data = cache.get(key)
+    if data is None:
+        data = fetch_function()
+        cache.set(key, data, timeout=timeout)
+    return data
+
+
 class PromptHook:
 
     @sync_to_async
     def get_system_prompt(self):
-        SystemPrompt = apps.get_model('accounts', 'SystemPrompt')
-        try:
-            prompt = SystemPrompt.objects.latest('created_at')
-            return prompt.prompt
-        except SystemPrompt.DoesNotExist:
-            return "You are a helpful assistant."
+        def fetch_prompt():
+            SystemPrompt = apps.get_model('accounts', 'SystemPrompt')
+            try:
+                prompt = SystemPrompt.objects.latest('created_at')
+                return prompt.prompt
+            except SystemPrompt.DoesNotExist:
+                return "You are a helpful assistant."
+        return get_cached_data('system_prompt', fetch_prompt)
 
     @sync_to_async
     def get_module_prompts(self, session_id):
@@ -70,7 +80,7 @@ class PromptHook:
         }
         return profile_info
 
-    async def get_cumulative_setup_intructions(self, session_id):
+    async def get_cumulative_setup_instructions(self, session_id):
         system_prompts = await self.get_system_prompt()
         task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
         user_profile_details = await self.get_user_profile(session_id)
@@ -101,31 +111,27 @@ class AssisstantSessionManager(PromptHook):
             self.assistant = await self.get_assistant(session_id=session_id)
             self.thread = await self.get_thread(session_id=session_id)
             if self.assistant is None or self.thread is None:
-                raise Exception(
-                    f"Failed to assistant id: {self.assistant.id} and thread id: {self.thread.id}")
+                raise Exception("Assistant or thread setup failed")
 
             # Initialize vector store and upload files
-            self.vector_store = await self.initialize_vector_store()
-            await self.upload_files_to_vector_store(session_id)
-            await self.update_assistant_with_vector_store()
+            file_streams = await self.upload_files_to_vector_store(session_id)
+            if file_streams:
+                await self.update_assistant_with_vector_store()
         except Exception as e:
             logger.error(f"Error setting up session manager: {e}")
 
     async def get_assistant(self, session_id):
         ChatSession = apps.get_model('accounts', 'ChatSession')
-        session = await sync_to_async(ChatSession.objects.get)(id=session_id)
         try:
+            session = await sync_to_async(ChatSession.objects.get)(id=session_id)
             if session.assistant_id:
                 assistant = self.client.beta.assistants.retrieve(
                     session.assistant_id)
                 logger.debug(
                     f"Retrieved existing assistant id: {assistant.id}")
                 return assistant
-        except Exception as e:
-            logger.error(f"Failed to fetch assistant: {e}")
 
-        try:
-            instruction_prompt = await self.get_cumulative_setup_intructions(session_id=session_id)
+            instruction_prompt = await self.get_cumulative_setup_instructions(session_id=session_id)
             assistant = self.client.beta.assistants.create(
                 model="gpt-4o",
                 instructions=instruction_prompt,
@@ -140,21 +146,18 @@ class AssisstantSessionManager(PromptHook):
             logger.debug(f"Created new assistant: {assistant.id}")
             return assistant
         except Exception as e:
-            logger.error(f"Error creating new assistant: {e}")
+            logger.error(f"Error in get_assistant: {e}")
             return None
 
     async def get_thread(self, session_id):
         ChatSession = apps.get_model('accounts', 'ChatSession')
-        session = await sync_to_async(ChatSession.objects.get)(id=session_id)
         try:
+            session = await sync_to_async(ChatSession.objects.get)(id=session_id)
             if session.thread_id:
                 thread = self.client.beta.threads.retrieve(session.thread_id)
                 logger.debug(f"Retrieved existing thread id: {thread.id}")
                 return thread
-        except Exception as e:
-            logger.error(f"Failed to retrieve existing thread: {e}")
 
-        try:
             thread = self.client.beta.threads.create()
             session.thread_id = thread.id
 
@@ -165,7 +168,7 @@ class AssisstantSessionManager(PromptHook):
             logger.debug(f"Created new thread: {thread.id}")
             return thread
         except Exception as e:
-            logger.error(f"Error creating new thread: {e}")
+            logger.error(f"Error in get_thread: {e}")
             return None
 
     async def create_user_message(self, message):
@@ -188,10 +191,7 @@ class AssisstantSessionManager(PromptHook):
     async def initialize_vector_store(self):
         try:
             vector_store = self.client.beta.vector_stores.create(
-                name="Educational Content", expires_after={
-                    "anchor": "last_active_at",
-                    "days": 2
-                }
+                name="Educational Content", expires_after={"anchor": "last_active_at", "days": 2}
             )
             logger.debug(f"Created vector store: {vector_store.id}")
             return vector_store
@@ -202,23 +202,34 @@ class AssisstantSessionManager(PromptHook):
     async def upload_files_to_vector_store(self, session_id):
         try:
             file_streams = await get_file_streams(session_id)
-            file_batch = self.client.beta.vector_stores.file_batches.upload_and_poll(
-                vector_store_id=self.vector_store.id, files=file_streams
-            )
-            logger.debug(
-                f"Uploaded files to vector store: {file_batch.status}")
+            if not file_streams:
+                logger.debug("No files found to upload to vector store.")
+                return False
+
+            self.vector_store = await self.initialize_vector_store()
+            if self.vector_store:
+                file_batch = self.client.beta.vector_stores.file_batches.upload_and_poll(
+                    vector_store_id=self.vector_store.id, files=file_streams
+                )
+                logger.debug(
+                    f"Uploaded files to vector store: {file_batch.status}")
+                return True
+            else:
+                return False
         except Exception as e:
             logger.error(f"Error uploading files to vector store: {e}")
+            return False
 
     async def update_assistant_with_vector_store(self):
         try:
-            self.client.beta.assistants.update(
-                assistant_id=self.assistant.id,
-                tool_resources={"file_search": {
-                    "vector_store_ids": [self.vector_store.id]}},
-            )
-            logger.debug(
-                f"Updated assistant with vector store: {self.vector_store.id}")
+            if self.vector_store:
+                self.client.beta.assistants.update(
+                    assistant_id=self.assistant.id,
+                    tool_resources={"file_search": {
+                        "vector_store_ids": [self.vector_store.id]}},
+                )
+                logger.debug(
+                    f"Updated assistant with vector store: {self.vector_store.id}")
         except Exception as e:
             logger.error(f"Error updating assistant with vector store: {e}")
 
@@ -234,8 +245,22 @@ class BaseWebSocketConsumer(AsyncWebsocketConsumer):
                 logger.debug("Ping sent")
             except Exception as e:
                 logger.error(f"Error in ping: {e}")
+                await self.close()
                 break
             await asyncio.sleep(30)  # Ping every 30 seconds
+
+    async def connect(self):
+        try:
+            await self.accept()
+            asyncio.create_task(self.ping())
+            # Other setup code
+        except Exception as e:
+            logger.error(f"WebSocket connection failed: {e}")
+            await self.close()
+
+    async def disconnect(self, close_code):
+        # Cleanup code
+        await super().disconnect(close_code)
 
 
 class ChatConsumer(BaseWebSocketConsumer):
@@ -258,8 +283,7 @@ class ChatConsumer(BaseWebSocketConsumer):
 
             if not cache.get(f'initial_message_sent_{self.session_id}', False):
                 initial_message = "Begin the conversation."
-                await session_manager.create_user_message(
-                    message=initial_message)
+                await session_manager.create_user_message(message=initial_message)
                 await self.stream_text_response(message_id=1)
                 cache.set(f'initial_message_sent_{self.session_id}', True)
 
@@ -281,7 +305,7 @@ class ChatConsumer(BaseWebSocketConsumer):
 
         try:
             await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
-                                            user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
+                                             user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
 
             await session_manager.create_user_message(message=message)
             await self.stream_text_response(message_id)
@@ -337,8 +361,7 @@ class AudioConsumer(BaseWebSocketConsumer):
             try:
                 if not cache.get(f'initial_message_sent_{self.session_id}', False):
                     initial_message = "Begin the conversation."
-                    await session_manager.create_user_message(
-                        message=initial_message)
+                    await session_manager.create_user_message(message=initial_message)
                     await self.stream_audio_response(message_id=1)
                     cache.set(f'initial_message_sent_{self.session_id}', True)
 
