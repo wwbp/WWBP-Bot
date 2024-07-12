@@ -10,7 +10,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-@sync_to_async
 def get_file_streams(session_id):
     file_streams = []
     try:
@@ -30,6 +29,7 @@ def get_file_streams(session_id):
                 s3 = boto3.client(
                     's3', region_name=settings.AWS_S3_REGION_NAME)
                 bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+                logger.debug(f"bucket name: {bucket_name}")
                 s3.download_file(
                     bucket_name, key, '/tmp/' + key.split('/')[-1])
                 file_streams.append(open('/tmp/' + key.split('/')[-1], 'rb'))
@@ -38,6 +38,7 @@ def get_file_streams(session_id):
                 file_streams.append(open(file_path, 'rb'))
     except Exception as e:
         logger.error(f"Error retrieving file streams: {e}")
+        return []
 
     return file_streams
 

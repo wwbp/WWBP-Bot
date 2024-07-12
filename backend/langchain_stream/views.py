@@ -187,7 +187,7 @@ class AssisstantSessionManager(PromptHook):
 
     async def initialize_vector_store(self, session_id):
         try:
-            file_streams = await get_file_streams(session_id)
+            file_streams = get_file_streams(session_id)
             if file_streams:
                 vector_store = self.client.beta.vector_stores.create(
                     name="Educational Content", expires_after={
