@@ -197,7 +197,7 @@ class AssistantSessionManager(PromptHook):
 
     async def initialize_vector_store(self, session_id):
         try:
-            file_streams = get_file_streams(session_id)
+            file_streams = await get_file_streams(session_id)
             if file_streams:
                 vector_store = self.client.beta.vector_stores.create(
                     name="Educational Content", expires_after={
@@ -293,12 +293,15 @@ class ChatConsumer(BaseWebSocketConsumer):
             await self.close()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
-        logger.debug(
-            f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
+        try:
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+            logger.debug(
+                f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
+        except Exception as e:
+            logger.error(f"Error during WebSocket disconnect: {e}")
         await super().disconnect(close_code)
 
     async def receive(self, text_data):

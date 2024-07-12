@@ -45,16 +45,20 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     ws.current = createWebSocket(session.id, chatMode === "audio");
 
     ws.current.onopen = () => {
+      console.log("WebSocket connected");
       setIsWsConnected(true);
-      setupPeerConnection();
+      if (chatMode === "audio") {
+        setupPeerConnection();
+      }
     };
 
-    ws.current.onmessage = async (event) => {
+    ws.current.onmessage = (event) => {
       if (event.data === '{"type":"ping"}') {
         return;
       }
 
-      // Handle incoming messages based on chat mode (audio or text)
+      console.log("WebSocket message received:", event.data);
+
       if (chatMode === "audio") {
         handleAudioMessage(event);
       } else {
@@ -63,19 +67,20 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     };
 
     ws.current.onerror = (event) => {
+      console.error("WebSocket error:", event);
       enqueueSnackbar("WebSocket error observed", { variant: "error" });
-      console.error("WebSocket error observed:", event);
-      setIsWsConnected(false); // Reset connection status
+      setIsWsConnected(false);
     };
 
     ws.current.onclose = (event) => {
+      console.log("WebSocket closed:", event);
       enqueueSnackbar("WebSocket connection closed", { variant: "info" });
-      console.log("WebSocket connection closed:", event);
       setIsWsConnected(false);
     };
   };
 
   const handleTextMessage = (event) => {
+    console.log("Handling text message:", event.data);
     const data = JSON.parse(event.data);
     if (data.event === "on_parser_start") {
       setMessages((prevMessages) => [
