@@ -274,6 +274,7 @@ class ChatConsumer(BaseWebSocketConsumer):
             await session_manager.setup(session_id=self.session_id)
             if not session_manager.assistant or not session_manager.thread:
                 raise Exception("Assistant or thread setup failed")
+
             await self.channel_layer.group_add(
                 self.room_group_name,
                 self.channel_name
@@ -315,9 +316,20 @@ class ChatConsumer(BaseWebSocketConsumer):
             await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
                                              user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
             await session_manager.create_user_message(message=message)
-            await self.stream_text_response(message_id)
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'message_id': message_id
+                }
+            )
         except Exception as e:
             logger.error(f"Error processing received message: {e}")
+
+    async def chat_message(self, event):
+        message_id = event['message_id']
+
+        await self.stream_text_response(message_id)
 
     async def stream_text_response(self, message_id):
         stream = await session_manager.get_run_stream()
