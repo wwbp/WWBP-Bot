@@ -341,15 +341,33 @@ class ChatConsumer(BaseWebSocketConsumer):
                 chunk["message_id"] = message_id
                 if event.event == 'thread.run.created':
                     chunk["event"] = "on_parser_start"
-                    await self.send(text_data=json.dumps(chunk))
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'send_message_to_group',
+                            'chunk': chunk
+                        }
+                    )
                 elif event.event == 'thread.message.delta':
                     chunk["event"] = "on_parser_stream"
                     chunk["value"] = event.data.delta.content[0].text.value
-                    await self.send(text_data=json.dumps(chunk))
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'send_message_to_group',
+                            'chunk': chunk
+                        }
+                    )
                     bot_message_buffer.append(chunk["value"])
                 elif event.event == 'thread.run.completed':
                     chunk["event"] = "on_parser_end"
-                    await self.send(text_data=json.dumps(chunk))
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'send_message_to_group',
+                            'chunk': chunk
+                        }
+                    )
                     complete_bot_message = ''.join(bot_message_buffer)
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
@@ -358,6 +376,9 @@ class ChatConsumer(BaseWebSocketConsumer):
                     continue
         except Exception as e:
             logger.error(f"Error in chain events: {e}")
+
+    async def send_message_to_group(self, event):
+        await self.send(text_data=json.dumps(event['chunk']))
 
 
 class AudioConsumer(BaseWebSocketConsumer):
