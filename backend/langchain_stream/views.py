@@ -303,7 +303,8 @@ class ChatConsumer(BaseWebSocketConsumer):
             self.room_group_name,
             self.channel_name
         )
-        logger.debug(f"WebSocket disconnected: session_id={self.session_id}")
+        logger.debug(
+            f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
         await super().disconnect(close_code)
 
     async def receive(self, text_data):
