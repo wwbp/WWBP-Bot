@@ -110,9 +110,16 @@ class AssistantSessionManager(PromptHook):
             self.thread = await self.get_thread(session_id=session_id)
             if not self.assistant or not self.thread:
                 raise Exception("Assistant or thread setup failed")
-            file_streams = await self.upload_files_to_vector_store(session_id)
-            if file_streams:
-                await self.update_assistant_with_vector_store()
+
+            # Try to upload files to vector store, but don't fail if no files are found
+            try:
+                file_streams = await self.upload_files_to_vector_store(session_id)
+                if file_streams:
+                    await self.update_assistant_with_vector_store()
+            except Exception as e:
+                logger.error(f"Error uploading files to vector store: {e}")
+                logger.debug("Proceeding without file uploads")
+
         except Exception as e:
             logger.error(f"Error setting up session manager: {e}")
 
