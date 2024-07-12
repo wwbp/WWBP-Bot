@@ -113,8 +113,9 @@ class AssistantSessionManager(PromptHook):
 
             # Try to upload files to vector store, but don't fail if no files are found
             try:
-                file_streams = await self.upload_files_to_vector_store(session_id)
-                if file_streams:
+                # Initialize vector store and upload files
+                self.vector_store = await self.initialize_vector_store(session_id)
+                if self.vector_store:
                     await self.update_assistant_with_vector_store()
             except Exception as e:
                 logger.error(f"Error uploading files to vector store: {e}")
@@ -194,37 +195,30 @@ class AssistantSessionManager(PromptHook):
         except Exception as e:
             logger.error(f"Error in async stream: {e}")
 
-    async def initialize_vector_store(self):
+    async def initialize_vector_store(self, session_id):
         try:
-            vector_store = self.client.beta.vector_stores.create(
-                name="Educational Content", expires_after={"anchor": "last_active_at", "days": 2}
-            )
-            logger.debug(f"Created vector store: {vector_store.id}")
-            return vector_store
-        except Exception as e:
-            logger.error(f"Error creating vector store: {e}")
-            return None
-
-    async def upload_files_to_vector_store(self, session_id):
-        try:
-            file_streams = await get_file_streams(session_id)
-            if not file_streams:
-                logger.debug("No files found to upload to vector store.")
-                return False
-
-            self.vector_store = await self.initialize_vector_store()
-            if self.vector_store:
+            file_streams = get_file_streams(session_id)
+            if file_streams:
+                vector_store = self.client.beta.vector_stores.create(
+                    name="Educational Content", expires_after={
+                        "anchor": "last_active_at",
+                        "days": 2
+                    }
+                )
+                logger.debug(f"Created vector store: {vector_store.id}")
                 file_batch = self.client.beta.vector_stores.file_batches.upload_and_poll(
-                    vector_store_id=self.vector_store.id, files=file_streams
+                    vector_store_id=vector_store.id, files=file_streams
                 )
                 logger.debug(
                     f"Uploaded files to vector store: {file_batch.status}")
-                return True
+                return vector_store
             else:
-                return False
+                logger.debug(
+                    f"No vector store")
+                return None
         except Exception as e:
-            logger.error(f"Error uploading files to vector store: {e}")
-            return False
+            logger.error(f"Error creating vector store: {e}")
+            return None
 
     async def update_assistant_with_vector_store(self):
         try:
