@@ -266,6 +266,9 @@ class ChatConsumer(BaseWebSocketConsumer):
         self.user = self.scope["user"]
         self.room_group_name = f"chat_{self.session_id}"
 
+        logger.debug(
+            f"Attempting WebSocket connection: session_id={self.session_id}, user={self.user}")
+
         try:
             await session_manager.setup(session_id=self.session_id)
             if not session_manager.assistant or not session_manager.thread:
@@ -294,11 +297,14 @@ class ChatConsumer(BaseWebSocketConsumer):
             self.channel_name
         )
         logger.debug(f"WebSocket disconnected: session_id={self.session_id}")
+        await super().disconnect(close_code)
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json["message"]
         message_id = text_data_json["message_id"]
+
+        logger.debug(f"Received message: {message}, message_id={message_id}")
 
         try:
             await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
@@ -311,6 +317,7 @@ class ChatConsumer(BaseWebSocketConsumer):
     async def stream_text_response(self, message_id):
         stream = await session_manager.get_run_stream()
         bot_message_buffer = []
+        logger.debug(f"Streaming text response for message_id={message_id}")
         try:
             async for event in session_manager.async_stream(stream):
                 chunk = {}
@@ -329,6 +336,7 @@ class ChatConsumer(BaseWebSocketConsumer):
                     complete_bot_message = ''.join(bot_message_buffer)
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
+                    bot_message_buffer.clear()
                 else:
                     continue
         except Exception as e:
