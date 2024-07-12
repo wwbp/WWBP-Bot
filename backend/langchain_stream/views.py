@@ -105,9 +105,9 @@ class AssisstantSessionManager(PromptHook):
                     f"Failed to assistant id: {self.assistant.id} and thread id: {self.thread.id}")
 
             # Initialize vector store and upload files
-            self.vector_store = await self.initialize_vector_store()
-            await self.upload_files_to_vector_store(session_id)
-            await self.update_assistant_with_vector_store()
+            self.vector_store = await self.initialize_vector_store(session_id)
+            if self.vector_store:
+                await self.update_assistant_with_vector_store()
         except Exception as e:
             logger.error(f"Error setting up session manager: {e}")
 
@@ -185,30 +185,30 @@ class AssisstantSessionManager(PromptHook):
         for event in stream:
             yield await loop.run_in_executor(None, lambda: event)
 
-    async def initialize_vector_store(self):
+    async def initialize_vector_store(self, session_id):
         try:
-            vector_store = self.client.beta.vector_stores.create(
-                name="Educational Content", expires_after={
-                    "anchor": "last_active_at",
-                    "days": 2
-                }
-            )
-            logger.debug(f"Created vector store: {vector_store.id}")
-            return vector_store
+            file_streams = await get_file_streams(session_id)
+            if file_streams:
+                vector_store = self.client.beta.vector_stores.create(
+                    name="Educational Content", expires_after={
+                        "anchor": "last_active_at",
+                        "days": 2
+                    }
+                )
+                logger.debug(f"Created vector store: {vector_store.id}")
+                file_batch = self.client.beta.vector_stores.file_batches.upload_and_poll(
+                    vector_store_id=vector_store.id, files=file_streams
+                )
+                logger.debug(
+                    f"Uploaded files to vector store: {file_batch.status}")
+                return vector_store
+            else:
+                logger.debug(
+                    f"No vector store")
+                return None
         except Exception as e:
             logger.error(f"Error creating vector store: {e}")
             return None
-
-    async def upload_files_to_vector_store(self, session_id):
-        try:
-            file_streams = await get_file_streams(session_id)
-            file_batch = self.client.beta.vector_stores.file_batches.upload_and_poll(
-                vector_store_id=self.vector_store.id, files=file_streams
-            )
-            logger.debug(
-                f"Uploaded files to vector store: {file_batch.status}")
-        except Exception as e:
-            logger.error(f"Error uploading files to vector store: {e}")
 
     async def update_assistant_with_vector_store(self):
         try:
