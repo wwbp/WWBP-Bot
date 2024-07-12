@@ -275,10 +275,6 @@ class ChatConsumer(BaseWebSocketConsumer):
             if not session_manager.assistant or not session_manager.thread:
                 raise Exception("Assistant or thread setup failed")
 
-            await self.channel_layer.group_add(
-                self.room_group_name,
-                self.channel_name
-            )
             await self.accept()
             logger.debug(f"WebSocket connected: session_id={self.session_id}")
             asyncio.create_task(self.ping())
@@ -295,10 +291,6 @@ class ChatConsumer(BaseWebSocketConsumer):
 
     async def disconnect(self, close_code):
         try:
-            await self.channel_layer.group_discard(
-                self.room_group_name,
-                self.channel_name
-            )
             logger.debug(
                 f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
         except Exception as e:
@@ -316,20 +308,9 @@ class ChatConsumer(BaseWebSocketConsumer):
             await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
                                              user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
             await session_manager.create_user_message(message=message)
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'chat_message',
-                    'message_id': message_id
-                }
-            )
+            await self.stream_text_response(message_id=1)
         except Exception as e:
             logger.error(f"Error processing received message: {e}")
-
-    async def chat_message(self, event):
-        message_id = event['message_id']
-
-        await self.stream_text_response(message_id)
 
     async def stream_text_response(self, message_id):
         stream = await session_manager.get_run_stream()
@@ -341,33 +322,15 @@ class ChatConsumer(BaseWebSocketConsumer):
                 chunk["message_id"] = message_id
                 if event.event == 'thread.run.created':
                     chunk["event"] = "on_parser_start"
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            'type': 'send_message_to_group',
-                            'chunk': chunk
-                        }
-                    )
+                    await self.send(text_data=json.dumps(chunk))
                 elif event.event == 'thread.message.delta':
                     chunk["event"] = "on_parser_stream"
                     chunk["value"] = event.data.delta.content[0].text.value
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            'type': 'send_message_to_group',
-                            'chunk': chunk
-                        }
-                    )
+                    await self.send(text_data=json.dumps(chunk))
                     bot_message_buffer.append(chunk["value"])
                 elif event.event == 'thread.run.completed':
                     chunk["event"] = "on_parser_end"
-                    await self.channel_layer.group_send(
-                        self.room_group_name,
-                        {
-                            'type': 'send_message_to_group',
-                            'chunk': chunk
-                        }
-                    )
+                    await self.send(text_data=json.dumps(chunk))
                     complete_bot_message = ''.join(bot_message_buffer)
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
@@ -376,9 +339,6 @@ class ChatConsumer(BaseWebSocketConsumer):
                     continue
         except Exception as e:
             logger.error(f"Error in chain events: {e}")
-
-    async def send_message_to_group(self, event):
-        await self.send(text_data=json.dumps(event['chunk']))
 
 
 class AudioConsumer(BaseWebSocketConsumer):
