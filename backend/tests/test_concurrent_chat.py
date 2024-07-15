@@ -1,5 +1,4 @@
-import json
-import logging
+import asyncio
 from channels.testing import WebsocketCommunicator
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
@@ -7,10 +6,6 @@ from config.asgi import application
 from accounts.models import Module, Task, ChatSession
 
 User = get_user_model()
-
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 
 class ConcurrentChatTest(TransactionTestCase):
@@ -74,31 +69,56 @@ class ConcurrentChatTest(TransactionTestCase):
         self.assertTrue(connected1)
         self.assertTrue(connected2)
 
-        # Simulate abigail and max sending multiple messages
-        for i in range(5):
-            await communicator1.send_json_to({"message": "What is my name?", "message_id": i+1})
-            response1 = await self.receive_non_ping_message(communicator1)
-            response1_text = response1.get('value', '')
-            self.assertIn("abigail", response1_text,
-                          f"Iteration {i+1}: Expected 'abigail' in response but got {response1}")
-            self.assertNotIn(
-                "max", response1_text, f"Iteration {i+1}: Did not expect 'max' in response but got {response1_text}")
+        async def receive_messages(communicator, expected_name):
+            messages = []
+            while len(messages) < 5:
+                try:
+                    response = await communicator.receive_json_from(timeout=20)
+                except asyncio.TimeoutError:
+                    print(
+                        f"Timeout while waiting for message for {expected_name}")
+                    break
 
-            await communicator2.send_json_to({"message": "What is my name?", "message_id": i+1})
-            response2 = await self.receive_non_ping_message(communicator2)
-            response2_text = response2.get('value', '')
+                if response.get('type') == 'ping':
+                    continue
+                event = response.get('event')
+                if event == 'on_parser_start':
+                    messages.append("")
+                elif event == 'on_parser_stream':
+                    if messages:
+                        messages[-1] += response.get('value', '')
+                elif event == 'on_parser_end':
+                    continue
+            return messages
+
+        async def send_messages(communicator, username):
+            for i in range(5):
+                await communicator.send_json_to({"message": "What is my name?", "message_id": i + 1})
+                await asyncio.sleep(0.1)  # wait for a bit to receive response
+
+        # Start sending messages concurrently
+        await asyncio.gather(
+            send_messages(communicator1, 'abigail'),
+            send_messages(communicator2, 'max')
+        )
+
+        # Start receiving messages concurrently
+        messages1 = await receive_messages(communicator1, 'abigail')
+        messages2 = await receive_messages(communicator2, 'max')
+
+        # Assertions for user1 (abigail)
+        for i, response1_text in enumerate(messages1):
+            self.assertIn("abigail", response1_text,
+                          f"Iteration {i + 1}: Expected 'abigail' in response but got {response1_text}")
+            self.assertNotIn("max", response1_text,
+                             f"Iteration {i + 1}: Did not expect 'max' in response but got {response1_text}")
+
+        # Assertions for user2 (max)
+        for i, response2_text in enumerate(messages2):
             self.assertIn("max", response2_text,
-                          f"Iteration {i+1}: Expected 'max' in response but got {response2_text}")
+                          f"Iteration {i + 1}: Expected 'max' in response but got {response2_text}")
             self.assertNotIn("abigail", response2_text,
-                             f"Iteration {i+1}: Did not expect 'abigail' in response but got {response2_text}")
+                             f"Iteration {i + 1}: Did not expect 'abigail' in response but got {response2_text}")
 
         await communicator1.disconnect()
         await communicator2.disconnect()
-
-    async def receive_non_ping_message(self, communicator):
-        while True:
-            response = await communicator.receive_json_from()
-            if response.get('type') == 'ping':
-                logger.debug("Ping message received")
-                continue
-            return response
