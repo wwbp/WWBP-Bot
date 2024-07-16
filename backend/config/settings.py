@@ -131,9 +131,10 @@ SESSION_CACHE_ALIAS = "default"
 
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
         'CONFIG': {
-            "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "capacity": 10000,
+            "expiry": 3600,
         },
     },
 }

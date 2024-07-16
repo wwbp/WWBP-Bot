@@ -10,6 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
+@sync_to_async
 def get_file_streams(session_id):
     file_streams = []
     try:
