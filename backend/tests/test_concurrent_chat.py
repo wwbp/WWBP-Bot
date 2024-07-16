@@ -106,6 +106,10 @@ class ConcurrentChatTest(TransactionTestCase):
         messages1 = await receive_messages(communicator1, 'abigail')
         messages2 = await receive_messages(communicator2, 'max')
 
+        # Logging for debugging
+        print("Messages for Abigail's session:", messages1)
+        print("Messages for Max's session:", messages2)
+
         # Assertions for user1 (abigail)
         for i, response1_text in enumerate(messages1):
             self.assertIn("abigail", response1_text.lower(),
