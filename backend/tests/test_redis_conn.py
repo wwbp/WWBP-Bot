@@ -1,23 +1,23 @@
 import os
-import django
-from django.conf import settings
 import redis
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-django.setup()
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}" if ENVIRONMENT == 'local' else f"rediss://{REDIS_HOST}:{REDIS_PORT}"
 
 
 def test_redis_connection():
     try:
-        print(f"REDIS_HOST: {settings.REDIS_HOST}")
-        print(f"REDIS_PORT: {settings.REDIS_PORT}")
+        print(f"REDIS_HOST: {REDIS_HOST}")
+        print(f"REDIS_PORT: {REDIS_PORT}")
         print("Creating Redis client...")
         r = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
+            host=REDIS_HOST,
+            port=REDIS_PORT,
             socket_connect_timeout=30,
             decode_responses=True,
-            ssl=True,
+            ssl=True if ENVIRONMENT == 'production' else False,
             socket_timeout=30
         )
         print("Redis client created. Pinging...")

@@ -16,11 +16,6 @@ from openai import OpenAI
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
-REDIS_PORT = os.getenv('REDIS_PORT', '6379')
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'local')
-REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}" if ENVIRONMENT == 'local' else f"rediss://{REDIS_HOST}:{REDIS_PORT}"
-
 
 def get_cached_data(key, fetch_function, timeout=300):
     data = cache.get(key)
