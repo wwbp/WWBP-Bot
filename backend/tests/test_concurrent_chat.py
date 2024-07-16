@@ -17,22 +17,28 @@ class ConcurrentChatTest(TransactionTestCase):
     reset_sequences = True
 
     def setUp(self):
-        self.user1 = User.objects.create_user(
+        self.student1 = User.objects.create_user(
             username='abigail',
             password='password',
             email='abigail@example.com',
             role='student'
         )
-        self.user2 = User.objects.create_user(
-            username='max',
+        self.student2 = User.objects.create_user(
+            username='zoey',
             password='password',
-            email='max@example.com',
+            email='zoey@example.com',
             role='student'
+        )
+        self.teacher = User.objects.create_user(
+            username='teach',
+            password='password',
+            email='teach@example.com',
+            role='teacher'
         )
 
         self.module = Module.objects.create(
             name='Test Module',
-            created_by=self.user1,
+            created_by=self.teacher,
             content='Module Content'
         )
 
@@ -45,16 +51,22 @@ class ConcurrentChatTest(TransactionTestCase):
         )
 
         self.session1 = ChatSession.objects.create(
-            user=self.user1,
+            user=self.student1,
             module=self.module,
             task=self.task
         )
 
+        logger.debug(
+            f"session id for user: {self.student1.name} is {self.session1.id} ")
+
         self.session2 = ChatSession.objects.create(
-            user=self.user2,
+            user=self.student2,
             module=self.module,
             task=self.task
         )
+
+        logger.debug(
+            f"session id for user: {self.student2.name} is {self.session2.id} ")
 
     def tearDown(self):
         User.objects.all().delete()
@@ -74,9 +86,13 @@ class ConcurrentChatTest(TransactionTestCase):
         self.assertTrue(connected1)
         self.assertTrue(connected2)
 
-        async def receive_messages(communicator, expected_name):
-            messages = []
-            while len(messages) < 5:
+        async def send_message(communicator, message, message_id):
+            await communicator.send_json_to({"message": message, "message_id": message_id})
+            await asyncio.sleep(0.1)
+
+        async def receive_streaming_response(communicator, expected_name):
+            full_response = ""
+            while True:
                 try:
                     response = await communicator.receive_json_from(timeout=20)
                 except asyncio.TimeoutError:
@@ -89,51 +105,64 @@ class ConcurrentChatTest(TransactionTestCase):
 
                 if response.get('type') == 'ping':
                     continue
+
                 event = response.get('event')
                 if event == 'on_parser_start':
-                    messages.append("")
+                    full_response = ""
                 elif event == 'on_parser_stream':
-                    if messages:
-                        messages[-1] += response.get('value', '')
+                    full_response += response.get('value', '')
                 elif event == 'on_parser_end':
-                    continue
+                    return full_response
+                else:
+                    return full_response
+
+        async def send_and_receive_messages(communicator, username):
+            messages = []
+            for i in range(1,6):
+                logger.debug(f"Sending message {i + 1} for {username}")
+                await send_message(communicator, "What is my name?", i + 1)
+                response_text = await receive_streaming_response(communicator, username)
+                if response_text:
+                    messages.append(response_text)
+                # wait for a bit to ensure response handling
+                await asyncio.sleep(0.1)
             return messages
 
-        async def send_messages(communicator, username):
-            for i in range(5):
-                logger.debug(f"Sending message {i + 1} for {username}")
-                await communicator.send_json_to({"message": "What is my name?", "message_id": i + 1})
-                await asyncio.sleep(0.1)  # wait for a bit to receive response
-
-        # Start sending messages concurrently
-        await asyncio.gather(
-            send_messages(communicator1, 'abigail'),
-            send_messages(communicator2, 'max')
+        # Send and receive messages for both users concurrently
+        messages1, messages2 = await asyncio.gather(
+            send_and_receive_messages(communicator1, 'abigail'),
+            send_and_receive_messages(communicator2, 'zoey')
         )
-
-        # Start receiving messages concurrently
-        messages1 = await receive_messages(communicator1, 'abigail')
-        messages2 = await receive_messages(communicator2, 'max')
 
         # Logging for debugging
         logger.debug(
             f"Messages for Abigail's session {self.session1.id}: {messages1}")
         logger.debug(
-            f"Messages for Max's session {self.session2.id}: {messages2}")
+            f"Messages for Zoey's session {self.session2.id}: {messages2}")
 
         # Assertions for user1 (abigail)
         for i, response1_text in enumerate(messages1):
             self.assertIn("abigail", response1_text.lower(),
                           f"Iteration {i + 1}: Expected 'abigail' in response but got {response1_text}")
-            self.assertNotIn("max", response1_text.lower(),
+            self.assertNotIn("zoey", response1_text.lower(),
                              f"Iteration {i + 1}: Did not expect 'max' in response but got {response1_text}")
 
         # Assertions for user2 (max)
         for i, response2_text in enumerate(messages2):
-            self.assertIn("max", response2_text.lower(),
+            self.assertIn("zoey", response2_text.lower(),
                           f"Iteration {i + 1}: Expected 'max' in response but got {response2_text}")
             self.assertNotIn("abigail", response2_text.lower(),
                              f"Iteration {i + 1}: Did not expect 'abigail' in response but got {response2_text}")
 
         await communicator1.disconnect()
         await communicator2.disconnect()
+
+    @staticmethod
+    def run_test():
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            ConcurrentChatTest().test_concurrent_chat_sessions())
+
+
+if __name__ == "__main__":
+    ConcurrentChatTest.run_test()
