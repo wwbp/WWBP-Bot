@@ -381,12 +381,17 @@ class AudioConsumer(BaseWebSocketConsumer):
 
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
+        self.room_group_name = f"chat_{self.session_id}"
         self.session_manager = AssistantSessionManager()
+        await self.channel_layer.group_add(
+            self.room_group_name, self.channel_name
+        )
+        await self.accept()
         try:
             await self.session_manager.setup(session_id=self.session_id)
             if not self.session_manager.assistant or not self.session_manager.thread:
                 raise Exception("Assistant or thread setup failed")
-            await self.accept()
+
             logger.debug(
                 f"Audio WebSocket connected: session_id={self.session_id}")
             asyncio.create_task(self.ping())
@@ -394,12 +399,24 @@ class AudioConsumer(BaseWebSocketConsumer):
             if not cache.get(f'initial_message_sent_{self.session_id}', False):
                 initial_message = "Begin the conversation."
                 await self.session_manager.create_user_message(message=initial_message)
-                await self.stream_audio_response(message_id=1)
+                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": 1})
                 cache.set(f'initial_message_sent_{self.session_id}', True)
 
         except Exception as e:
             logger.error(f"WebSocket connection failed: {e}")
             await self.close()
+
+    async def disconnect(self, close_code):
+        await super().disconnect(close_code)
+
+        await self.channel_layer.group_discard(
+            self.room_group_name, self.channel_name
+        )
+        logger.debug(
+            f"Disconnected from room group: {self.room_group_name} with channel: {self.channel_name}")
+
+        logger.debug(
+            f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
 
     async def receive(self, bytes_data=None, text_data=None):
         if text_data:
@@ -426,7 +443,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                 await self.session_manager.create_user_message(message=transcript)
                 await self.send(text_data=json.dumps({"transcript": transcript, "message_id": self.current_message_id}))
                 assistant_message_id = str(int(self.current_message_id) + 1)
-                await self.stream_audio_response(assistant_message_id)
+                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": assistant_message_id})
+
             else:
                 await self.send_audio_chunk(await self.text_to_speech("Sorry, I couldn't hear you."))
 
@@ -450,7 +468,8 @@ class AudioConsumer(BaseWebSocketConsumer):
             logger.error(f"Error during speech recognition: {e}")
             return ""
 
-    async def stream_audio_response(self, message_id):
+    async def stream_audio_response(self, event):
+        message_id = event["message_id"]
         stream = await self.session_manager.get_run_stream()
         try:
             buffer = []
