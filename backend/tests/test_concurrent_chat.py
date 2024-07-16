@@ -108,16 +108,16 @@ class ConcurrentChatTest(TransactionTestCase):
 
         # Assertions for user1 (abigail)
         for i, response1_text in enumerate(messages1):
-            self.assertIn("abigail", response1_text,
+            self.assertIn("abigail", response1_text.lower(),
                           f"Iteration {i + 1}: Expected 'abigail' in response but got {response1_text}")
-            self.assertNotIn("max", response1_text,
+            self.assertNotIn("max", response1_text.lower(),
                              f"Iteration {i + 1}: Did not expect 'max' in response but got {response1_text}")
 
         # Assertions for user2 (max)
         for i, response2_text in enumerate(messages2):
-            self.assertIn("max", response2_text,
+            self.assertIn("max", response2_text.lower(),
                           f"Iteration {i + 1}: Expected 'max' in response but got {response2_text}")
-            self.assertNotIn("abigail", response2_text,
+            self.assertNotIn("abigail", response2_text.lower(),
                              f"Iteration {i + 1}: Did not expect 'abigail' in response but got {response2_text}")
 
         await communicator1.disconnect()
