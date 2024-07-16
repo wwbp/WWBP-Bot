@@ -133,7 +133,6 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
         'CONFIG': {
-            "hosts": [REDIS_URL],
             "capacity": 10000,
             "expiry": 3600,
         },
