@@ -134,6 +134,7 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "ssl": True if ENVIRONMENT == 'production' else False,
             "capacity": 10000,
             "expiry": 3600,
         },
