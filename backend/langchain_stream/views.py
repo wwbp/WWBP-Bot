@@ -105,26 +105,25 @@ class AssistantSessionManager(PromptHook):
         self.vector_store = None
 
     async def setup(self, session_id):
+        logger.debug(f"Setting up session for session_id={session_id}")
         try:
             self.assistant = await self.get_assistant(session_id=session_id)
             self.thread = await self.get_thread(session_id=session_id)
             if not self.assistant or not self.thread:
                 raise Exception("Assistant or thread setup failed")
 
-            # Try to upload files to vector store, but don't fail if no files are found
             try:
-                # Initialize vector store and upload files
                 self.vector_store = await self.initialize_vector_store(session_id)
                 if self.vector_store:
                     await self.update_assistant_with_vector_store()
             except Exception as e:
                 logger.error(f"Error uploading files to vector store: {e}")
                 logger.debug("Proceeding without file uploads")
-
         except Exception as e:
             logger.error(f"Error setting up session manager: {e}")
 
     async def get_assistant(self, session_id):
+        logger.debug(f"Getting assistant for session_id={session_id}")
         ChatSession = apps.get_model('accounts', 'ChatSession')
         try:
             session = await sync_to_async(ChatSession.objects.get)(id=session_id)
@@ -136,6 +135,8 @@ class AssistantSessionManager(PromptHook):
                 return assistant
 
             instruction_prompt = await self.get_cumulative_setup_instructions(session_id=session_id)
+            logger.debug(
+                f"the instruction prompt for session: {session_id} is as follows: {instruction_prompt}")
             assistant = self.client.beta.assistants.create(
                 model="gpt-4o",
                 instructions=instruction_prompt,
@@ -150,6 +151,7 @@ class AssistantSessionManager(PromptHook):
             return None
 
     async def get_thread(self, session_id):
+        logger.debug(f"Getting thread for session_id={session_id}")
         ChatSession = apps.get_model('accounts', 'ChatSession')
         try:
             session = await sync_to_async(ChatSession.objects.get)(id=session_id)
@@ -168,6 +170,7 @@ class AssistantSessionManager(PromptHook):
             return None
 
     async def create_user_message(self, message):
+        logger.debug(f"Creating user message: {message}")
         try:
             self.client.beta.threads.messages.create(
                 thread_id=self.thread.id, role="user", content=message
@@ -176,6 +179,8 @@ class AssistantSessionManager(PromptHook):
             logger.error(f"Error creating user message: {e}")
 
     async def get_run_stream(self):
+        logger.debug(
+            f"Getting run stream for assistant id: {self.assistant.id}")
         try:
             stream = self.client.beta.threads.runs.create(
                 assistant_id=self.assistant.id,
@@ -188,9 +193,11 @@ class AssistantSessionManager(PromptHook):
             return None
 
     async def async_stream(self, stream):
+        logger.debug("Starting async stream")
         try:
             loop = asyncio.get_running_loop()
             for event in stream:
+                logger.debug(f"Streaming event: {event}")
                 yield await loop.run_in_executor(None, lambda: event)
         except Exception as e:
             logger.error(f"Error in async stream: {e}")
@@ -323,7 +330,8 @@ class ChatConsumer(BaseWebSocketConsumer):
         message_id = event["message_id"]
         stream = await session_manager.get_run_stream()
         bot_message_buffer = []
-        logger.debug(f"Streaming text response for message_id={message_id}")
+        logger.debug(
+            f"Streaming text response in session: {self.session_id} for message_id={message_id}")
         try:
             async for event in session_manager.async_stream(stream):
                 chunk = {}

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from channels.testing import WebsocketCommunicator
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
@@ -6,6 +7,10 @@ from config.asgi import application
 from accounts.models import Module, Task, ChatSession
 
 User = get_user_model()
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 class ConcurrentChatTest(TransactionTestCase):
@@ -75,9 +80,12 @@ class ConcurrentChatTest(TransactionTestCase):
                 try:
                     response = await communicator.receive_json_from(timeout=20)
                 except asyncio.TimeoutError:
-                    print(
+                    logger.error(
                         f"Timeout while waiting for message for {expected_name}")
                     break
+
+                logger.debug(
+                    f"Received message for {expected_name}: {response}")
 
                 if response.get('type') == 'ping':
                     continue
@@ -93,6 +101,7 @@ class ConcurrentChatTest(TransactionTestCase):
 
         async def send_messages(communicator, username):
             for i in range(5):
+                logger.debug(f"Sending message {i + 1} for {username}")
                 await communicator.send_json_to({"message": "What is my name?", "message_id": i + 1})
                 await asyncio.sleep(0.1)  # wait for a bit to receive response
 
@@ -107,8 +116,10 @@ class ConcurrentChatTest(TransactionTestCase):
         messages2 = await receive_messages(communicator2, 'max')
 
         # Logging for debugging
-        print("Messages for Abigail's session:", messages1)
-        print("Messages for Max's session:", messages2)
+        logger.debug(
+            f"Messages for Abigail's session {self.session1.id}: {messages1}")
+        logger.debug(
+            f"Messages for Max's session {self.session2.id}: {messages2}")
 
         # Assertions for user1 (abigail)
         for i, response1_text in enumerate(messages1):
