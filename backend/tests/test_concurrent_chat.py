@@ -57,7 +57,7 @@ class ConcurrentChatTest(TransactionTestCase):
         )
 
         logger.debug(
-            f"session id for user: {self.student1.name} is {self.session1.id} ")
+            f"session id for user: {self.student1.username} is {self.session1.id} ")
 
         self.session2 = ChatSession.objects.create(
             user=self.student2,
@@ -66,7 +66,7 @@ class ConcurrentChatTest(TransactionTestCase):
         )
 
         logger.debug(
-            f"session id for user: {self.student2.name} is {self.session2.id} ")
+            f"session id for user: {self.student2.username} is {self.session2.id} ")
 
     def tearDown(self):
         User.objects.all().delete()
@@ -80,8 +80,8 @@ class ConcurrentChatTest(TransactionTestCase):
         communicator2 = WebsocketCommunicator(
             application, f"/ws/chat/{self.session2.id}/")
 
-        connected1, _ = await communicator1.connect(timeout=10)
-        connected2, _ = await communicator2.connect(timeout=10)
+        connected1, _ = await communicator1.connect(timeout=30)
+        connected2, _ = await communicator2.connect(timeout=30)
 
         self.assertTrue(connected1)
         self.assertTrue(connected2)
@@ -94,7 +94,7 @@ class ConcurrentChatTest(TransactionTestCase):
             full_response = ""
             while True:
                 try:
-                    response = await communicator.receive_json_from(timeout=20)
+                    response = await communicator.receive_json_from(timeout=60)
                 except asyncio.TimeoutError:
                     logger.error(
                         f"Timeout while waiting for message for {expected_name}")
@@ -118,7 +118,7 @@ class ConcurrentChatTest(TransactionTestCase):
 
         async def send_and_receive_messages(communicator, username):
             messages = []
-            for i in range(1,6):
+            for i in range(1, 6):
                 logger.debug(f"Sending message {i + 1} for {username}")
                 await send_message(communicator, "What is my name?", i + 1)
                 response_text = await receive_streaming_response(communicator, username)
@@ -145,12 +145,12 @@ class ConcurrentChatTest(TransactionTestCase):
             self.assertIn("abigail", response1_text.lower(),
                           f"Iteration {i + 1}: Expected 'abigail' in response but got {response1_text}")
             self.assertNotIn("zoey", response1_text.lower(),
-                             f"Iteration {i + 1}: Did not expect 'max' in response but got {response1_text}")
+                             f"Iteration {i + 1}: Did not expect 'zoey' in response but got {response1_text}")
 
-        # Assertions for user2 (max)
+        # Assertions for user2 (zoey)
         for i, response2_text in enumerate(messages2):
             self.assertIn("zoey", response2_text.lower(),
-                          f"Iteration {i + 1}: Expected 'max' in response but got {response2_text}")
+                          f"Iteration {i + 1}: Expected 'zoey' in response but got {response2_text}")
             self.assertNotIn("abigail", response2_text.lower(),
                              f"Iteration {i + 1}: Did not expect 'abigail' in response but got {response2_text}")
 

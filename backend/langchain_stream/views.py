@@ -103,6 +103,7 @@ class AssistantSessionManager(PromptHook):
         self.thread = None
         self.assistant = None
         self.vector_store = None
+        self.run_active = False
 
     async def setup(self, session_id):
         logger.debug(f"Setting up session for session_id={session_id}")
@@ -136,7 +137,7 @@ class AssistantSessionManager(PromptHook):
 
             instruction_prompt = await self.get_cumulative_setup_instructions(session_id=session_id)
             logger.debug(
-                f"the instruction prompt for session: {session_id} is as follows: {instruction_prompt}")
+                f"The instruction prompt for session: {session_id} is as follows: {instruction_prompt}")
             assistant = self.client.beta.assistants.create(
                 model="gpt-4o",
                 instructions=instruction_prompt,
@@ -181,16 +182,23 @@ class AssistantSessionManager(PromptHook):
     async def get_run_stream(self):
         logger.debug(
             f"Getting run stream for assistant id: {self.assistant.id}")
-        try:
-            stream = self.client.beta.threads.runs.create(
-                assistant_id=self.assistant.id,
-                thread_id=self.thread.id,
-                stream=True
-            )
-            return stream
-        except Exception as e:
-            logger.error(f"Error getting run stream: {e}")
-            return None
+        while True:
+            try:
+                stream = self.client.beta.threads.runs.create(
+                    assistant_id=self.assistant.id,
+                    thread_id=self.thread.id,
+                    stream=True
+                )
+                self.run_active = True
+                return stream
+            except Exception as e:
+                if "active" in str(e):
+                    logger.debug(
+                        f"Run is already active for session_id={self.session_id}, waiting...")
+                    await asyncio.sleep(1)
+                else:
+                    logger.error(f"Error getting run stream: {e}")
+                    return None
 
     async def async_stream(self, stream):
         logger.debug("Starting async stream")
@@ -241,9 +249,6 @@ class AssistantSessionManager(PromptHook):
             logger.error(f"Error updating assistant with vector store: {e}")
 
 
-session_manager = AssistantSessionManager()
-
-
 class BaseWebSocketConsumer(AsyncWebsocketConsumer):
     async def ping(self):
         while True:
@@ -271,29 +276,34 @@ class BaseWebSocketConsumer(AsyncWebsocketConsumer):
 class ChatConsumer(BaseWebSocketConsumer):
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
-        self.user = self.scope["user"]
         self.room_group_name = f"chat_{self.session_id}"
+        self.session_manager = AssistantSessionManager()
+        logger.debug(
+            f"User attempting to connect to session {self.session_id} in group {self.room_group_name}")
+
         await self.channel_layer.group_add(
             self.room_group_name, self.channel_name
         )
+        logger.debug(
+            f"Connected to room group: {self.room_group_name} with channel: {self.channel_name}")
 
         await self.accept()
 
         logger.debug(
-            f"Attempting WebSocket connection: session_id={self.session_id}, user={self.user}")
+            f"Attempting WebSocket connection: session_id={self.session_id}")
 
         try:
-            await session_manager.setup(session_id=self.session_id)
-            if not session_manager.assistant or not session_manager.thread:
+            await self.session_manager.setup(session_id=self.session_id)
+            if not self.session_manager.assistant or not self.session_manager.thread:
                 raise Exception("Assistant or thread setup failed")
 
-            logger.debug(f"WebSocket connected: session_id={self.session_id}")
+            logger.debug(
+                f"WebSocket connected: session_id={self.session_id}, assistant_id={self.session_manager.assistant.id}, thread_id={self.session_manager.thread.id}")
             asyncio.create_task(self.ping())
 
             if not cache.get(f'initial_message_sent_{self.session_id}', False):
                 initial_message = "Begin the conversation."
-                await session_manager.create_user_message(message=initial_message)
-                # await self.stream_text_response(message_id=1)
+                await self.session_manager.create_user_message(message=initial_message)
                 await self.channel_layer.group_send(self.room_group_name, {"type": "stream_text_response", "message_id": 1})
                 cache.set(f'initial_message_sent_{self.session_id}', True)
 
@@ -308,6 +318,9 @@ class ChatConsumer(BaseWebSocketConsumer):
             self.room_group_name, self.channel_name
         )
         logger.debug(
+            f"Disconnected from room group: {self.room_group_name} with channel: {self.channel_name}")
+
+        logger.debug(
             f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
 
     async def receive(self, text_data):
@@ -315,25 +328,25 @@ class ChatConsumer(BaseWebSocketConsumer):
         message = text_data_json["message"]
         message_id = text_data_json["message_id"]
 
-        logger.debug(f"Received message: {message}, message_id={message_id}")
+        logger.debug(
+            f"Received message: {message}, message_id={message_id}, from user in session: {self.session_id}")
 
         try:
             await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
                                              user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
-            await session_manager.create_user_message(message=message)
-            # await self.stream_text_response(message_id=1)
+            await self.session_manager.create_user_message(message=message)
             await self.channel_layer.group_send(self.room_group_name, {"type": "stream_text_response", "message_id": message_id})
         except Exception as e:
             logger.error(f"Error processing received message: {e}")
 
     async def stream_text_response(self, event):
         message_id = event["message_id"]
-        stream = await session_manager.get_run_stream()
+        stream = await self.session_manager.get_run_stream()
         bot_message_buffer = []
         logger.debug(
-            f"Streaming text response in session: {self.session_id} for message_id={message_id}")
+            f"Streaming text response in session: {self.session_id}, assistant_id={self.session_manager.assistant.id}, thread_id={self.session_manager.thread.id} for message_id={message_id}")
         try:
-            async for event in session_manager.async_stream(stream):
+            async for event in self.session_manager.async_stream(stream):
                 chunk = {}
                 chunk["message_id"] = message_id
                 if event.event == 'thread.run.created':
@@ -351,6 +364,9 @@ class ChatConsumer(BaseWebSocketConsumer):
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
                     bot_message_buffer.clear()
+                    self.session_manager.run_active = False
+                    logger.debug(
+                        f"Completed bot message for session_id={self.session_id}, message_id={message_id}: {complete_bot_message}")
                 else:
                     continue
         except Exception as e:
@@ -365,9 +381,10 @@ class AudioConsumer(BaseWebSocketConsumer):
 
     async def connect(self):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
+        self.session_manager = AssistantSessionManager()
         try:
-            await session_manager.setup(session_id=self.session_id)
-            if not session_manager.assistant or not session_manager.thread:
+            await self.session_manager.setup(session_id=self.session_id)
+            if not self.session_manager.assistant or not self.session_manager.thread:
                 raise Exception("Assistant or thread setup failed")
             await self.accept()
             logger.debug(
@@ -376,7 +393,7 @@ class AudioConsumer(BaseWebSocketConsumer):
 
             if not cache.get(f'initial_message_sent_{self.session_id}', False):
                 initial_message = "Begin the conversation."
-                await session_manager.create_user_message(message=initial_message)
+                await self.session_manager.create_user_message(message=initial_message)
                 await self.stream_audio_response(message_id=1)
                 cache.set(f'initial_message_sent_{self.session_id}', True)
 
@@ -406,7 +423,7 @@ class AudioConsumer(BaseWebSocketConsumer):
             await save_message_to_transcript(session_id=self.session_id, message_id=self.current_message_id,
                                              user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
             if transcript:
-                await session_manager.create_user_message(message=transcript)
+                await self.session_manager.create_user_message(message=transcript)
                 await self.send(text_data=json.dumps({"transcript": transcript, "message_id": self.current_message_id}))
                 assistant_message_id = str(int(self.current_message_id) + 1)
                 await self.stream_audio_response(assistant_message_id)
@@ -434,10 +451,10 @@ class AudioConsumer(BaseWebSocketConsumer):
             return ""
 
     async def stream_audio_response(self, message_id):
-        stream = await session_manager.get_run_stream()
+        stream = await self.session_manager.get_run_stream()
         try:
             buffer = []
-            async for event in session_manager.async_stream(stream):
+            async for event in self.session_manager.async_stream(stream):
                 chunk = {}
                 chunk["message_id"] = message_id
                 if event.event == 'thread.run.created':
@@ -475,6 +492,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
                     self.bot_audio_buffer.clear()
+                    self.session_manager.run_active = False
                 else:
                     logger.error(
                         f"Unknown 'chunk' event: {chunk.get('event', 'no event')}")
