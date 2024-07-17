@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'langchain_stream',
+    'channels_redis',
 ]
 
 MIDDLEWARE = [
@@ -131,8 +132,9 @@ SESSION_CACHE_ALIAS = "default"
 
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        'BACKEND': 'channels_redis.pubsub.RedisPubSubChannelLayer',
         'CONFIG': {
+            "hosts": [REDIS_URL],
             "capacity": 10000,
             "expiry": 3600,
         },
