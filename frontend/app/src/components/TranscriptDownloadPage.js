@@ -1,11 +1,33 @@
-import React, { useState } from "react";
-import { Button, TextField, Box, Typography } from "@mui/material";
-import { downloadTranscript } from "../utils/api";
+import React, { useState, useEffect } from "react";
+import {
+  Button,
+  TextField,
+  Box,
+  Typography,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
+import { downloadTranscript, fetchData } from "../utils/api";
 
 const TranscriptDownloadPage = () => {
+  const [modules, setModules] = useState([]);
   const [moduleId, setModuleId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  useEffect(() => {
+    const fetchModules = async () => {
+      try {
+        const data = await fetchData("/modules/");
+        setModules(data);
+      } catch (error) {
+        console.error("Error fetching modules", error);
+      }
+    };
+    fetchModules();
+  }, []);
 
   const handleDownload = async () => {
     try {
@@ -24,12 +46,22 @@ const TranscriptDownloadPage = () => {
         component="form"
         sx={{ display: "flex", flexDirection: "column", gap: 2 }}
       >
-        <TextField
-          label="Module ID"
-          variant="outlined"
-          value={moduleId}
-          onChange={(e) => setModuleId(e.target.value)}
-        />
+        <FormControl variant="outlined">
+          <InputLabel id="module-select-label">Module</InputLabel>
+          <Select
+            labelId="module-select-label"
+            id="module-select"
+            value={moduleId}
+            onChange={(e) => setModuleId(e.target.value)}
+            label="Module"
+          >
+            {modules.map((module) => (
+              <MenuItem key={module.id} value={module.id}>
+                {module.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <TextField
           label="Start Date (YYYY-MM-DD)"
           variant="outlined"
