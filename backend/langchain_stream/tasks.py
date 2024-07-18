@@ -6,8 +6,9 @@ from django.conf import settings
 from django.apps import apps
 from asgiref.sync import sync_to_async
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.utils import timezone
+import pytz
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -91,42 +92,44 @@ def save_message_to_transcript(session_id, message_id, user_message, bot_message
 
 def generate_and_upload_csv(module_id, date):
     try:
-        # Calculate the start and end of the day
-        start_of_day = timezone.make_aware(
-            datetime.combine(date, datetime.min.time()))
-        end_of_day = timezone.make_aware(
-            datetime.combine(date, datetime.max.time()))
+        # Convert date to UTC
+        etc = pytz.timezone('US/Eastern')
+        date_etc = etc.localize(datetime.combine(date, datetime.min.time()))
+        start_of_day_utc = date_etc.astimezone(pytz.utc)
+        end_of_day_utc = (date_etc + timedelta(days=1)).astimezone(pytz.utc)
 
         # Query to get all user conversations for a module in a given day
         ChatSession = apps.get_model('accounts', 'ChatSession')
         Transcript = apps.get_model('langchain_stream', 'Transcript')
-        user_conversations = Transcript.objects.filter(
+        queryset = Transcript.objects.filter(
             session__module_id=module_id,
-            created_at__range=(start_of_day, end_of_day)
+            created_at__range=(start_of_day_utc, end_of_day_utc)
         ).select_related('session__user', 'session__task', 'session__module')
 
         # Define the CSV file path
         csv_file_name = f"user_conversations_module_{module_id}_{date.strftime('%Y_%m_%d')}.csv"
         csv_file_path = f"/tmp/{csv_file_name}"
 
-        # Write the conversations to a CSV file
+        # Write the conversations to a CSV file in chunks
         with open(csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
-                            'User Message', 'Bot Message', 'Created At', 'Has Audio', 'Audio Link'])
+                            'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
 
-            for conversation in user_conversations:
-                writer.writerow([
-                    conversation.session.id,
-                    conversation.session.user.username,
-                    conversation.session.module.name if conversation.session.module else '',
-                    conversation.session.task.title if conversation.session.task else '',
-                    conversation.user_message,
-                    conversation.bot_message,
-                    conversation.created_at,
-                    conversation.has_audio,
-                    conversation.audio_link
-                ])
+            chunk_size = 1000  # Adjust the chunk size based on your requirements and server capacity
+            for start in range(0, queryset.count(), chunk_size):
+                for conversation in queryset[start:start+chunk_size]:
+                    writer.writerow([
+                        conversation.session.id,
+                        conversation.session.user.username,
+                        conversation.session.module.name if conversation.session.module else '',
+                        conversation.session.task.title if conversation.session.task else '',
+                        conversation.user_message,
+                        conversation.bot_message,
+                        conversation.created_at,
+                        conversation.has_audio,
+                        conversation.audio_link
+                    ])
 
         # Upload CSV to S3
         s3 = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
