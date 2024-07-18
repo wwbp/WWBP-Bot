@@ -1,40 +1,33 @@
 import boto3
-from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+import os
+import json
+import csv
+import logging
+from datetime import datetime, timedelta
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.conf import settings
-from rest_framework.decorators import action
-from rest_framework.views import exception_handler
-from .serializers import ModuleSerializer
-from .models import Module
-from .serializers import ChatSessionSerializer, ChatMessageSerializer
-from .models import ChatSession, ChatMessage
-from .serializers import ChatMessageSerializer, ChatSessionSerializer
-from .models import ChatMessage, ChatSession
-from rest_framework import status, viewsets
-from .serializers import ChatMessageSerializer
-from .models import ChatMessage
-from rest_framework import viewsets, status
-import os
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseNotAllowed, JsonResponse, HttpResponse
+from django.apps import apps
+
+from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import permissions
+from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
-from django.middleware.csrf import get_token
-import logging
-from .models import User, Task, Module, ChatSession, SystemPrompt
-from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer, SystemPromptSerializer
-from django.contrib.auth import get_user_model
-import json
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponseNotAllowed, JsonResponse
-from datetime import datetime
-from django.utils import timezone
+from rest_framework.views import exception_handler
 import openai
+import pytz
+
+from .models import User, Task, Module, ChatSession, ChatMessage, SystemPrompt
+from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer, SystemPromptSerializer
+
 
 logger = logging.getLogger(__name__)
 
@@ -369,3 +362,51 @@ class FileUploadView(APIView):
             logger.error(f"Error saving the file: {e}")
 
         return Response({'file_path': file_path}, status=status.HTTP_201_CREATED)
+
+
+class TranscriptDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, module_id, start_date, end_date):
+        try:
+            # Convert start and end dates from ETC to UTC
+            etc = pytz.timezone('US/Eastern')
+            start_date_etc = etc.localize(
+                datetime.strptime(start_date, '%Y-%m-%d'))
+            end_date_etc = etc.localize(datetime.strptime(
+                end_date, '%Y-%m-%d')) + timedelta(days=1)
+            start_date_utc = start_date_etc.astimezone(pytz.utc)
+            end_date_utc = end_date_etc.astimezone(pytz.utc)
+
+            # Query to get all user conversations for a module in a given period
+            # ChatSession = apps.get_model('accounts', 'ChatSession')
+            Transcript = apps.get_model('langchain_stream', 'Transcript')
+            user_conversations = Transcript.objects.filter(
+                session__module_id=module_id,
+                created_at__range=(start_date_utc, end_date_utc)
+            ).select_related('session__user', 'session__task', 'session__module')
+
+            # Create the HttpResponse object with the appropriate CSV header.
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename="transcript_module_{module_id}_{start_date}_to_{end_date}.csv"'
+
+            writer = csv.writer(response)
+            writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
+                            'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
+
+            for conversation in user_conversations:
+                writer.writerow([
+                    conversation.session.id,
+                    conversation.session.user.username,
+                    conversation.session.module.name if conversation.session.module else '',
+                    conversation.session.task.title if conversation.session.task else '',
+                    conversation.user_message,
+                    conversation.bot_message,
+                    conversation.created_at,
+                    conversation.has_audio,
+                    conversation.audio_link
+                ])
+
+            return response
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

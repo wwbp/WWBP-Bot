@@ -24,6 +24,7 @@ django-redis = "*"
 boto3 = "*"
 pika = "*"
 jupyter = "*"
+pytz = "*"
 
 [dev-packages]
 
