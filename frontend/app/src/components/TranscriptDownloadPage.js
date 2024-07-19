@@ -9,13 +9,16 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { downloadTranscript, fetchData } from "../utils/api";
 
 const TranscriptDownloadPage = () => {
   const [modules, setModules] = useState([]);
   const [moduleId, setModuleId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -30,15 +33,27 @@ const TranscriptDownloadPage = () => {
   }, []);
 
   const handleDownload = async () => {
+    if (startDate && endDate && startDate > endDate) {
+      setError("End date must be greater than start date.");
+      return;
+    }
+    setError("");
     try {
-      await downloadTranscript(moduleId, startDate, endDate);
+      await downloadTranscript(
+        moduleId,
+        startDate.toISOString().split("T")[0],
+        endDate.toISOString().split("T")[0]
+      );
     } catch (error) {
       console.error("Error downloading transcript", error);
     }
   };
 
   return (
-    <Box className="transcript-download-page">
+    <Box
+      className="transcript-download-page"
+      sx={{ p: 3, border: "1px solid #ccc", borderRadius: 2 }}
+    >
       <Typography variant="h4" component="h1" gutterBottom>
         Download Transcript
       </Typography>
@@ -62,18 +77,21 @@ const TranscriptDownloadPage = () => {
             ))}
           </Select>
         </FormControl>
-        <TextField
-          label="Start Date (YYYY-MM-DD)"
-          variant="outlined"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-        />
-        <TextField
-          label="End Date (YYYY-MM-DD)"
-          variant="outlined"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-        />
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <DatePicker
+            label="Start Date"
+            value={startDate}
+            onChange={(newValue) => setStartDate(newValue)}
+            renderInput={(params) => <TextField {...params} />}
+          />
+          <DatePicker
+            label="End Date"
+            value={endDate}
+            onChange={(newValue) => setEndDate(newValue)}
+            renderInput={(params) => <TextField {...params} />}
+          />
+        </LocalizationProvider>
+        {error && <Typography color="error">{error}</Typography>}
         <Button variant="contained" color="primary" onClick={handleDownload}>
           Download
         </Button>
