@@ -19,6 +19,7 @@ import Signup from "./components/Signup";
 import TeacherDashboard from "./components/TeacherDashboard";
 import StudentDashboard from "./components/StudentDashboard";
 import SystemPromptPage from "./components/SystemPromptPage";
+import TranscriptDownloadPage from "./components/TranscriptDownloadPage";
 
 function RequireAuth({ children }) {
   const location = useLocation();
@@ -106,6 +107,14 @@ function App() {
               element={
                 <RequireAuth>
                   <SystemPromptPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/transcript-download"
+              element={
+                <RequireAuth>
+                  <TranscriptDownloadPage />
                 </RequireAuth>
               }
             />

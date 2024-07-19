@@ -14,6 +14,7 @@ import {
 import HomeIcon from "@mui/icons-material/Home";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import DescriptionIcon from "@mui/icons-material/Description";
+import DownloadIcon from "@mui/icons-material/Download";
 import { postData } from "../utils/api";
 import { useSnackbar } from "notistack";
 
@@ -106,6 +107,13 @@ function NavBar({
                   to="/system-prompt"
                 >
                   <DescriptionIcon />
+                </IconButton>
+                <IconButton
+                  color="inherit"
+                  component={Link}
+                  to="/transcript-download"
+                >
+                  <DownloadIcon />
                 </IconButton>
                 <Box
                   onClick={toggleView}

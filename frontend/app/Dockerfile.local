@@ -1,5 +1,5 @@
 # Build environment
-FROM node:22 as builder
+FROM node:16 as builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
