@@ -395,6 +395,9 @@ class TranscriptDownloadView(APIView):
                 writer = csv.writer(buffer)
                 writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
                                 'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
+                yield buffer.getvalue()
+                buffer.seek(0)
+                buffer.truncate(0)
                 for conversation in conversations:
                     writer.writerow([
                         conversation.session.id,
@@ -407,8 +410,7 @@ class TranscriptDownloadView(APIView):
                         conversation.has_audio,
                         conversation.audio_link
                     ])
-                    buffer.seek(0)
-                    yield buffer.read()
+                    yield buffer.getvalue()
                     buffer.seek(0)
                     buffer.truncate(0)
 
