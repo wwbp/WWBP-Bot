@@ -19,8 +19,7 @@ class Module(models.Model):
     created_by = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='modules')
     content = models.TextField(blank=True, null=True)
-    files = models.JSONField(default=list, blank=True,
-                             null=True)
+    files = models.JSONField(default=list, blank=True, null=True)
 
 
 class Task(models.Model):
@@ -30,8 +29,7 @@ class Task(models.Model):
         Module, on_delete=models.CASCADE, related_name='tasks')
     instruction_prompt = models.TextField(blank=True, null=True)
     persona_prompt = models.TextField(blank=True, null=True)
-    files = models.JSONField(default=list, blank=True,
-                             null=True)
+    files = models.JSONField(default=list, blank=True, null=True)
 
 
 class ChatSession(models.Model):
@@ -45,6 +43,12 @@ class ChatSession(models.Model):
     thread_id = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['module']),
+            models.Index(fields=['created_at']),
+        ]
 
 
 class ChatMessage(models.Model):
