@@ -1,3 +1,7 @@
+import io
+from rest_framework import status
+from django.utils import timezone
+from django.http import StreamingHttpResponse
 import boto3
 import os
 import json
@@ -379,34 +383,39 @@ class TranscriptDownloadView(APIView):
             end_date_utc = end_date_etc.astimezone(pytz.utc)
 
             # Query to get all user conversations for a module in a given period
-            # ChatSession = apps.get_model('accounts', 'ChatSession')
             Transcript = apps.get_model('langchain_stream', 'Transcript')
             user_conversations = Transcript.objects.filter(
                 session__module_id=module_id,
                 created_at__range=(start_date_utc, end_date_utc)
             ).select_related('session__user', 'session__task', 'session__module')
 
-            # Create the HttpResponse object with the appropriate CSV header.
-            response = HttpResponse(content_type='text/csv')
+            # Use StreamingHttpResponse for large datasets
+            def transcript_generator(conversations):
+                buffer = io.StringIO()
+                writer = csv.writer(buffer)
+                writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
+                                'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
+                for conversation in conversations:
+                    writer.writerow([
+                        conversation.session.id,
+                        conversation.session.user.username,
+                        conversation.session.module.name if conversation.session.module else '',
+                        conversation.session.task.title if conversation.session.task else '',
+                        conversation.user_message,
+                        conversation.bot_message,
+                        conversation.created_at,
+                        conversation.has_audio,
+                        conversation.audio_link
+                    ])
+                    buffer.seek(0)
+                    yield buffer.read()
+                    buffer.seek(0)
+                    buffer.truncate(0)
+
+            response = StreamingHttpResponse(transcript_generator(
+                user_conversations), content_type='text/csv')
             response['Content-Disposition'] = f'attachment; filename="transcript_module_{module_id}_{start_date}_to_{end_date}.csv"'
-
-            writer = csv.writer(response)
-            writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
-                            'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
-
-            for conversation in user_conversations:
-                writer.writerow([
-                    conversation.session.id,
-                    conversation.session.user.username,
-                    conversation.session.module.name if conversation.session.module else '',
-                    conversation.session.task.title if conversation.session.task else '',
-                    conversation.user_message,
-                    conversation.bot_message,
-                    conversation.created_at,
-                    conversation.has_audio,
-                    conversation.audio_link
-                ])
-
             return response
+
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
