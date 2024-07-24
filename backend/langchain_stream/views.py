@@ -134,7 +134,7 @@ class AssistantSessionManager(PromptHook):
             logger.debug(
                 f"The instruction prompt for session: {session_id} is as follows: {instruction_prompt}")
             assistant = self.client.beta.assistants.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 instructions=instruction_prompt,
                 tools=[{"type": "file_search"}],
             )
