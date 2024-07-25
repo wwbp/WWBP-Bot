@@ -16,11 +16,11 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./server-django-wwbp
       dockerfile: Dockerfile.local
     command: sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
-      - ./backend:/app
+      - ./server-django-wwbp:/app
       - /app/__pycache__
     ports:
       - "8000:8000"
