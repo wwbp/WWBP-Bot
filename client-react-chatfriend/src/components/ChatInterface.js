@@ -14,7 +14,7 @@ import MicIcon from "@mui/icons-material/Mic";
 import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import botAvatar from "../assets/bot-avatar.png";
+import chatFriendAvatar from "../assets/chatFriend-avatar.png";
 import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
@@ -411,8 +411,8 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
             >
               {msg.sender === "GritCoach" && (
                 <Avatar
-                  alt="Bot Avatar"
-                  src={botAvatar}
+                  alt="ChatFriend Avatar" 
+                  src={chatFriendAvatar}
                   style={{ marginRight: "8px" }}
                 />
               )}
