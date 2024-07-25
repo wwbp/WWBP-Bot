@@ -1,8 +1,8 @@
-# Project GritCoach
+# WWBP BOT
 
 ## Overview
 
-**GritCoach** is designed to be a voice-interfaced chatbot that helps students practice course materials. This project includes a Django backend, a React frontend, and a MySQL database, all containerized using Docker.
+**WWBP Bot** is designed to be a voice-interfaced chatbot that helps students practice course materials. This project contains two applications: **GritCoach** and **ChatFriend**. This project includes a Django backend, a React frontend, and a MySQL database, all containerized using Docker.
 
 This monorepo contains the source code for a full-stack web application. It is divided into two main parts: the backend and the frontend. The backend is built with Django, while the frontend is built with React. The repository is structured to facilitate easy development and deployment.
 
@@ -12,10 +12,13 @@ This monorepo contains the source code for a full-stack web application. It is d
 monorepo/
 ├── backend/
 │   ├── ...
-├── frontend/
+├── client-react-gritcoach/
+│   ├── ...
+├── client-react-chatfriend/
 │   ├── ...
 ├── .gitignore
-├── docker-compose.yml
+├── docker-compose-gritcoach.yml
+├── docker-compose-chatfriend.yml
 ├── README.md
 ```
 
@@ -35,13 +38,27 @@ monorepo/
     cd WWBP-Bot
     ```
 
-2. Build and run the containers:
+2. Build and run the containers for GritCoach:
 
     ```bash
-    docker-compose up --build
+    docker-compose -f docker-compose-gritcoach.yml up --build
     ```
 
-3. The backend should be accessible at `http://localhost:8000` and the frontend at `http://localhost:3000`.
+3. Build and run the containers for ChatFriend:
+
+    ```bash
+    docker-compose -f docker-compose-chatfriend.yml up --build
+    ```
+
+4. To stop and remove the volume:
+
+    ```bash
+    docker-compose -f docker-compose-<chatfriend/gritcoach>.yml down -v
+    ```
+
+Note: Since the Docker Compose files use default ports, make sure to update the ports if you are testing both applications simultaneously locally.
+
+The backend should be accessible at `http://localhost:8000` and the frontend at `http://localhost:3000`.
 
 ## Development
 
@@ -51,7 +68,10 @@ Navigate to the [backend README](./backend/README.md) for detailed instructions 
 
 ### Frontend
 
-Navigate to the [frontend README](./frontend/app/README.md) for detailed instructions on setting up and running the frontend application.
+Navigate to the respective frontend READMEs for detailed instructions on setting up and running the frontend applications.
+
+- [GritCoach Frontend README](./client-react-gritcoach/README.md)
+- [ChatFriend Frontend README](./client-react-chatfriend/README.md)
 
 ## Contributing
 

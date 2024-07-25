@@ -1,9 +1,9 @@
-name: Deploy Backend to Production
+name: Deploy Backend Gritcoach Server to Staging
 
 on:
   push:
     branches:
-      - main
+      - develop
 
 permissions:
   id-token: write
@@ -29,8 +29,8 @@ jobs:
 
       - name: Deploy Django to Elastic Beanstalk
         run: |
-          cd backend
+          cd server-django-wwbp
           eb init -p "Docker running on 64bit Amazon Linux 2023" ${{ secrets.AWS_BACKEND_APPLICATION_NAME }} --region us-east-1
-          eb use ${{ secrets.AWS_BACKEND_PRODUCTION_ENVIRONMENT_NAME }}
+          eb use ${{ secrets.AWS_BACKEND_ENVIRONMENT_NAME }}
           cp Dockerfile.awseb Dockerfile
           eb deploy --timeout 30

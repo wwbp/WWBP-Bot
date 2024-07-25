@@ -16,11 +16,11 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./server-django-wwbp
       dockerfile: Dockerfile.local
     command: sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
-      - ./backend:/app
+      - ./server-django-wwbp:/app
       - /app/__pycache__
     ports:
       - "8000:8000"
@@ -53,14 +53,14 @@ services:
 
   frontend:
     build:
-      context: ./frontend/app
+      context: ./client-react-chatfriend
       dockerfile: Dockerfile.local
       args:
         - REACT_APP_API_URL=${REACT_APP_API_URL}
     volumes:
-      - ./frontend/app/src:/app/src
-      - ./frontend/app/public:/app/public
-      - ./frontend/app/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./client-react-chatfriend/src:/app/src
+      - ./client-react-chatfriend/public:/app/public
+      - ./client-react-chatfriend/nginx/nginx.conf:/etc/nginx/nginx.conf
     ports:
       - "3000:80"
     depends_on:
