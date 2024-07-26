@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { downloadTranscript, fetchData } from "../utils/api";
+import { fetchData, postData } from "../utils/api";
 
 const TranscriptDownloadPage = () => {
   const [modules, setModules] = useState([]);
@@ -19,6 +19,7 @@ const TranscriptDownloadPage = () => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [error, setError] = useState("");
+  const [csvList, setCSVList] = useState([]);
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -30,7 +31,17 @@ const TranscriptDownloadPage = () => {
       }
     };
     fetchModules();
+    fetchUserCSVFiles();
   }, []);
+
+  const fetchUserCSVFiles = async () => {
+    try {
+      const data = await fetchData("/csv_transcripts/");
+      setCSVList(data);
+    } catch (error) {
+      console.error("Error fetching CSV files", error);
+    }
+  };
 
   const handleDownload = async () => {
     if (startDate && endDate && startDate > endDate) {
@@ -39,13 +50,14 @@ const TranscriptDownloadPage = () => {
     }
     setError("");
     try {
-      await downloadTranscript(
-        moduleId,
-        startDate.toISOString().split("T")[0],
-        endDate.toISOString().split("T")[0]
-      );
+      await postData("/csv_transcripts/", {
+        module_id: moduleId,
+        start_date: startDate.toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
+      });
+      fetchUserCSVFiles();
     } catch (error) {
-      console.error("Error downloading transcript", error);
+      console.error("Error starting CSV creation", error);
     }
   };
 
@@ -93,8 +105,21 @@ const TranscriptDownloadPage = () => {
         </LocalizationProvider>
         {error && <Typography color="error">{error}</Typography>}
         <Button variant="contained" color="primary" onClick={handleDownload}>
-          Download
+          Start CSV Creation
         </Button>
+      </Box>
+      <Typography variant="h6" component="h2" gutterBottom>
+        Available CSV Files
+      </Typography>
+      <Box>
+        {csvList.map((csv, index) => (
+          <Box key={index}>
+            <a href={csv.file_url} target="_blank" rel="noopener noreferrer">
+              Download CSV for Module {csv.module_id} from {csv.start_date} to{" "}
+              {csv.end_date}
+            </a>
+          </Box>
+        ))}
       </Box>
     </Box>
   );
