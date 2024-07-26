@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import re
+import whisper
+import io
 from collections import deque
 
 from asgiref.sync import sync_to_async
@@ -445,20 +447,31 @@ class AudioConsumer(BaseWebSocketConsumer):
 
     async def process_audio(self, audio_data):
         logger.debug(f"Audio data size: {len(audio_data)} bytes")
-        client = speech.SpeechClient()
-        audio = speech.RecognitionAudio(content=audio_data)
-        config = speech.RecognitionConfig(
-            encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
-            sample_rate_hertz=48000,
-            language_code="en-US",
-        )
+        logger.debug(f"Processing audio data... {type(audio_data)}")
+
+        # print(result["text"])
+        # client = speech.SpeechClient()
+        # audio = speech.RecognitionAudio(content=audio_data)
+        # config = speech.RecognitionConfig(
+        #     encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
+        #     sample_rate_hertz=48000,
+        #     language_code="en-US",
+        # )
         try:
-            response = client.recognize(config=config, audio=audio)
-            if not response.results:
-                logger.error("No results from speech recognition")
-                return ""
-            transcript = response.results[0].alternatives[0].transcript
-            return transcript
+            model = whisper.load_model("base")
+            with open("temp_audio.webm", "wb") as f:
+                f.write(audio_data)
+            logger.debug(f"Audio data written to file")    
+            result = model.transcribe("temp_audio.webm")
+            # response = client.recognize(config=config, audio=audio)
+            # if not response.results:
+            #     logger.error("No results from speech recognition")
+            #     return ""
+            # transcript = response.results[0].alternatives[0].transcript
+            # logger.debug(f"Transcript: {transcript}")
+            # return transcript
+            logger.debug(f"Transcript: {result['text']}")
+            return result["text"]
         except Exception as e:
             logger.error(f"Error during speech recognition: {e}")
             return ""
