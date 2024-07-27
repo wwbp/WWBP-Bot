@@ -1,3 +1,4 @@
+from botocore.exceptions import NoCredentialsError
 from asgiref.sync import async_to_sync, sync_to_async
 import io
 from rest_framework import status
@@ -497,6 +498,18 @@ class CSVServeView(APIView):
                 f"Local CSV file {file_name} not found for user {request.user.id}")
             return HttpResponse(status=404)
         else:
-            logger.info(
-                f"Redirecting to S3 CSV file {csv_record.file_url} for user {request.user.id}")
-            return HttpResponseRedirect(csv_record.file_url)
+            try:
+                s3_client = boto3.client(
+                    's3', region_name=settings.AWS_S3_REGION_NAME)
+                signed_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                            'Key': csv_record.file_url},
+                    ExpiresIn=3600  # URL expires in 1 hour
+                )
+                logger.info(
+                    f"Generated signed URL for CSV file {csv_record.file_url}")
+                return HttpResponseRedirect(signed_url)
+            except Exception as e:
+                logger.error(f"Error generating presigned URL: {e}")
+                return HttpResponse(status=500)
