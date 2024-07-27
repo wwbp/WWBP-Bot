@@ -503,8 +503,10 @@ class CSVServeView(APIView):
                     's3', region_name=settings.AWS_S3_REGION_NAME)
                 signed_url = s3_client.generate_presigned_url(
                     'get_object',
-                    Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                            'Key': csv_record.file_url},
+                    Params={
+                        'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+                        'Key': csv_record.file_url
+                    },
                     ExpiresIn=3600  # URL expires in 1 hour
                 )
                 logger.info(
