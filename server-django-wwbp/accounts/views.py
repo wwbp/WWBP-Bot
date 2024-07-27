@@ -1,5 +1,6 @@
-from botocore.exceptions import NoCredentialsError
-from asgiref.sync import async_to_sync, sync_to_async
+from django.core.paginator import Paginator
+from django.utils.decorators import method_decorator
+import zipfile
 import io
 from rest_framework import status
 import boto3
@@ -371,6 +372,7 @@ class FileUploadView(APIView):
 class CSVCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(csrf_exempt)
     def post(self, request):
         module_id = request.data.get('module_id')
         start_date = request.data.get('start_date')
@@ -386,7 +388,6 @@ class CSVCreateView(APIView):
 
     def create_csv_and_upload_to_s3(self, module_id, start_date, end_date, user_id):
         try:
-            # Convert dates
             etc = pytz.timezone('US/Eastern')
             start_date_etc = etc.localize(
                 datetime.strptime(start_date, '%Y-%m-%d'))
@@ -395,7 +396,6 @@ class CSVCreateView(APIView):
             start_date_utc = start_date_etc.astimezone(pytz.utc)
             end_date_utc = end_date_etc.astimezone(pytz.utc)
 
-            # Query data
             Transcript = apps.get_model('langchain_stream', 'Transcript')
             user_conversations = Transcript.objects.filter(
                 session__module_id=module_id,
@@ -405,44 +405,58 @@ class CSVCreateView(APIView):
             logger.debug(
                 f"Fetched {user_conversations.count()} conversations for CSV creation")
 
-            # Generate CSV
-            buffer = io.StringIO()
-            writer = csv.writer(buffer)
-            writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
-                            'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
-            for conversation in user_conversations:
-                writer.writerow([
-                    conversation.session.id,
-                    conversation.session.user.username,
-                    conversation.session.module.name if conversation.session.module else '',
-                    conversation.session.task.title if conversation.session.task else '',
-                    conversation.user_message,
-                    conversation.bot_message,
-                    conversation.created_at,
-                    conversation.has_audio,
-                    conversation.audio_link
-                ])
+            # Paginate with a batch size of 1000
+            paginator = Paginator(user_conversations, 1000)
+            buffer_list = []
 
-            # Save to local or S3
-            file_name = f"transcript_module_{module_id}_{start_date}_to_{end_date}.csv"
+            for page_number in paginator.page_range:
+                page = paginator.page(page_number)
+                buffer = io.StringIO()
+                writer = csv.writer(buffer)
+                writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
+                                'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
+
+                for conversation in page.object_list:
+                    writer.writerow([
+                        conversation.session.id,
+                        conversation.session.user.username,
+                        conversation.session.module.name if conversation.session.module else '',
+                        conversation.session.task.title if conversation.session.task else '',
+                        conversation.user_message,
+                        conversation.bot_message,
+                        conversation.created_at,
+                        conversation.has_audio,
+                        conversation.audio_link
+                    ])
+
+                file_name = f"transcript_module_{module_id}_{start_date}_to_{end_date}_batch_{page_number}.csv"
+                buffer_list.append((file_name, buffer))
+
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
+                for file_name, buffer in buffer_list:
+                    zip_file.writestr(file_name, buffer.getvalue())
+
+            zip_buffer.seek(0)
+
+            zip_file_name = f"transcripts_module_{module_id}_{start_date}_to_{end_date}.zip"
             if settings.ENVIRONMENT == 'local':
                 local_dir = os.path.join(settings.BASE_DIR, 'data/transcript')
                 os.makedirs(local_dir, exist_ok=True)
-                file_path = os.path.join(local_dir, file_name)
-                with open(file_path, 'w') as file:
-                    file.write(buffer.getvalue())
+                file_path = os.path.join(local_dir, zip_file_name)
+                with open(file_path, 'wb') as f:
+                    f.write(zip_buffer.getvalue())
                 file_url = file_path
-                logger.info(f"CSV file saved locally at {file_path}")
+                logger.info(f"ZIP file saved locally at {file_path}")
             else:
                 s3 = boto3.client(
                     's3', region_name=settings.AWS_S3_REGION_NAME)
-                s3_key = f"data/transcript/{file_name}"
+                s3_key = f"data/transcript/{zip_file_name}"
                 s3.put_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-                              Key=s3_key, Body=buffer.getvalue())
+                              Key=s3_key, Body=zip_buffer.getvalue())
                 file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
-                logger.info(f"CSV file uploaded to S3 at {file_url}")
+                logger.info(f"ZIP file uploaded to S3 at {file_url}")
 
-            # Save the file URL and other details in the database
             UserCSVDownload.objects.create(
                 user_id=user_id,
                 module_id=module_id,
@@ -451,10 +465,10 @@ class CSVCreateView(APIView):
                 file_url=file_url
             )
             logger.info(
-                f"CSV file details saved in database for user {user_id}")
+                f"ZIP file details saved in database for user {user_id}")
 
         except Exception as e:
-            logger.error(f"Error creating and uploading CSV: {e}")
+            logger.error(f"Error creating and uploading ZIP: {e}")
 
 
 class CSVListView(APIView):
@@ -489,13 +503,13 @@ class CSVServeView(APIView):
             logger.debug(f"Local file path: {file_path}")
             if os.path.exists(file_path):
                 response = FileResponse(
-                    open(file_path, 'rb'), content_type="text/csv")
+                    open(file_path, 'rb'), content_type="application/zip")
                 response['Content-Disposition'] = f'attachment; filename={file_name}'
                 logger.info(
-                    f"Serving local CSV file {file_name} to user {request.user.id}")
+                    f"Serving local ZIP file {file_name} to user {request.user.id}")
                 return response
             logger.error(
-                f"Local CSV file {file_name} not found for user {request.user.id}")
+                f"Local ZIP file {file_name} not found for user {request.user.id}")
             return HttpResponse(status=404)
         else:
             try:
@@ -504,14 +518,11 @@ class CSVServeView(APIView):
                 key = csv_record.file_url.split('.com/')[-1]
                 signed_url = s3_client.generate_presigned_url(
                     'get_object',
-                    Params={
-                        'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-                        'Key': key
-                    },
+                    Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': key},
                     ExpiresIn=3600  # URL expires in 1 hour
                 )
                 logger.info(
-                    f"Generated signed URL for CSV file {csv_record.file_url}")
+                    f"Generated signed URL for ZIP file {csv_record.file_url}")
                 return HttpResponseRedirect(signed_url)
             except Exception as e:
                 logger.error(f"Error generating presigned URL: {e}")
