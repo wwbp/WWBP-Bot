@@ -160,7 +160,7 @@ const TranscriptDownloadPage = () => {
               onClick={() =>
                 handleCSVDownload(
                   csv.id,
-                  `transcript_module_${csv.module_id}_${csv.start_date}_to_${csv.end_date}.csv`
+                  `transcript_module_${csv.module_id}_${csv.start_date}_to_${csv.end_date}.zip`
                 )
               }
             >
