@@ -1,7 +1,6 @@
+from asgiref.sync import async_to_sync, sync_to_async
 import io
 from rest_framework import status
-from django.utils import timezone
-from django.http import StreamingHttpResponse
 import boto3
 import os
 import json
@@ -15,7 +14,7 @@ from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseNotAllowed, JsonResponse, HttpResponse
+from django.http import HttpResponseNotAllowed, JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.apps import apps
 
 from rest_framework import status, viewsets, permissions
@@ -29,7 +28,7 @@ from rest_framework.views import exception_handler
 import openai
 import pytz
 
-from .models import User, Task, Module, ChatSession, ChatMessage, SystemPrompt
+from .models import User, Task, Module, ChatSession, ChatMessage, SystemPrompt, UserCSVDownload
 from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer, SystemPromptSerializer
 
 
@@ -368,12 +367,25 @@ class FileUploadView(APIView):
         return Response({'file_path': file_path}, status=status.HTTP_201_CREATED)
 
 
-class TranscriptDownloadView(APIView):
+class CSVCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, module_id, start_date, end_date):
+    def post(self, request):
+        module_id = request.data.get('module_id')
+        start_date = request.data.get('start_date')
+        end_date = request.data.get('end_date')
+        user_id = request.user.id
+
+        logger.info(
+            f"Starting CSV creation for module {module_id} from {start_date} to {end_date} for user {user_id}")
+
+        self.create_csv_and_upload_to_s3(
+            module_id, start_date, end_date, user_id)
+        return JsonResponse({'message': 'CSV creation started. You will be notified when it is ready.'})
+
+    def create_csv_and_upload_to_s3(self, module_id, start_date, end_date, user_id):
         try:
-            # Convert start and end dates from ETC to UTC
+            # Convert dates
             etc = pytz.timezone('US/Eastern')
             start_date_etc = etc.localize(
                 datetime.strptime(start_date, '%Y-%m-%d'))
@@ -382,42 +394,109 @@ class TranscriptDownloadView(APIView):
             start_date_utc = start_date_etc.astimezone(pytz.utc)
             end_date_utc = end_date_etc.astimezone(pytz.utc)
 
-            # Query to get all user conversations for a module in a given period
+            # Query data
             Transcript = apps.get_model('langchain_stream', 'Transcript')
             user_conversations = Transcript.objects.filter(
                 session__module_id=module_id,
                 created_at__range=(start_date_utc, end_date_utc)
             ).select_related('session__user', 'session__task', 'session__module')
 
-            # Use StreamingHttpResponse for large datasets
-            def transcript_generator(conversations):
-                buffer = io.StringIO()
-                writer = csv.writer(buffer)
-                writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
-                                'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
-                yield buffer.getvalue()
-                buffer.seek(0)
-                buffer.truncate(0)
-                for conversation in conversations:
-                    writer.writerow([
-                        conversation.session.id,
-                        conversation.session.user.username,
-                        conversation.session.module.name if conversation.session.module else '',
-                        conversation.session.task.title if conversation.session.task else '',
-                        conversation.user_message,
-                        conversation.bot_message,
-                        conversation.created_at,
-                        conversation.has_audio,
-                        conversation.audio_link
-                    ])
-                    yield buffer.getvalue()
-                    buffer.seek(0)
-                    buffer.truncate(0)
+            logger.debug(
+                f"Fetched {user_conversations.count()} conversations for CSV creation")
 
-            response = StreamingHttpResponse(transcript_generator(
-                user_conversations), content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="transcript_module_{module_id}_{start_date}_to_{end_date}.csv"'
-            return response
+            # Generate CSV
+            buffer = io.StringIO()
+            writer = csv.writer(buffer)
+            writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
+                            'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
+            for conversation in user_conversations:
+                writer.writerow([
+                    conversation.session.id,
+                    conversation.session.user.username,
+                    conversation.session.module.name if conversation.session.module else '',
+                    conversation.session.task.title if conversation.session.task else '',
+                    conversation.user_message,
+                    conversation.bot_message,
+                    conversation.created_at,
+                    conversation.has_audio,
+                    conversation.audio_link
+                ])
+
+            # Save to local or S3
+            file_name = f"transcript_module_{module_id}_{start_date}_to_{end_date}.csv"
+            if settings.ENVIRONMENT == 'local':
+                local_dir = os.path.join(settings.BASE_DIR, 'data/transcript')
+                os.makedirs(local_dir, exist_ok=True)
+                file_path = os.path.join(local_dir, file_name)
+                with open(file_path, 'w') as file:
+                    file.write(buffer.getvalue())
+                file_url = file_path
+                logger.info(f"CSV file saved locally at {file_path}")
+            else:
+                s3 = boto3.client(
+                    's3', region_name=settings.AWS_S3_REGION_NAME)
+                s3_key = f"data/transcript/{file_name}"
+                s3.put_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                              Key=s3_key, Body=buffer.getvalue())
+                file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+                logger.info(f"CSV file uploaded to S3 at {file_url}")
+
+            # Save the file URL and other details in the database
+            UserCSVDownload.objects.create(
+                user_id=user_id,
+                module_id=module_id,
+                start_date=start_date,
+                end_date=end_date,
+                file_url=file_url
+            )
+            logger.info(
+                f"CSV file details saved in database for user {user_id}")
 
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Error creating and uploading CSV: {e}")
+
+
+class CSVListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_id = request.user.id
+        csv_files = UserCSVDownload.objects.filter(
+            user_id=user_id).order_by('-created_at')
+        csv_list = [{'id': csv.id, 'module_id': csv.module_id, 'start_date': csv.start_date,
+                     'end_date': csv.end_date, 'file_url': csv.file_url} for csv in csv_files]
+        logger.info(f"Fetched CSV list for user {user_id}: {csv_list}")
+        return Response(csv_list, status=status.HTTP_200_OK)
+
+
+class CSVServeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, csv_id):
+        logger.info(f"Serving CSV with id {csv_id} for user {request.user.id}")
+        csv_record = UserCSVDownload.objects.filter(
+            id=csv_id, user_id=request.user.id).first()
+        if not csv_record:
+            logger.error(
+                f"CSV file with id {csv_id} not found for user {request.user.id}")
+            return HttpResponse(status=404)
+
+        if settings.ENVIRONMENT == 'local':
+            file_name = csv_record.file_url.split('/')[-1]
+            file_path = os.path.join(
+                settings.BASE_DIR, 'data/transcript', file_name)
+            logger.debug(f"Local file path: {file_path}")
+            if os.path.exists(file_path):
+                response = FileResponse(
+                    open(file_path, 'rb'), content_type="text/csv")
+                response['Content-Disposition'] = f'attachment; filename={file_name}'
+                logger.info(
+                    f"Serving local CSV file {file_name} to user {request.user.id}")
+                return response
+            logger.error(
+                f"Local CSV file {file_name} not found for user {request.user.id}")
+            return HttpResponse(status=404)
+        else:
+            logger.info(
+                f"Redirecting to S3 CSV file {csv_record.file_url} for user {request.user.id}")
+            return HttpResponseRedirect(csv_record.file_url)

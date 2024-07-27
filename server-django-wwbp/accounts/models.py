@@ -64,3 +64,13 @@ class SystemPrompt(models.Model):
     prompt = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class UserCSVDownload(models.Model):
+    user = models.ForeignKey(User,
+                             on_delete=models.CASCADE)
+    module_id = models.IntegerField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    file_url = models.URLField()
+    created_at = models.DateTimeField(auto_now_add=True)
