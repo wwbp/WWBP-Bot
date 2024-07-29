@@ -25,6 +25,7 @@ boto3 = "*"
 pika = "*"
 jupyter = "*"
 pytz = "*"
+setuptools = "*"
 
 [dev-packages]
 
