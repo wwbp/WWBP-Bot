@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { fetchData, postData, fetchFile } from "../utils/api";
+import { fetchData, postData, deleteData, fetchFile } from "../utils/api";
 
 const TranscriptDownloadPage = () => {
   const [modules, setModules] = useState([]);
@@ -94,6 +94,17 @@ const TranscriptDownloadPage = () => {
     }
   };
 
+  const handleCSVDelete = async (csvId) => {
+    try {
+      await deleteData(`/csv_transcripts/list/${csvId}/`);
+      console.log(`CSV file ${csvId} deleted successfully`);
+      fetchUserCSVFiles();
+    } catch (error) {
+      console.error("Error deleting CSV file", error);
+      setError("Failed to delete CSV file.");
+    }
+  };
+
   if (initialLoading) {
     return <CircularProgress />;
   }
@@ -155,7 +166,15 @@ const TranscriptDownloadPage = () => {
       </Typography>
       <Box>
         {csvList.map((csv, index) => (
-          <Box key={index}>
+          <Box
+            key={index}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
             <Button
               onClick={() =>
                 handleCSVDownload(
@@ -166,6 +185,13 @@ const TranscriptDownloadPage = () => {
             >
               Download CSV for {csv.module_name} from {csv.start_date} to{" "}
               {csv.end_date}
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => handleCSVDelete(csv.id)}
+            >
+              Delete
             </Button>
           </Box>
         ))}
