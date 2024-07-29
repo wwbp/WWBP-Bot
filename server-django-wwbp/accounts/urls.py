@@ -28,4 +28,6 @@ urlpatterns = [
     path('csv_transcripts/download/<int:csv_id>/',
          CSVServeView.as_view(), name='csv_serve'),
     path('csv_transcripts/list/', CSVListView.as_view(), name='csv_list'),
+    path('csv_transcripts/list/<int:csv_id>/',
+         CSVListView.as_view(), name='csv_delete'),
 ]
