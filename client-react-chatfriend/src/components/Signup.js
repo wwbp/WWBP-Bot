@@ -8,6 +8,7 @@ import {
   Box,
   Typography,
   MenuItem,
+  Slider,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 
@@ -16,6 +17,7 @@ function Signup({ setLoggedIn, setRole }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRoleState] = useState("student");
+  const [voice_speed, setVoiceSpeed] = useState(1.0);
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
@@ -36,6 +38,7 @@ function Signup({ setLoggedIn, setRole }) {
         email,
         password,
         role,
+        voice_speed,
       });
       if (response.message === "User created successfully") {
         localStorage.setItem("token", response.token);
@@ -95,7 +98,24 @@ function Signup({ setLoggedIn, setRole }) {
             required
             error={submitted && !password}
             helperText={submitted && !password && "Password is required"}
-          />
+            />
+            <Typography gutterBottom>
+              Voice Speed
+            </Typography>
+            <Slider
+              fullWidth
+              // name="voice_speed"
+              label="Voice Speed"
+              margin="normal"
+              value={voice_speed}
+              onChange={
+                (e)=>setVoiceSpeed(e.target.value)
+              }
+              valueLabelDisplay="auto"
+              step={0.5}
+              min={0.5}
+              max={2.0}
+            />
           <TextField
             select
             fullWidth

@@ -6,7 +6,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'first_name', 'last_name',
-                  'email', 'role', 'grade', 'preferred_language']
+                  'email', 'role', 'voice_speed', 'interaction_mode', 'grade', 'preferred_language']
 
 
 class TaskSerializer(serializers.ModelSerializer):

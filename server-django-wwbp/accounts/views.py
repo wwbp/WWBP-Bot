@@ -87,6 +87,8 @@ def user_profile(request):
             "username": request.user.username,
             "email": request.user.email,
             "role": request.user.role,
+            "voice_speed": request.user.voice_speed,            
+            "interaction_mode": request.user.interaction_mode,
             "grade": request.user.grade if request.user.role == 'student' else None,
             "preferred_language": request.user.preferred_language if request.user.role == 'student' else None,
         }
@@ -97,10 +99,14 @@ def user_profile(request):
             data = json.loads(request.body)
             request.user.username = data.get('username', request.user.username)
             request.user.email = data.get('email', request.user.email)
+            request.user.interaction_mode = data.get('interaction_mode', request.user.interaction_mode)
+            
             if request.user.role == 'student':
                 request.user.grade = data.get('grade', request.user.grade)
                 request.user.preferred_language = data.get(
                     'preferred_language', request.user.preferred_language)
+            request.user.voice_speed = data.get('voice_speed', request.user.voice_speed)    
+                
             request.user.save()
             return JsonResponse({"message": "Profile updated"}, status=200)
         except Exception as e:
@@ -121,12 +127,14 @@ def register(request):
             email = data.get('email')
             password = data.get('password')
             role = data.get('role', 'student')  # Default role is 'student'
+            voice_speed = data.get('voice_speed', 1.0)
+
 
             if not username or not email or not password:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             user = get_user_model().objects.create_user(
-                username=username, email=email, password=password, role=role)
+                username=username, email=email, password=password, role=role, voice_speed=voice_speed)
             user.save()
 
             # Log the user in after registration
@@ -349,7 +357,7 @@ class FileUploadView(APIView):
         ]
         if file.content_type not in allowed_mime_types:
             return Response({"detail": "Unsupported file type."}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
-
+        file_path = None
         try:
             if settings.ENVIRONMENT == 'local':
                 local_upload_dir = os.path.join(
@@ -366,7 +374,7 @@ class FileUploadView(APIView):
                 file_path = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
         except Exception as e:
             logger.error(f"Error saving the file: {e}")
-
+        logger.debug(f"File uploaded successfully: {file_path}")
         return Response({'file_path': file_path}, status=status.HTTP_201_CREATED)
 
 

@@ -12,6 +12,9 @@ class User(AbstractUser):
         max_length=10, choices=ROLE_CHOICES, default='student')
     grade = models.CharField(max_length=10, blank=True, null=True)
     preferred_language = models.CharField(max_length=50, blank=True, null=True)
+    voice_speed = models.FloatField(default=1.0)
+    interaction_mode = models.CharField(max_length=20, default='text')
+
 
 
 class Module(models.Model):

@@ -29,7 +29,7 @@ function ModuleTasks() {
       .then((taskData) => {
         const updatedTasks = taskData.map((task, index) => ({
           ...task,
-          locked: index !== 0,
+          // locked: index !== 0,
           completed: false,
         }));
         setTasks(updatedTasks);
