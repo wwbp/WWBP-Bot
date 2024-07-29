@@ -69,7 +69,8 @@ class SystemPrompt(models.Model):
 class UserCSVDownload(models.Model):
     user = models.ForeignKey(User,
                              on_delete=models.CASCADE)
-    module_id = models.IntegerField()
+    module = models.ForeignKey(
+        Module, on_delete=models.CASCADE, related_name='csv_module', null=True, blank=True)
     start_date = models.DateField()
     end_date = models.DateField()
     file_url = models.URLField()

@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
 import zipfile
@@ -380,11 +381,15 @@ class CSVCreateView(APIView):
         user_id = request.user.id
 
         logger.info(
-            f"Starting CSV creation for module {module_id} from {start_date} to {end_date} for user {user_id}")
+            f"Starting CSV creation request for module {module_id} from {start_date} to {end_date} for user {user_id}")
 
-        self.create_csv_and_upload_to_s3(
-            module_id, start_date, end_date, user_id)
-        return JsonResponse({'message': 'CSV creation started. You will be notified when it is ready.'})
+        try:
+            self.create_csv_and_upload_to_s3(
+                module_id, start_date, end_date, user_id)
+            return JsonResponse({'message': 'CSV creation started. You will be notified when it is ready.'})
+        except Exception as e:
+            logger.error(f"Failed to start CSV creation: {e}")
+            return JsonResponse({'error': 'Failed to start CSV creation.'}, status=500)
 
     def create_csv_and_upload_to_s3(self, module_id, start_date, end_date, user_id):
         try:
@@ -400,41 +405,45 @@ class CSVCreateView(APIView):
             user_conversations = Transcript.objects.filter(
                 session__module_id=module_id,
                 created_at__range=(start_date_utc, end_date_utc)
-            ).select_related('session__user', 'session__task', 'session__module')
+            ).select_related('session__user', 'session__task', 'session__module').iterator(chunk_size=1000)
 
-            logger.debug(
-                f"Fetched {user_conversations.count()} conversations for CSV creation")
+            logger.debug("Fetched conversations for CSV creation")
 
-            # Paginate with a batch size of 1000
-            paginator = Paginator(user_conversations, 1000)
-            buffer_list = []
+            zip_buffer = io.BytesIO()
 
-            for page_number in paginator.page_range:
-                page = paginator.page(page_number)
+            with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
                 buffer = io.StringIO()
                 writer = csv.writer(buffer)
-                writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name',
+                writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name', 'Message ID',
                                 'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
 
-                for conversation in page.object_list:
+                count = 0
+                for conversation in user_conversations:
                     writer.writerow([
                         conversation.session.id,
                         conversation.session.user.username,
                         conversation.session.module.name if conversation.session.module else '',
                         conversation.session.task.title if conversation.session.task else '',
+                        conversation.message_id,
                         conversation.user_message,
                         conversation.bot_message,
                         conversation.created_at,
                         conversation.has_audio,
                         conversation.audio_link
                     ])
+                    count += 1
 
-                file_name = f"transcript_module_{module_id}_{start_date}_to_{end_date}_batch_{page_number}.csv"
-                buffer_list.append((file_name, buffer))
+                    if count % 1000 == 0:
+                        file_name = f"transcript_module_{module_id}_{start_date}_to_{end_date}_batch_{count // 1000}.csv"
+                        zip_file.writestr(file_name, buffer.getvalue())
+                        buffer = io.StringIO()
+                        writer = csv.writer(buffer)
+                        writer.writerow(['Session ID', 'Username', 'Module Name', 'Task Name', 'Message ID',
+                                        'User Message', 'Bot Message', 'Created At (UTC)', 'Has Audio', 'Audio Link'])
 
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, 'w') as zip_file:
-                for file_name, buffer in buffer_list:
+                # Write any remaining data
+                if count % 1000 != 0:
+                    file_name = f"transcript_module_{module_id}_{start_date}_to_{end_date}_batch_{count // 1000 + 1}.csv"
                     zip_file.writestr(file_name, buffer.getvalue())
 
             zip_buffer.seek(0)
@@ -457,18 +466,26 @@ class CSVCreateView(APIView):
                 file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
                 logger.info(f"ZIP file uploaded to S3 at {file_url}")
 
-            UserCSVDownload.objects.create(
-                user_id=user_id,
-                module_id=module_id,
-                start_date=start_date,
-                end_date=end_date,
-                file_url=file_url
-            )
-            logger.info(
-                f"ZIP file details saved in database for user {user_id}")
+            with transaction.atomic():
+                UserCSVDownload.objects.create(
+                    user_id=user_id,
+                    module_id=module_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                    file_url=file_url
+                )
+                logger.info(
+                    f"ZIP file details saved in database for user {user_id}")
 
+        except pytz.exceptions.UnknownTimeZoneError as tz_error:
+            logger.error(f"Timezone error: {tz_error}")
+            raise
+        except boto3.exceptions.Boto3Error as s3_error:
+            logger.error(f"S3 error: {s3_error}")
+            raise
         except Exception as e:
             logger.error(f"Error creating and uploading ZIP: {e}")
+            raise
 
 
 class CSVListView(APIView):
@@ -478,7 +495,7 @@ class CSVListView(APIView):
         user_id = request.user.id
         csv_files = UserCSVDownload.objects.filter(
             user_id=user_id).order_by('-created_at')
-        csv_list = [{'id': csv.id, 'module_id': csv.module_id, 'start_date': csv.start_date,
+        csv_list = [{'id': csv.id, 'module_id': csv.module.id, 'module_name': csv.module.name, 'start_date': csv.start_date,
                      'end_date': csv.end_date, 'file_url': csv.file_url} for csv in csv_files]
         logger.info(f"Fetched CSV list for user {user_id}: {csv_list}")
         return Response(csv_list, status=status.HTTP_200_OK)

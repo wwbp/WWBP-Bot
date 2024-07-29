@@ -164,7 +164,7 @@ const TranscriptDownloadPage = () => {
                 )
               }
             >
-              Download CSV for Module {csv.module_id} from {csv.start_date} to{" "}
+              Download CSV for {csv.module_name} from {csv.start_date} to{" "}
               {csv.end_date}
             </Button>
           </Box>
