@@ -472,7 +472,8 @@ class CSVCreateView(APIView):
                     module_id=module_id,
                     start_date=start_date,
                     end_date=end_date,
-                    file_url=file_url
+                    file_url=file_url,
+                    is_deleted=False
                 )
                 logger.info(
                     f"ZIP file details saved in database for user {user_id}")
@@ -494,11 +495,24 @@ class CSVListView(APIView):
     def get(self, request):
         user_id = request.user.id
         csv_files = UserCSVDownload.objects.filter(
-            user_id=user_id).order_by('-created_at')
+            user_id=user_id, is_deleted=False).order_by('-created_at')
         csv_list = [{'id': csv.id, 'module_id': csv.module.id, 'module_name': csv.module.name, 'start_date': csv.start_date,
                      'end_date': csv.end_date, 'file_url': csv.file_url} for csv in csv_files]
         logger.info(f"Fetched CSV list for user {user_id}: {csv_list}")
         return Response(csv_list, status=status.HTTP_200_OK)
+
+    def delete(self, request, csv_id):
+        user_id = request.user.id
+        try:
+            csv_file = UserCSVDownload.objects.get(id=csv_id, user_id=user_id)
+            csv_file.is_deleted = True
+            csv_file.save()
+            logger.info(
+                f"CSV file {csv_id} marked as deleted for user {user_id}")
+            return Response({'message': 'CSV file deleted successfully.'}, status=status.HTTP_200_OK)
+        except UserCSVDownload.DoesNotExist:
+            logger.error(f"CSV file {csv_id} not found for user {user_id}")
+            return Response({'error': 'CSV file not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class CSVServeView(APIView):
