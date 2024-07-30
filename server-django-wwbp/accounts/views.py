@@ -351,7 +351,7 @@ class GeneratePresignedURL(APIView):
                 's3', region_name=settings.AWS_S3_REGION_NAME)
             presigned_post = s3_client.generate_presigned_post(
                 Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-                Key=f"uploads/{file_name}",
+                Key=f"data/upload/{file_name}",
                 Fields={"Content-Type": file_type},
                 Conditions=[
                     {"Content-Type": file_type}
