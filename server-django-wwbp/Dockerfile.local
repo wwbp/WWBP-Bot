@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -11,10 +11,6 @@ RUN apt-get update && apt-get install -y \
 RUN pip install pipenv
 
 COPY . /app
-
-# Upgrade pip, setuptools, and wheel
-RUN pip install --upgrade pip && \
-    pip install setuptools==59.6.0 wheel
 
 RUN pipenv install --system --deploy
 
