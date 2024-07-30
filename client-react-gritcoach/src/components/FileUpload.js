@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import { postFile } from "../utils/api";
+import { getPresignedUrl, uploadToS3, postFile } from "../utils/api";
 
 const FileUpload = ({ existingFiles = [], onFileUploaded, onFileRemoved }) => {
   const [uploadedFiles, setUploadedFiles] = useState(existingFiles);
@@ -22,9 +22,25 @@ const FileUpload = ({ existingFiles = [], onFileUploaded, onFileRemoved }) => {
     const files = [...e.target.files];
     for (const file of files) {
       try {
-        const response = await postFile("/upload/", file);
-        setUploadedFiles((prevFiles) => [...prevFiles, response.file_path]);
-        onFileUploaded(response.file_path);
+        const fileName = file.name;
+        const fileType = file.type;
+        const presignedData = await getPresignedUrl(fileName, fileType);
+
+        if (presignedData.url === "local") {
+          // Handle local upload
+          const response = await postFile("/local_upload/", file);
+          setUploadedFiles((prevFiles) => [...prevFiles, response.file_path]);
+          onFileUploaded(response.file_path);
+        } else {
+          // Handle S3 upload
+          const { url, fields } = presignedData;
+          await uploadToS3(url, fields, file);
+          setUploadedFiles((prevFiles) => [
+            ...prevFiles,
+            `${url}/${fields.key}`,
+          ]);
+          onFileUploaded(`${url}/${fields.key}`);
+        }
       } catch (error) {
         console.error("Error uploading file:", error);
         alert("Failed to upload file. Please try again.");
