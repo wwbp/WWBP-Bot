@@ -19,10 +19,6 @@ COPY ./Pipfile ./Pipfile.lock /app/
 # Install Python dependencies
 RUN pip install pipenv 
 
-# Upgrade pip, setuptools, and wheel
-RUN pip install --upgrade pip && \
-    pip install setuptools==59.6.0 wheel
-
 RUN pipenv install --system --deploy --ignore-pipfile
 
 # Copy your Django project into the container
