@@ -352,9 +352,8 @@ class GeneratePresignedURL(APIView):
             presigned_post = s3_client.generate_presigned_post(
                 Bucket=settings.AWS_STORAGE_BUCKET_NAME,
                 Key=f"uploads/{file_name}",
-                Fields={"acl": "public-read", "Content-Type": file_type},
+                Fields={"Content-Type": file_type},
                 Conditions=[
-                    {"acl": "public-read"},
                     {"Content-Type": file_type}
                 ],
                 ExpiresIn=3600
