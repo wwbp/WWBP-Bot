@@ -1,3 +1,4 @@
+import re
 from django.db import transaction
 from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
@@ -332,6 +333,14 @@ class FileUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser)
     permission_classes = [IsAuthenticated]
 
+    def sanitize_filename(self, filename):
+        """
+        Sanitize the filename to prevent directory traversal and other security risks.
+        """
+        filename = os.path.basename(filename)  # Ensure no path traversal
+        filename = re.sub(r'[^a-zA-Z0-9._-]', '', filename)
+        return filename
+
     def post(self, request, *args, **kwargs):
         if 'file' not in request.FILES:
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
@@ -350,24 +359,31 @@ class FileUploadView(APIView):
         if file.content_type not in allowed_mime_types:
             return Response({"detail": "Unsupported file type."}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
+        sanitized_filename = self.sanitize_filename(file.name)
+        file_path = None
+
         try:
             if settings.ENVIRONMENT == 'local':
                 local_upload_dir = os.path.join(
                     settings.BASE_DIR, 'data/upload/')
                 os.makedirs(local_upload_dir, exist_ok=True)
-                file_path = default_storage.save(
-                    local_upload_dir + file.name, ContentFile(file.read()))
+                file_path = os.path.join(local_upload_dir, sanitized_filename)
+                with open(file_path, 'wb') as f:
+                    for chunk in file.chunks():
+                        f.write(chunk)
+                file_url = file_path
             else:
                 s3 = boto3.client(
                     's3', region_name=settings.AWS_S3_REGION_NAME)
                 bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-                s3_key = f"data/upload/{file.name}"
+                s3_key = f"data/upload/{sanitized_filename}"
                 s3.upload_fileobj(file, bucket_name, s3_key)
-                file_path = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+                file_url = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
         except Exception as e:
             logger.error(f"Error saving the file: {e}")
+            return Response({"detail": f"Error saving the file: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({'file_path': file_path}, status=status.HTTP_201_CREATED)
+        return Response({'file_path': file_url}, status=status.HTTP_201_CREATED)
 
 
 class CSVCreateView(APIView):
