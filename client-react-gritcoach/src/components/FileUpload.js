@@ -23,10 +23,11 @@ const FileUpload = ({ existingFiles = [], onFileUploaded, onFileRemoved }) => {
     for (const file of files) {
       try {
         const response = await postFile("/upload/", file);
-        setUploadedFiles([...uploadedFiles, response.file_path]);
+        setUploadedFiles((prevFiles) => [...prevFiles, response.file_path]);
         onFileUploaded(response.file_path);
       } catch (error) {
         console.error("Error uploading file:", error);
+        alert("Failed to upload file. Please try again.");
       }
     }
   };

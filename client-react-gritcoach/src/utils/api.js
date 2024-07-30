@@ -148,11 +148,10 @@ export const createWebSocket = (sessionId, isAudioMode) => {
   return new WebSocket(`${wsUrl}${endpoint}`);
 };
 
-export async function postFile(url = "", file) {
+export const postFile = async (url, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
   try {
-    const formData = new FormData();
-    formData.append("file", file);
-
     const response = await api.post(url, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
@@ -163,7 +162,7 @@ export async function postFile(url = "", file) {
     console.error("Error posting file:", error);
     throw error;
   }
-}
+};
 
 export async function fetchFile(url = "") {
   try {
