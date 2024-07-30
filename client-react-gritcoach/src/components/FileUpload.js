@@ -35,9 +35,7 @@ const FileUpload = ({ existingFiles = [], onFileUploaded, onFileRemoved }) => {
           // Handle S3 upload
           const { url, fields } = presignedData;
           await uploadToS3(url, fields, file);
-          const fileUrl = `${url}${fields.key.startsWith("/") ? "" : "/"}${
-            fields.key
-          }`;
+          const fileUrl = `${url}${fields.key}`;
           setUploadedFiles((prevFiles) => [...prevFiles, fileUrl]);
           onFileUploaded(fileUrl);
         }
