@@ -1,3 +1,4 @@
+import re
 from django.db import transaction
 from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
@@ -328,46 +329,70 @@ class SystemPromptViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-class FileUploadView(APIView):
+class GeneratePresignedURL(APIView):
+    @csrf_exempt
+    def post(self, request):
+        try:
+            file_name = request.data.get('file_name')
+            file_type = request.data.get('file_type')
+
+            if not file_name or not file_type:
+                return Response({"error": "File name and type are required."}, status=400)
+
+            if settings.ENVIRONMENT == 'local':
+                file_path = os.path.join(
+                    settings.BASE_DIR, 'data/upload/', file_name)
+                return Response({
+                    "url": "local",
+                    "file_path": file_path
+                })
+
+            s3_client = boto3.client(
+                's3', region_name=settings.AWS_S3_REGION_NAME)
+            presigned_post = s3_client.generate_presigned_post(
+                Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                Key=f"data/upload/{file_name}",
+                Fields={"Content-Type": file_type},
+                Conditions=[
+                    {"Content-Type": file_type}
+                ],
+                ExpiresIn=3600
+            )
+            return Response(presigned_post)
+        except Exception as e:
+            logger.error(f"Error generating presigned URL: {e}")
+            return Response({"error": str(e)}, status=500)
+
+
+class LocalFileUploadView(APIView):
     parser_classes = (MultiPartParser, FormParser)
     permission_classes = [IsAuthenticated]
+
+    def sanitize_filename(self, filename):
+        filename = os.path.basename(filename)  # Ensure no path traversal
+        filename = re.sub(r'[^a-zA-Z0-9._-]', '', filename)
+        return filename
 
     def post(self, request, *args, **kwargs):
         if 'file' not in request.FILES:
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         file = request.FILES['file']
-        allowed_mime_types = [
-            "text/x-c", "text/x-csharp", "text/x-c++", "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "text/html", "text/x-java", "application/json", "text/markdown",
-            "application/pdf", "text/x-php",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "text/x-python", "text/x-script.python", "text/x-ruby",
-            "text/x-tex", "text/plain", "text/css", "text/javascript",
-            "application/x-sh", "application/typescript"
-        ]
-        if file.content_type not in allowed_mime_types:
-            return Response({"detail": "Unsupported file type."}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        sanitized_filename = self.sanitize_filename(file.name)
 
         try:
-            if settings.ENVIRONMENT == 'local':
-                local_upload_dir = os.path.join(
-                    settings.BASE_DIR, 'data/upload/')
-                os.makedirs(local_upload_dir, exist_ok=True)
-                file_path = default_storage.save(
-                    local_upload_dir + file.name, ContentFile(file.read()))
-            else:
-                s3 = boto3.client(
-                    's3', region_name=settings.AWS_S3_REGION_NAME)
-                bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-                s3_key = f"data/upload/{file.name}"
-                s3.upload_fileobj(file, bucket_name, s3_key)
-                file_path = f"https://{bucket_name}.s3.{settings.AWS_S3_REGION_NAME}.amazonaws.com/{s3_key}"
+            local_upload_dir = os.path.join(settings.BASE_DIR, 'data/upload/')
+            os.makedirs(local_upload_dir, exist_ok=True)
+            file_path = os.path.join(local_upload_dir, sanitized_filename)
+            with open(file_path, 'wb') as f:
+                for chunk in file.chunks():
+                    f.write(chunk)
+            file_url = file_path
         except Exception as e:
             logger.error(f"Error saving the file: {e}")
+            return Response({"detail": f"Error saving the file: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({'file_path': file_path}, status=status.HTTP_201_CREATED)
+        return Response({'file_path': file_url}, status=status.HTTP_201_CREATED)
 
 
 class CSVCreateView(APIView):
