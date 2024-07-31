@@ -1,14 +1,11 @@
 import boto3
 import os
 import io
-import csv
 from django.conf import settings
 from django.apps import apps
 from asgiref.sync import sync_to_async
 import logging
-from datetime import datetime, timedelta
-from django.utils import timezone
-import pytz
+from urllib.parse import urlparse
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -28,16 +25,18 @@ def get_file_streams(session_id):
             file_paths += task.files
 
         for file_path in file_paths:
-            if file_path.startswith('s3://'):
+            if file_path.startswith('https://'):
+                # Extract bucket name and key
+                parsed_url = urlparse(file_path)
+                bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+                key = parsed_url.path.lstrip('/')
+
                 # Download file from S3
-                key = file_path[5:].split('/', 1)[-1]
                 s3 = boto3.client(
                     's3', region_name=settings.AWS_S3_REGION_NAME)
-                bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-                logger.debug(f"bucket name: {bucket_name}")
-                s3.download_file(
-                    bucket_name, key, '/tmp/' + key.split('/')[-1])
-                file_streams.append(open('/tmp/' + key.split('/')[-1], 'rb'))
+                local_file_path = f'/tmp/{os.path.basename(key)}'
+                s3.download_file(bucket_name, key, local_file_path)
+                file_streams.append(open(local_file_path, 'rb'))
             else:
                 # Local file
                 file_streams.append(open(file_path, 'rb'))
