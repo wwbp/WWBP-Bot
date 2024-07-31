@@ -25,7 +25,7 @@ def get_file_streams(session_id):
             file_paths += task.files
 
         for file_path in file_paths:
-            if file_path.startswith('s3://'):
+            if file_path.startswith('https://gritcoach-dev-data.s3.us-east-1.amazonaws.com/'):
                 # Extract bucket name and key
                 parsed_url = urlparse(file_path)
                 bucket_name = parsed_url.netloc.split('.')[0]
