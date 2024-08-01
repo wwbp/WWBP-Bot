@@ -67,7 +67,8 @@ class ChatSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatSession
         fields = ['id', 'user', 'module', 'task', 'assistant_id',
-                  'thread_id', 'created_at', 'updated_at']
+                  'thread_id', 'prompt_tokens', 'completion_tokens', 'total_tokens',
+                  'created_at', 'updated_at']
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):

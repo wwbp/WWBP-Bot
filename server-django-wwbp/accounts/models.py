@@ -44,8 +44,17 @@ class ChatSession(models.Model):
         Task, on_delete=models.CASCADE, related_name='chat_sessions', null=True, blank=True)
     assistant_id = models.TextField(blank=True, null=True)
     thread_id = models.TextField(blank=True, null=True)
+    prompt_tokens = models.IntegerField(default=0)
+    completion_tokens = models.IntegerField(default=0)
+    total_tokens = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['module']),
+            models.Index(fields=['created_at']),
+        ]
 
     class Meta:
         indexes = [

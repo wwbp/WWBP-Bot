@@ -10,7 +10,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from django.apps import apps
 from django.core.cache import cache
 from google.cloud import speech, texttospeech
-from langchain_stream.tasks import save_message_to_transcript, get_file_streams
+from langchain_stream.tasks import save_message_to_transcript, get_file_streams, save_usage_stats
 from openai import OpenAI
 
 logging.basicConfig(level=logging.DEBUG)
@@ -361,6 +361,15 @@ class ChatConsumer(BaseWebSocketConsumer):
                                                      user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
                     bot_message_buffer.clear()
                     self.session_manager.run_active = False
+
+                    usage = event.data.usage
+                    await save_usage_stats(
+                        session_id=self.session_id,
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
+                        total_tokens=usage.total_tokens
+                    )
+
                     logger.debug(
                         f"Completed bot message for session_id={self.session_id}, message_id={message_id}: {complete_bot_message}")
                 else:
@@ -509,6 +518,13 @@ class AudioConsumer(BaseWebSocketConsumer):
                     self.bot_message_buffer.clear()
                     self.bot_audio_buffer.clear()
                     self.session_manager.run_active = False
+                    usage = event.data.usage
+                    await save_usage_stats(
+                        session_id=self.session_id,
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
+                        total_tokens=usage.total_tokens
+                    )
                 else:
                     logger.error(
                         f"Unknown 'chunk' event: {chunk.get('event', 'no event')}")
