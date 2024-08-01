@@ -63,7 +63,7 @@ function NavBar({
   };
 
   return (
-    <AppBar position="static" style={{ backgroundColor: "#d30000" }}>
+    <AppBar position="static" style={{ backgroundColor: "#581B98" }}>
       <Toolbar>
         <Typography
           variant="h6"
@@ -82,7 +82,7 @@ function NavBar({
             fontWeight: "bold",
           }}
         >
-          GritCoach
+          ChatFriend
         </Typography>
         {isLoggedIn ? (
           <>
@@ -139,7 +139,7 @@ function NavBar({
                 onClick={handleMenu}
                 size="medium"
               >
-                <Avatar sx={{ bgcolor: "red", color: "white" }} />
+                <Avatar sx={{ bgcolor: "purple", color: "white" }} />
               </IconButton>
               <Menu
                 anchorEl={anchorEl}

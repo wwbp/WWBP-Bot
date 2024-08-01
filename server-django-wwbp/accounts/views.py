@@ -88,6 +88,8 @@ def user_profile(request):
             "username": request.user.username,
             "email": request.user.email,
             "role": request.user.role,
+            "voice_speed": request.user.voice_speed,
+            "interaction_mode": request.user.interaction_mode,
             "grade": request.user.grade if request.user.role == 'student' else None,
             "preferred_language": request.user.preferred_language if request.user.role == 'student' else None,
         }
@@ -98,10 +100,16 @@ def user_profile(request):
             data = json.loads(request.body)
             request.user.username = data.get('username', request.user.username)
             request.user.email = data.get('email', request.user.email)
+            request.user.interaction_mode = data.get(
+                'interaction_mode', request.user.interaction_mode)
+
             if request.user.role == 'student':
                 request.user.grade = data.get('grade', request.user.grade)
                 request.user.preferred_language = data.get(
                     'preferred_language', request.user.preferred_language)
+            request.user.voice_speed = data.get(
+                'voice_speed', request.user.voice_speed)
+
             request.user.save()
             return JsonResponse({"message": "Profile updated"}, status=200)
         except Exception as e:
@@ -122,12 +130,13 @@ def register(request):
             email = data.get('email')
             password = data.get('password')
             role = data.get('role', 'student')  # Default role is 'student'
+            voice_speed = data.get('voice_speed', 1.0)
 
             if not username or not email or not password:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             user = get_user_model().objects.create_user(
-                username=username, email=email, password=password, role=role)
+                username=username, email=email, password=password, role=role, voice_speed=voice_speed)
             user.save()
 
             # Log the user in after registration
@@ -230,6 +239,45 @@ class ModuleViewSet(viewsets.ModelViewSet):
         serializer.save(module=module)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def duplicate(self, request, pk=None):
+        try:
+            original_module = self.get_object()
+            new_module_name = f"{original_module.name} [duplicate]"
+
+            # Handle multiple duplicates
+            existing_duplicates = Module.objects.filter(
+                name__startswith=new_module_name
+            ).count()
+            if existing_duplicates > 0:
+                new_module_name = f"{new_module_name} ({existing_duplicates + 1})"
+
+            # Create a new module with the same content
+            new_module = Module.objects.create(
+                name=new_module_name,
+                created_by=request.user,
+                content=original_module.content,
+                files=original_module.files,
+            )
+
+            # Duplicate the tasks
+            for task in original_module.tasks.all():
+                Task.objects.create(
+                    title=task.title,
+                    content=task.content,
+                    module=new_module,
+                    instruction_prompt=task.instruction_prompt,
+                    persona_prompt=task.persona_prompt,
+                    files=task.files,
+                )
+
+            serializer = self.get_serializer(new_module)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error duplicating module: {e}")
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
@@ -255,6 +303,37 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def duplicate(self, request, pk=None):
+        try:
+            original_task = self.get_object()
+            new_task_title = f"{original_task.title} [duplicate]"
+
+            # Handle multiple duplicates
+            existing_duplicates = Task.objects.filter(
+                title__startswith=new_task_title,
+                module=original_task.module
+            ).count()
+            if existing_duplicates > 0:
+                new_task_title = f"{new_task_title} ({existing_duplicates + 1})"
+
+            # Create a new task with the same content
+            new_task = Task.objects.create(
+                title=new_task_title,
+                content=original_task.content,
+                module=original_task.module,
+                instruction_prompt=original_task.instruction_prompt,
+                persona_prompt=original_task.persona_prompt,
+                files=original_task.files,
+            )
+
+            serializer = self.get_serializer(new_task)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error duplicating task: {e}")
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Initialize OpenAI client
@@ -378,6 +457,7 @@ class LocalFileUploadView(APIView):
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         file = request.FILES['file']
+
         sanitized_filename = self.sanitize_filename(file.name)
 
         try:

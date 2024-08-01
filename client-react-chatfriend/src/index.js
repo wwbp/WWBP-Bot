@@ -9,7 +9,7 @@ import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#d32f2f", // Red
+      main: "#581B98", // Red
     },
     secondary: {
       main: "#757575", // Gray

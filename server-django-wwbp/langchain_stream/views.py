@@ -67,7 +67,8 @@ class PromptHook:
                 "username": user.username,
                 "role": user.role,
                 "grade": user.grade,
-                "preferred_language": user.preferred_language
+                "preferred_language": user.preferred_language,
+                "voice_speed": user.voice_speed
             }
         except Exception as e:
             logger.error(f"Error fetching user profile: {e}")
@@ -514,6 +515,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                     complete_audio = b''.join(self.bot_audio_buffer)
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
+                    self.bot_message_buffer.clear()
                     self.bot_audio_buffer.clear()
                     self.session_manager.run_active = False
                     usage = event.data.usage
@@ -549,9 +551,13 @@ class AudioConsumer(BaseWebSocketConsumer):
             name="en-US-Standard-F",
             ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
         )
+        voice_speed = 1.0
+        user_profile = await self.session_manager.get_user_profile(self.session_id)
+        voice_speed = float(user_profile['voice_speed'])
+
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
-            speaking_rate=1,
+            speaking_rate=voice_speed if voice_speed else 1.0,
             pitch=0.0,
         )
         try:
