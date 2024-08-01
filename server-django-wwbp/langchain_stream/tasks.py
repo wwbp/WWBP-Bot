@@ -12,6 +12,20 @@ logger = logging.getLogger(__name__)
 
 
 @sync_to_async
+def save_usage_stats(session_id, prompt_tokens, completion_tokens, total_tokens):
+    ChatSession = apps.get_model('accounts', 'ChatSession')
+    try:
+        session = ChatSession.objects.get(id=session_id)
+        session.prompt_tokens += prompt_tokens
+        session.completion_tokens += completion_tokens
+        session.total_tokens += total_tokens
+        session.save()
+        logger.debug(f"Usage stats saved for session_id={session_id}")
+    except Exception as e:
+        logger.error(f"Error saving usage stats: {e}")
+
+
+@sync_to_async
 def get_file_streams(session_id):
     file_streams = []
     try:
