@@ -17,12 +17,13 @@ import {
   Button,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useSnackbar } from "notistack";
 
 const cardStyle = {
   width: "100%",
   height: "100px",
-  backgroundColor: "#909090",
+  backgroundColor: "#e0e0e0",
   borderRadius: 2,
   cursor: "pointer",
   display: "flex",
@@ -33,7 +34,7 @@ const cardStyle = {
 
 const selectedCardStyle = {
   ...cardStyle,
-  backgroundColor: "#d30000",
+  backgroundColor: "#E0B0FF",
 };
 
 const columnStyle = {
@@ -139,6 +140,25 @@ function TeacherDashboard() {
     }
   };
 
+  const handleCopyClick = (item, type) =>{
+    try{
+      if(type==="module"){
+        const newModule = postData("/modules/", { ...item });
+        enqueueSnackbar("Module duplicated successfully!", { variant: "success" });
+        console.log("New module is ",newModule);
+        setModules([...modules, newModule]);
+      }else if(type==="task"){
+        const newTask = postData("/tasks/", { ...item });
+        enqueueSnackbar("Task duplicated successfully!", { variant: "success" });
+        console.log("new task is ",newTask);
+        setSelectedModule({ ...selectedModule, tasks: [...selectedModule.tasks, newTask]});
+      }
+      
+    }catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
+  };
+
   return (
     <Grid container spacing={3} py={5} px={3}>
       <Grid item xs={12} md={3} sx={columnStyle}>
@@ -159,8 +179,9 @@ function TeacherDashboard() {
                 <CardContent>
                   <Typography variant="h6">{module.name}</Typography>
                 </CardContent>
+
+                <Box sx={{ position: "absolute", bottom: 4, right: 4, display: "flex" }}>
                 <IconButton
-                  sx={{ position: "absolute", bottom: 4, right: 4 }}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteClick(module, "module");
@@ -168,6 +189,16 @@ function TeacherDashboard() {
                 >
                   <DeleteIcon />
                 </IconButton>
+                <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyClick(module, "module");
+                    }}
+                  >
+                    <ContentCopyIcon />
+                  </IconButton>
+                </Box>
+
               </Card>
             </Grid>
           ))}
@@ -208,8 +239,9 @@ function TeacherDashboard() {
                   <CardContent>
                     <Typography variant="h6">{task.title}</Typography>
                   </CardContent>
+                  
+                  <Box sx={{ position: "absolute", bottom: 4, right: 4, display: "flex" }}>
                   <IconButton
-                    sx={{ position: "absolute", bottom: 4, right: 4 }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteClick(task, "task");
@@ -217,6 +249,16 @@ function TeacherDashboard() {
                   >
                     <DeleteIcon />
                   </IconButton>
+                  <IconButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyClick(task, "task");
+                    }}
+                  >
+                    <ContentCopyIcon />
+                  </IconButton>
+                </Box>
+
                 </Card>
               </Grid>
             ))}

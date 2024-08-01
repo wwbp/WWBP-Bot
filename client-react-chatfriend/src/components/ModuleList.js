@@ -48,7 +48,7 @@ function ModuleList() {
       sx={{
         flexGrow: 1,
         padding: 2,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#f5f5f5",
         borderRadius: 2,
       }}
     >

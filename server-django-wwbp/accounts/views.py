@@ -88,6 +88,8 @@ def user_profile(request):
             "username": request.user.username,
             "email": request.user.email,
             "role": request.user.role,
+            "voice_speed": request.user.voice_speed,            
+            "interaction_mode": request.user.interaction_mode,
             "grade": request.user.grade if request.user.role == 'student' else None,
             "preferred_language": request.user.preferred_language if request.user.role == 'student' else None,
         }
@@ -98,10 +100,14 @@ def user_profile(request):
             data = json.loads(request.body)
             request.user.username = data.get('username', request.user.username)
             request.user.email = data.get('email', request.user.email)
+            request.user.interaction_mode = data.get('interaction_mode', request.user.interaction_mode)
+            
             if request.user.role == 'student':
                 request.user.grade = data.get('grade', request.user.grade)
                 request.user.preferred_language = data.get(
                     'preferred_language', request.user.preferred_language)
+            request.user.voice_speed = data.get('voice_speed', request.user.voice_speed)    
+                
             request.user.save()
             return JsonResponse({"message": "Profile updated"}, status=200)
         except Exception as e:
@@ -122,12 +128,14 @@ def register(request):
             email = data.get('email')
             password = data.get('password')
             role = data.get('role', 'student')  # Default role is 'student'
+            voice_speed = data.get('voice_speed', 1.0)
+
 
             if not username or not email or not password:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             user = get_user_model().objects.create_user(
-                username=username, email=email, password=password, role=role)
+                username=username, email=email, password=password, role=role, voice_speed=voice_speed)
             user.save()
 
             # Log the user in after registration
@@ -378,6 +386,7 @@ class LocalFileUploadView(APIView):
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         file = request.FILES['file']
+
         sanitized_filename = self.sanitize_filename(file.name)
 
         try:
@@ -393,6 +402,7 @@ class LocalFileUploadView(APIView):
             return Response({"detail": f"Error saving the file: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'file_path': file_url}, status=status.HTTP_201_CREATED)
+
 
 
 class CSVCreateView(APIView):
