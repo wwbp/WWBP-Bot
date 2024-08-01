@@ -17,6 +17,7 @@ import {
   Button,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import FileCopyIcon from "@mui/icons-material/FileCopy";
 import { useSnackbar } from "notistack";
 
 const cardStyle = {
@@ -139,6 +140,33 @@ function TeacherDashboard() {
     }
   };
 
+  const handleDuplicateModule = async () => {
+    if (selectedModule && selectedModule.id) {
+      try {
+        const duplicatedModule = await postData(
+          `/modules/${selectedModule.id}/duplicate/`
+        );
+        setModules([...modules, duplicatedModule]);
+        enqueueSnackbar("Module duplicated successfully!", {
+          variant: "success",
+        });
+      } catch (error) {
+        enqueueSnackbar(error.message, { variant: "error" });
+      }
+    }
+  };
+
+  const handleDuplicateTask = async (task) => {
+    try {
+      const duplicatedTask = await postData(`/tasks/${task.id}/duplicate/`);
+      const tasks = await fetchData(`/modules/${task.module}/tasks/`);
+      setSelectedModule({ ...selectedModule, tasks });
+      enqueueSnackbar("Task duplicated successfully!", { variant: "success" });
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
+  };
+
   return (
     <Grid container spacing={3} py={5} px={3}>
       <Grid item xs={12} md={3} sx={columnStyle}>
@@ -159,6 +187,15 @@ function TeacherDashboard() {
                 <CardContent>
                   <Typography variant="h6">{module.name}</Typography>
                 </CardContent>
+                <IconButton
+                  sx={{ position: "absolute", top: 4, left: 4 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDuplicateModule(module);
+                  }}
+                >
+                  <FileCopyIcon />
+                </IconButton>
                 <IconButton
                   sx={{ position: "absolute", bottom: 4, right: 4 }}
                   onClick={(e) => {
@@ -208,6 +245,15 @@ function TeacherDashboard() {
                   <CardContent>
                     <Typography variant="h6">{task.title}</Typography>
                   </CardContent>
+                  <IconButton
+                    sx={{ position: "absolute", top: 4, left: 4 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicateTask(task);
+                    }}
+                  >
+                    <FileCopyIcon />
+                  </IconButton>
                   <IconButton
                     sx={{ position: "absolute", bottom: 4, right: 4 }}
                     onClick={(e) => {
