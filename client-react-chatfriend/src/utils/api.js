@@ -211,6 +211,17 @@ export async function getPresignedUrl(fileName, fileType) {
   }
 }
 
+export async function getPresignedUrlForDisplay(fileName) {
+  try {
+    const response = await api.get(`/generate_presigned_url/?file_name=${encodeURIComponent(fileName)}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting presigned URL:", error);
+    console.error("Error getting presigned URL:", error);
+    throw error;
+  }
+}
+
 export async function uploadToS3(url, fields, file) {
   const formData = new FormData();
   Object.entries({ ...fields, file }).forEach(([key, value]) => {

@@ -77,12 +77,12 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
           <ChatInterface
             session={chatSession}
             clearChat={clearChat}
-<<<<<<< HEAD
-            handleCompleteTask={handleCompleteTask}
-            selectedTask={selectedTask}
-=======
-            // handleCompleteTask={handleCompleteTask}
->>>>>>> 2a80e74c1 (Moving Complete Button and instead adding a Clickable Check Mark)
+// <<<<<<< HEAD
+//             handleCompleteTask={handleCompleteTask}
+//             selectedTask={selectedTask}
+// =======
+//             // handleCompleteTask={handleCompleteTask}
+//             selectedTask={selectedTask}
           />
         </Box>
       ) : (
