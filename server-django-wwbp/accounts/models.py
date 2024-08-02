@@ -56,15 +56,6 @@ class ChatSession(models.Model):
         ]
 
 
-class ChatMessage(models.Model):
-    session = models.ForeignKey(
-        ChatSession, on_delete=models.RESTRICT, related_name='messages')
-    message = models.TextField()
-    sender = models.CharField(max_length=10, choices=(
-        ('student', 'Student'), ('bot', 'Bot')))
-    created_at = models.DateTimeField(auto_now_add=True)
-
-
 class SystemPrompt(models.Model):
     prompt = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

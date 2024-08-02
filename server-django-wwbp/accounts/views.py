@@ -32,8 +32,8 @@ from rest_framework.views import exception_handler
 import openai
 import pytz
 
-from .models import User, Task, Module, ChatSession, ChatMessage, SystemPrompt, UserCSVDownload
-from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer, SystemPromptSerializer
+from .models import User, Task, Module, ChatSession, SystemPrompt, UserCSVDownload
+from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, SystemPromptSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -366,40 +366,6 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def messages(self, request, pk=None):
-        session = self.get_object()
-        messages = ChatMessage.objects.filter(session=session)
-        serializer = ChatMessageSerializer(messages, many=True)
-        return Response(serializer.data)
-
-
-class ChatMessageViewSet(viewsets.ModelViewSet):
-    queryset = ChatMessage.objects.all()
-    serializer_class = ChatMessageSerializer
-    permission_classes = [IsAuthenticated]
-
-    def create(self, request, *args, **kwargs):
-        data = request.data
-        data['user'] = request.user.id
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-
-        response_text = generate_gpt_response(data['message'])
-
-        bot_response = ChatMessage.objects.create(
-            session_id=data['session'],
-            message=response_text,
-            sender='bot'
-        )
-        bot_serializer = self.get_serializer(bot_response)
-
-        return Response({
-            'user_message': serializer.data,
-            'bot_message': bot_serializer.data
-        }, status=status.HTTP_201_CREATED)
 
 
 class SystemPromptViewSet(viewsets.ModelViewSet):
