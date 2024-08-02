@@ -148,12 +148,12 @@ export const createWebSocket = (sessionId, isAudioMode) => {
   return new WebSocket(`${wsUrl}${endpoint}`);
 };
 
-export async function postFile(url = "", file) {
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
+export const postFile = async (filePath, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
 
-    const response = await api.post(url, formData, {
+  try {
+    const response = await api.post(filePath, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -163,30 +163,52 @@ export async function postFile(url = "", file) {
     console.error("Error posting file:", error);
     throw error;
   }
-}
+};
 
-export async function downloadTranscript(moduleId, startDate, endDate) {
+export async function fetchFile(url = "") {
   try {
-    const response = await api.get(
-      `/download_transcript/${moduleId}/${startDate}/${endDate}/`,
-      {
-        responseType: "blob",
-      }
-    );
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `transcript_module_${moduleId}_${startDate}_to_${endDate}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode.removeChild(link);
+    const response = await api.get(url, { responseType: "blob" });
+    return response.data;
   } catch (error) {
-    console.error("Error downloading transcript:", error);
+    console.error("Error fetching file:", error);
     throw error;
   }
+}
+
+export async function getPresignedUrl(fileName, fileType) {
+  try {
+    const response = await api.post("/generate_presigned_url/", {
+      file_name: fileName,
+      file_type: fileType,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error getting presigned URL:", error);
+    throw error;
+  }
+}
+
+export async function getPresignedUrlForDisplay(fileName) {
+  try {
+    const response = await api.get(`/generate_presigned_url/?file_name=${encodeURIComponent(fileName)}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting presigned URL:", error);
+    throw error;
+  }
+}
+
+export async function uploadToS3(url, fields, file) {
+  const formData = new FormData();
+  Object.entries({ ...fields, file }).forEach(([key, value]) => {
+    formData.append(key, value);
+  });
+
+  await axios.post(url, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 }
 
 export default api;

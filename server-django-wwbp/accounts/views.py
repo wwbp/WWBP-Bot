@@ -441,6 +441,27 @@ class GeneratePresignedURL(APIView):
         except Exception as e:
             logger.error(f"Error generating presigned URL: {e}")
             return Response({"error": str(e)}, status=500)
+        
+    @csrf_exempt
+    def get(self, request):
+        logger.debug(f"Request for presigned: {request.GET}")
+        file_name = request.GET.get('file_name')
+        if settings.ENVIRONMENT == 'local':
+            file_path = os.path.join(
+            settings.BASE_DIR, 'data/upload/', file_name)
+            return Response({
+                    "url": "local",
+                    "file_path": file_path
+                })
+
+        s3_client = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
+        presigned_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': f"data/upload/{file_name}"},
+                ExpiresIn=3600
+            )
+        
+        return JsonResponse({'url': presigned_url})
 
 
 class LocalFileUploadView(APIView):
