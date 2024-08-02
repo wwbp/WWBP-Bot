@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Module, Task, ChatSession, ChatMessage, SystemPrompt
+from .models import User, Module, Task, ChatSession, SystemPrompt
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -69,12 +69,6 @@ class ChatSessionSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'module', 'task', 'assistant_id',
                   'thread_id', 'prompt_tokens', 'completion_tokens', 'total_tokens',
                   'created_at', 'updated_at']
-
-
-class ChatMessageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ChatMessage
-        fields = ['id', 'session', 'message', 'sender', 'created_at']
 
 
 class SystemPromptSerializer(serializers.ModelSerializer):
