@@ -3,7 +3,7 @@ from django.db import models
 
 class Transcript(models.Model):
     session = models.ForeignKey(
-        'accounts.ChatSession', on_delete=models.CASCADE, related_name='transcripts')
+        'accounts.ChatSession', on_delete=models.RESTRICT, related_name='transcripts')
     message_id = models.IntegerField()
     user_message = models.TextField(blank=True, null=True)
     bot_message = models.TextField(blank=True, null=True)

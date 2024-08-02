@@ -126,16 +126,6 @@ export async function sendMessage(sessionId, message, sender) {
   }
 }
 
-export async function fetchChatMessages(sessionId) {
-  try {
-    const response = await fetchData(`/chat_sessions/${sessionId}/messages/`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching chat messages:", error);
-    throw error;
-  }
-}
-
 export const createWebSocket = (sessionId, isAudioMode) => {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const wsUrl = process.env.REACT_APP_API_URL.replace(
