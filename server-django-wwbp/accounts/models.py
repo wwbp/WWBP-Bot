@@ -22,6 +22,11 @@ class Module(models.Model):
         User, on_delete=models.RESTRICT, related_name='modules')
     content = models.TextField(blank=True, null=True)
     files = models.JSONField(default=list, blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)
+
+    def delete(self, *args, **kwargs):
+        self.is_deleted = True
+        self.save()
 
 
 class Task(models.Model):
@@ -32,6 +37,11 @@ class Task(models.Model):
     instruction_prompt = models.TextField(blank=True, null=True)
     persona_prompt = models.TextField(blank=True, null=True)
     files = models.JSONField(default=list, blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)
+
+    def delete(self, *args, **kwargs):
+        self.is_deleted = True
+        self.save()
 
 
 class ChatSession(models.Model):

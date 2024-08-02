@@ -197,7 +197,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class ModuleViewSet(viewsets.ModelViewSet):
-    queryset = Module.objects.all()
+    queryset = Module.objects.filter(is_deleted=False)
     serializer_class = ModuleSerializer
     permission_classes = [IsAuthenticated]
 
@@ -207,6 +207,11 @@ class ModuleViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -280,7 +285,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
 
 
 class TaskViewSet(viewsets.ModelViewSet):
-    queryset = Task.objects.all()
+    queryset = Task.objects.filter(is_deleted=False)
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
 
@@ -294,6 +299,11 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -334,21 +344,6 @@ class TaskViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"Error duplicating task: {e}")
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# Initialize OpenAI client
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
-
-
-def generate_gpt_response(user_message):
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": user_message}
-        ]
-    )
-    return response.choices[0].message.content
 
 
 class ChatSessionViewSet(viewsets.ModelViewSet):
