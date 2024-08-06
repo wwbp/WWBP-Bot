@@ -179,6 +179,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask, selectedTask })
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
+        capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
           { sender: "You", message: data.transcript, id: data.message_id },
@@ -242,6 +243,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask, selectedTask })
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
+        capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
           { sender: "You", message: data.transcript, id: data.message_id },
@@ -381,6 +383,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask, selectedTask })
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
+        capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
           { sender: "You", message: data.transcript, id: data.message_id },
@@ -814,3 +817,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask, selectedTask })
 }
 
 export default ChatInterface;
+
+function capitalizeTranscript(data) {
+  data.transcript = data.transcript[0].toUpperCase() + data.transcript.slice(1);
+}
