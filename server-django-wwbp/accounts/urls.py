@@ -1,13 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import GeneratePresignedURL, CSVCreateView, CSVListView, CSVServeView, LocalFileUploadView, UserViewSet, ModuleViewSet, TaskViewSet, ChatSessionViewSet, ChatMessageViewSet, SystemPromptViewSet, csrf, current_time, login_view, logout_view, user_profile, register, switch_to_student_view, switch_to_teacher_view, get_view_mode
+from .views import GeneratePresignedURL, CSVCreateView, CSVListView, CSVServeView, LocalFileUploadView, UserViewSet, ModuleViewSet, TaskViewSet, ChatSessionViewSet, SystemPromptViewSet, csrf, current_time, login_view, logout_view, user_profile, register, switch_to_student_view, switch_to_teacher_view, get_view_mode
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'modules', ModuleViewSet)
 router.register(r'tasks', TaskViewSet)
 router.register(r'chat_sessions', ChatSessionViewSet)
-router.register(r'chat_messages', ChatMessageViewSet)
 router.register(r'system_prompts', SystemPromptViewSet)
 
 urlpatterns = [

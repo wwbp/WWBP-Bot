@@ -32,8 +32,8 @@ from rest_framework.views import exception_handler
 import openai
 import pytz
 
-from .models import User, Task, Module, ChatSession, ChatMessage, SystemPrompt, UserCSVDownload
-from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, ChatMessageSerializer, SystemPromptSerializer
+from .models import User, Task, Module, ChatSession, SystemPrompt, UserCSVDownload
+from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, SystemPromptSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -197,7 +197,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class ModuleViewSet(viewsets.ModelViewSet):
-    queryset = Module.objects.all()
+    queryset = Module.objects.filter(is_deleted=False)
     serializer_class = ModuleSerializer
     permission_classes = [IsAuthenticated]
 
@@ -207,6 +207,11 @@ class ModuleViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -280,7 +285,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
 
 
 class TaskViewSet(viewsets.ModelViewSet):
-    queryset = Task.objects.all()
+    queryset = Task.objects.filter(is_deleted=False)
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
 
@@ -294,6 +299,11 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -336,21 +346,6 @@ class TaskViewSet(viewsets.ModelViewSet):
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Initialize OpenAI client
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
-
-
-def generate_gpt_response(user_message):
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": user_message}
-        ]
-    )
-    return response.choices[0].message.content
-
-
 class ChatSessionViewSet(viewsets.ModelViewSet):
     queryset = ChatSession.objects.all()
     serializer_class = ChatSessionSerializer
@@ -366,40 +361,6 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def messages(self, request, pk=None):
-        session = self.get_object()
-        messages = ChatMessage.objects.filter(session=session)
-        serializer = ChatMessageSerializer(messages, many=True)
-        return Response(serializer.data)
-
-
-class ChatMessageViewSet(viewsets.ModelViewSet):
-    queryset = ChatMessage.objects.all()
-    serializer_class = ChatMessageSerializer
-    permission_classes = [IsAuthenticated]
-
-    def create(self, request, *args, **kwargs):
-        data = request.data
-        data['user'] = request.user.id
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-
-        response_text = generate_gpt_response(data['message'])
-
-        bot_response = ChatMessage.objects.create(
-            session_id=data['session'],
-            message=response_text,
-            sender='bot'
-        )
-        bot_serializer = self.get_serializer(bot_response)
-
-        return Response({
-            'user_message': serializer.data,
-            'bot_message': bot_serializer.data
-        }, status=status.HTTP_201_CREATED)
 
 
 class SystemPromptViewSet(viewsets.ModelViewSet):
