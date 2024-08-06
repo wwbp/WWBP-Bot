@@ -140,21 +140,29 @@ function TeacherDashboard() {
     }
   };
 
-  const handleCopyClick = (item, type) =>{
-    try{
-      if(type==="module"){
-        const newModule = postData("/modules/", { ...item });
-        enqueueSnackbar("Module duplicated successfully!", { variant: "success" });
-        console.log("New module is ",newModule);
-        setModules([...modules, newModule]);
-      }else if(type==="task"){
-        const newTask = postData("/tasks/", { ...item });
-        enqueueSnackbar("Task duplicated successfully!", { variant: "success" });
-        console.log("new task is ",newTask);
-        setSelectedModule({ ...selectedModule, tasks: [...selectedModule.tasks, newTask]});
+  const handleDuplicateModule = async () => {
+    if (selectedModule && selectedModule.id) {
+      try {
+        const duplicatedModule = await postData(
+          `/modules/${selectedModule.id}/duplicate/`
+        );
+        setModules([...modules, duplicatedModule]);
+        enqueueSnackbar("Module duplicated successfully!", {
+          variant: "success",
+        });
+      } catch (error) {
+        enqueueSnackbar(error.message, { variant: "error" });
       }
-      
-    }catch (error) {
+    }
+  };
+
+  const handleDuplicateTask = async (task) => {
+    try {
+      const duplicatedTask = await postData(`/tasks/${task.id}/duplicate/`);
+      const tasks = await fetchData(`/modules/${task.module}/tasks/`);
+      setSelectedModule({ ...selectedModule, tasks });
+      enqueueSnackbar("Task duplicated successfully!", { variant: "success" });
+    } catch (error) {
       enqueueSnackbar(error.message, { variant: "error" });
     }
   };
@@ -192,7 +200,7 @@ function TeacherDashboard() {
                 <IconButton
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleCopyClick(module, "module");
+                      handleDuplicateModule(module, "module");
                     }}
                   >
                     <ContentCopyIcon />
@@ -252,7 +260,7 @@ function TeacherDashboard() {
                   <IconButton
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleCopyClick(task, "task");
+                      handleDuplicateTask(task, "task");
                     }}
                   >
                     <ContentCopyIcon />
