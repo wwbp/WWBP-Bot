@@ -77,7 +77,7 @@ function ModuleTasks() {
       <Grid
         item
         xs={12}
-        md={3}
+        md={2}
         sx={{
           backgroundColor: "white",
           color: "black",
@@ -146,7 +146,7 @@ function ModuleTasks() {
           </List>
         )}
       </Grid>
-      <Grid item xs={12} md={9} sx={{ height: "100%" }}>
+      <Grid item xs={12} md={10} sx={{ height: "100%" }}>
         {selectedTask ? (
           <ModuleInteraction
             moduleId={moduleId}
