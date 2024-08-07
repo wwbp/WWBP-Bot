@@ -92,7 +92,6 @@ function TeacherDashboard() {
     if (selectedModule && selectedModule.id) {
       try {
         const tasks = await fetchData(`/modules/${selectedModule.id}/tasks/`);
-        console.log('tasks are ',tasks);
         const updatedModule = { ...selectedModule, tasks };
         setSelectedModule(updatedModule);
         setSelectedTask(null);
