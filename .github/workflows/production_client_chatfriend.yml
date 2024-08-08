@@ -29,7 +29,7 @@ jobs:
 
       - name: Build frontend
         env:
-          REACT_APP_API_URL: https://chatfriend.ai/api/v1
+          REACT_APP_API_URL: https://chatfriend.in/api/v1
           CI: false
         run: |
           cd client-react-chatfriend
@@ -44,7 +44,7 @@ jobs:
       - name: Sync S3 bucket
         run: |
           aws s3 rm s3://${{ secrets.AWS_CHATFRIEND_S3_BUCKET_NAME_PRODUCTION_FRONTEND }} --recursive
-          aws s3 sync client-react-gritcoach/build/ s3://${{ secrets.AWS_CHATFRIEND_S3_BUCKET_NAME_PRODUCTION_FRONTEND }} --delete
+          aws s3 sync client-react-chatfriend/build/ s3://${{ secrets.AWS_CHATFRIEND_S3_BUCKET_NAME_PRODUCTION_FRONTEND }} --delete
 
       - name: Invalidate CloudFront cache
         run: |

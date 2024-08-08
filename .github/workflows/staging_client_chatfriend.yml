@@ -1,4 +1,4 @@
-name: Deploy Frontend Gritcoach Client to Staging
+name: Deploy Frontend Chatfriend Client to Staging
 
 on:
   push:
@@ -24,15 +24,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd client-react-gritcoach
+          cd client-react-chatfriend
           npm install
 
       - name: Build frontend
         env:
-          REACT_APP_API_URL: https://dev.gritcoach.ai/api/v1
+          REACT_APP_API_URL: https://dev.chatfriend.in/api/v1
           CI: false
         run: |
-          cd client-react-gritcoach
+          cd client-react-chatfriend
           npm run build
 
       - name: Configure AWS credentials
@@ -44,7 +44,7 @@ jobs:
       - name: Sync S3 bucket
         run: |
           aws s3 rm s3://${{ secrets.AWS_CHATFRIEND_S3_BUCKET_NAME_FRONTEND }} --recursive
-          aws s3 sync client-react-gritcoach/build/ s3://${{ secrets.AWS_CHATFRIEND_S3_BUCKET_NAME_FRONTEND }} --delete
+          aws s3 sync client-react-chatfriend/build/ s3://${{ secrets.AWS_CHATFRIEND_S3_BUCKET_NAME_FRONTEND }} --delete
 
       - name: Invalidate CloudFront cache
         run: |
