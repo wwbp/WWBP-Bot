@@ -1,4 +1,4 @@
-name: Deploy Backend Gritcoach Server to Staging
+name: Deploy Backend Chatfriend Server to Staging
 
 on:
   push:
