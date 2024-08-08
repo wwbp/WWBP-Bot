@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from collections import deque
+import requests
 
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -12,6 +13,10 @@ from django.core.cache import cache
 from google.cloud import speech, texttospeech
 from langchain_stream.tasks import save_message_to_transcript, get_file_streams, save_usage_stats
 from openai import OpenAI
+
+XI_API_KEY = "sk_168fddc8245901facd8fa1771c59a7562d712463117f634a"
+DEFAULT_VOICE_ID = "en-US-Wavenet-D"
+CHUNK_SIZE = 1024
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -461,6 +466,7 @@ class AudioConsumer(BaseWebSocketConsumer):
             encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
             sample_rate_hertz=48000,
             language_code="en-US",
+            enable_automatic_punctuation=True,
         )
         try:
             response = client.recognize(config=config, audio=audio)
@@ -541,29 +547,93 @@ class AudioConsumer(BaseWebSocketConsumer):
     def process_text_for_tts(self, text):
         text = re.sub(r'[,.!?;*#]', '', text)
         return text
+    
+    async def fetch_available_voices(self):
+        url = "https://api.elevenlabs.io/v1/voices"
+        headers = {
+            "Accept": "application/json",
+            "xi-api-key": XI_API_KEY,
+            "Content-Type": "application/json"
+        }
+        response = requests.get(url, headers=headers)
+        if response.ok:
+            data = response.json()
+            return data['voices']
+        else:
+            logger.error(f"Error fetching voices: {response.text}")
+            return []
 
+    def get_voice_id(self, voices, user_preference=None):
+        # If user preference is provided, try to find the matching voice
+        if user_preference:
+            for voice in voices:
+                if voice['name'].lower() == user_preference.lower():
+                    return voice['voice_id']
+    
+    # Return the default voice ID if no user preference is matched
+        return DEFAULT_VOICE_ID
+        
     async def text_to_speech(self, text):
-        client = texttospeech.TextToSpeechClient()
-        ssml_text = f"<speak>{text}</speak>"
-        input_text = texttospeech.SynthesisInput(ssml=ssml_text)
-        voice = texttospeech.VoiceSelectionParams(
-            language_code="en-US",
-            name="en-US-Standard-F",
-            ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
-        )
-        voice_speed = 1.0
-        user_profile = await self.session_manager.get_user_profile(self.session_id)
-        voice_speed = float(user_profile['voice_speed'])
+        voices = await self.fetch_available_voices()
+        logger.debug(f"Text to speech: {text}")
+        voice_id = self.get_voice_id(voices,'Laura')
+        logger.debug(f"Voice ID: {voice_id}")
 
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3,
-            speaking_rate=voice_speed if voice_speed else 1.0,
-            pitch=0.0,
-        )
-        try:
-            response = client.synthesize_speech(
-                input=input_text, voice=voice, audio_config=audio_config)
-            return response.audio_content
-        except Exception as e:
-            logger.error(f"Error during text-to-speech synthesis: {e}")
+        tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+
+        headers = {
+            "Accept": "application/json",
+            "xi-api-key": XI_API_KEY
+        }
+
+        data = {
+            "text": text,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.8,
+                "style": 0.0,
+                "use_speaker_boost": True
+            }
+        }
+
+        response = requests.post(tts_url, headers=headers, json=data, stream=True)
+
+        if response.ok:
+            audio_content = b''
+            for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+                if chunk:
+                    audio_content += chunk
+            logger.info("Audio stream received successfully.")
+            return audio_content
+        else:
+            logger.error(f"Error in text_to_speech: {response.text}")
+            await self.send(text_data=json.dumps({"error": response.text}))
             return b""
+
+    # async def text_to_speech(self, text):
+    #     logger.debug(f"Text to speech: {text}")
+    #     client = texttospeech.TextToSpeechClient()
+    #     ssml_text = f"<speak>{text}</speak>"
+    #     input_text = texttospeech.SynthesisInput(ssml=ssml_text)
+    #     voice = texttospeech.VoiceSelectionParams(
+    #         language_code="en-US",
+    #         name="en-US-Standard-F",
+    #         ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
+    #     )
+    #     voice_speed = 1.0
+    #     user_profile = await self.session_manager.get_user_profile(self.session_id)
+    #     voice_speed = float(user_profile['voice_speed'])
+
+    #     audio_config = texttospeech.AudioConfig(
+    #         audio_encoding=texttospeech.AudioEncoding.MP3,
+    #         speaking_rate=voice_speed if voice_speed else 1.0,
+    #         pitch=0.0,
+    #     )
+    #     try:
+    #         response = client.synthesize_speech(
+    #             input=input_text, voice=voice, audio_config=audio_config)
+    #         return response.audio_content
+    #     except Exception as e:
+    #         logger.error(f"Error during text-to-speech synthesis: {e}")
+    #         return b""
