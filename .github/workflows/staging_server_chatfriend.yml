@@ -1,0 +1,36 @@
+name: Deploy Backend Gritcoach Server to Staging
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_CHATFRIEND_ACCOUNT_ID }}:role/${{ secrets.AWS_CHATFRIEND_ROLE_NAME }}
+          aws-region: us-west-2
+
+      - name: Install AWS Elastic Beanstalk CLI
+        run: |
+          pip install awsebcli
+
+      - name: Deploy Django to Elastic Beanstalk
+        run: |
+          cd server-django-wwbp
+          eb init -p "Docker running on 64bit Amazon Linux 2023" ${{ secrets.AWS_CHATFRIEND_BACKEND_APPLICATION_NAME }} --region us-east-1
+          eb use ${{ secrets.AWS_CHATFRIEND_BACKEND_ENVIRONMENT_NAME }}
+          cp Dockerfile.awseb Dockerfile
+          eb deploy --timeout 30
