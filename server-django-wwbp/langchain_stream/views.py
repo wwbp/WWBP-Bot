@@ -14,7 +14,6 @@ from google.cloud import speech, texttospeech
 from langchain_stream.tasks import save_message_to_transcript, get_file_streams, save_usage_stats
 from openai import OpenAI
 
-XI_API_KEY = "sk_168fddc8245901facd8fa1771c59a7562d712463117f634a"
 DEFAULT_VOICE_ID = "en-US-Wavenet-D"
 CHUNK_SIZE = 1024
 
@@ -132,13 +131,13 @@ class AssistantSessionManager(PromptHook):
             if session.assistant_id:
                 assistant = self.client.beta.assistants.retrieve(
                     session.assistant_id)
-                logger.debug(
-                    f"Retrieved existing assistant id: {assistant.id}")
+                # logger.debug(
+                #     f"Retrieved existing assistant id: {assistant.id}")
                 return assistant
 
             instruction_prompt = await self.get_cumulative_setup_instructions(session_id=session_id)
-            logger.debug(
-                f"The instruction prompt for session: {session_id} is as follows: {instruction_prompt}")
+            # logger.debug(
+            #     f"The instruction prompt for session: {session_id} is as follows: {instruction_prompt}")
             assistant = self.client.beta.assistants.create(
                 model="gpt-4o-mini",
                 instructions=instruction_prompt,
@@ -180,7 +179,7 @@ class AssistantSessionManager(PromptHook):
         except Exception as e:
             logger.error(f"Error creating user message: {e}")
 
-    async def get_run_stream(self):
+    async def  get_run_stream(self):
         logger.debug(
             f"Getting run stream for assistant id: {self.assistant.id}")
         while True:
@@ -474,6 +473,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                 logger.error("No results from speech recognition")
                 return ""
             transcript = response.results[0].alternatives[0].transcript
+            logger.debug(f"Transcript is: {transcript}")
             return transcript
         except Exception as e:
             logger.error(f"Error during speech recognition: {e}")
@@ -484,6 +484,7 @@ class AudioConsumer(BaseWebSocketConsumer):
         stream = await self.session_manager.get_run_stream()
         try:
             buffer = []
+            incomplete_word_buffer = ""
             async for event in self.session_manager.async_stream(stream):
                 chunk = {}
                 chunk["message_id"] = message_id
@@ -493,14 +494,38 @@ class AudioConsumer(BaseWebSocketConsumer):
                 elif event.event == 'thread.message.delta':
                     chunk["event"] = "on_parser_stream"
                     chunk["value"] = event.data.delta.content[0].text.value
+                    logger.debug(f"Chunk value: {chunk['value']}")
+
+                    if incomplete_word_buffer:
+                        chunk["value"] = incomplete_word_buffer + chunk["value"]
+                        incomplete_word_buffer = ""
+
                     buffer.append(chunk["value"])
-                    self.bot_message_buffer.append(chunk["value"])
-                    await self.send(text_data=json.dumps(chunk))
-                    if any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
+                    # self.bot_message_buffer.append(chunk["value"])
+                    # logger.debug(f"Buffer self.bot_message_buffer: {self.bot_message_buffer}")
+                    # await self.send(text_data=json.dumps(chunk))
+
+                    if chunk["value"][-1].isalnum() and not chunk["value"][-1].isspace():
+                        incomplete_word_buffer = buffer.pop()
+                        logger.debug(f"Incomplete word buffer: {incomplete_word_buffer}")
+                        
+
+                    if len(buffer) and any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
                         batched_text = ' '.join(buffer)
+                        logger.debug(f"Buffer in 1: {buffer}")
+                        logger.debug(f"Batched text: {batched_text}")
                         buffer = []
-                        processed_text = self.process_text_for_tts(
-                            batched_text)
+                        self.bot_message_buffer.append(batched_text)
+                        final_chunk = {
+                            "message_id": message_id,
+                            "event": "on_parser_stream",
+                            "value": batched_text
+                        }
+                        await self.send(text_data=json.dumps(final_chunk))                        
+                        logger.debug(f"Buffer self.bot_message_buffer: {self.bot_message_buffer}")
+                        # processed_text = self.process_text_for_tts(
+                        #     batched_text)
+                        processed_text = batched_text
                         audio_chunk = await self.text_to_speech(processed_text)
                         self.bot_audio_buffer.append(audio_chunk)
                         self.audio_queue.append(audio_chunk)
@@ -509,6 +534,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                             f"Audio chunk queued: {len(audio_chunk)} bytes")
                 elif event.event == 'thread.run.completed':
                     if buffer:
+                        logger.debug(f"Buffer: {buffer}")
                         batched_text = ' '.join(buffer)
                         processed_text = self.process_text_for_tts(
                             batched_text)
@@ -545,45 +571,47 @@ class AudioConsumer(BaseWebSocketConsumer):
             await self.send(bytes_data=audio_chunk)
 
     def process_text_for_tts(self, text):
+        logger.debug(f"Text to process: {text}")
         text = re.sub(r'[,.!?;*#]', '', text)
         return text
     
-    async def fetch_available_voices(self):
-        url = "https://api.elevenlabs.io/v1/voices"
-        headers = {
-            "Accept": "application/json",
-            "xi-api-key": XI_API_KEY,
-            "Content-Type": "application/json"
-        }
-        response = requests.get(url, headers=headers)
-        if response.ok:
-            data = response.json()
-            return data['voices']
-        else:
-            logger.error(f"Error fetching voices: {response.text}")
-            return []
+    # async def fetch_available_voices(self):
+    #     url = "https://api.elevenlabs.io/v1/voices"
+    #     headers = {
+    #         "Accept": "application/json",
+    #         "xi-api-key": os.getenv("XI_API_KEY", ""),
+    #         "Content-Type": "application/json"
+    #     }
+    #     response = requests.get(url, headers=headers)
+    #     if response.ok:
+    #         data = response.json()
+    #         return data['voices']
+    #     else:
+    #         logger.error(f"Error fetching voices: {response.text}")
+    #         return []
 
-    def get_voice_id(self, voices, user_preference=None):
-        # If user preference is provided, try to find the matching voice
-        if user_preference:
-            for voice in voices:
-                if voice['name'].lower() == user_preference.lower():
-                    return voice['voice_id']
+    # def get_voice_id(self, voices, user_preference=None):
+    #     # If user preference is provided, try to find the matching voice
+    #     if user_preference:
+    #         for voice in voices:
+    #             if voice['name'].lower() == user_preference.lower():
+    #                 return voice['voice_id']
     
-    # Return the default voice ID if no user preference is matched
-        return DEFAULT_VOICE_ID
+    # # Return the default voice ID if no user preference is matched
+    #     return DEFAULT_VOICE_ID
         
     async def text_to_speech(self, text):
-        voices = await self.fetch_available_voices()
+        # voices = await self.fetch_available_voices()
         logger.debug(f"Text to speech: {text}")
-        voice_id = self.get_voice_id(voices,'Laura')
+        # voice_id = self.get_voice_id(voices,'Laura')
+        voice_id = "pNInz6obpgDQGcFmaJgB"
         logger.debug(f"Voice ID: {voice_id}")
 
         tts_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
 
         headers = {
             "Accept": "application/json",
-            "xi-api-key": XI_API_KEY
+            "xi-api-key": os.getenv("XI_API_KEY", ""),
         }
 
         data = {
@@ -611,14 +639,15 @@ class AudioConsumer(BaseWebSocketConsumer):
             await self.send(text_data=json.dumps({"error": response.text}))
             return b""
 
+    #Google Text to Speech
     # async def text_to_speech(self, text):
     #     logger.debug(f"Text to speech: {text}")
     #     client = texttospeech.TextToSpeechClient()
     #     ssml_text = f"<speak>{text}</speak>"
     #     input_text = texttospeech.SynthesisInput(ssml=ssml_text)
     #     voice = texttospeech.VoiceSelectionParams(
-    #         language_code="en-US",
-    #         name="en-US-Standard-F",
+    #         language_code="en-IN",
+    #         name="en-IN-Standard-A",
     #         ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
     #     )
     #     voice_speed = 1.0
@@ -637,3 +666,29 @@ class AudioConsumer(BaseWebSocketConsumer):
     #     except Exception as e:
     #         logger.error(f"Error during text-to-speech synthesis: {e}")
     #         return b""
+
+    #Whisper Model    
+    # async def text_to_speech(self, text):
+    #     client = OpenAI()
+    #     logger.debug(f"Text to speech: {text}")
+
+    #     try: 
+    #         response = client.audio.speech.create(
+    #             model="tts-1",
+    #             voice="nova",
+    #             input=text
+    #         )
+    #         # logger.debug("Got Response: %s", response)
+    #         # The response will contain the audio content
+    #         # audio_content = response['audio']
+    #         output_filename = "output.mp3"
+    #         response.stream_to_file(output_filename)
+    #         with open(output_filename, "rb") as audio_file:
+    #             audio_bytes = audio_file.read()
+            
+    #         logger.debug("Fetched audio bytes")
+    #         logger.debug("Type of audio_bytes: %s", type(audio_bytes))
+    #         return audio_bytes
+    #     except Exception as e:
+    #         logger.error(f"Error during text-to-speech synthesis: {e}")
+    #         return b""         
