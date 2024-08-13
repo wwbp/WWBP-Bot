@@ -46,13 +46,6 @@ function ModuleTasks() {
     if (!task.locked) {
       task.selected = true;
       setSelectedTask(task);
-      // const updatedTasks = tasks.map((t) => {
-      //   if (t.id !== task.id) {
-      //     t.selected = false;
-      //   }
-      //   return t;
-      // });
-      // setTasks(updatedTasks);
     }
   };
 
