@@ -95,11 +95,11 @@ function TeacherDashboard() {
         const updatedModule = { ...selectedModule, tasks };
         setSelectedModule(updatedModule);
         setSelectedTask(null);
-        const data = await fetchData("/modules/");
-        setModules(data);
-        const updatedModuleData =
-          data.find((mod) => mod.id === selectedModule.id) || null;
-        setSelectedModule(updatedModuleData);
+        // const data = await fetchData("/modules/");
+        // setModules(data);
+        // const updatedModuleData =
+        //   data.find((mod) => mod.id === selectedModule.id) || null;
+        // setSelectedModule(updatedModuleData);
       } catch (error) {
         enqueueSnackbar(error.message, { variant: "error" });
       }
