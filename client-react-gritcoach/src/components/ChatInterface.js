@@ -81,7 +81,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
       setTimeout(() => {
         console.log("Attempting to reconnect WebSocket...");
         setupWebSocket();
-      }, 5000); 
+      }, 5000);
     }
   };
 
@@ -424,13 +424,64 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
               )}
               <Box
                 bgcolor={msg.sender === "GritCoach" ? "#f0f0f0" : "#cfe8fc"}
-                p={1}
+                p={2}
                 borderRadius={2}
                 maxWidth="60%"
+                sx={{
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                  whiteSpace: "pre-wrap",
+                  display: "inline-block",
+                  maxWidth: "100%",
+                  boxSizing: "border-box",
+                  marginBottom: "8px",
+                  padding: "16px", // Padding to ensure content stays inside
+                  listStylePosition: "inside", // Ensures list markers are inside the padding
+                }}
               >
-                <Typography variant="body2" color="textSecondary">
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{
+                    lineHeight: "1.2", // Further reduced line height for compact text
+                    margin: "0", // Ensure no extra margin is applied to the Typography
+                  }}
+                >
                   <strong>{msg.sender}:</strong>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      ol: ({ children }) => (
+                        <ol
+                          style={{
+                            paddingLeft: "20px", // Padding for list items
+                            listStyleType: "decimal", // Ensure numbered lists are displayed correctly
+                            listStylePosition: "inside", // Inside padding for markers
+                            margin: "0", // No extra margin for list
+                            lineHeight: "1.2", // Consistent line height for compactness
+                          }}
+                        >
+                          {children}
+                        </ol>
+                      ),
+                      ul: ({ children }) => (
+                        <ul
+                          style={{
+                            paddingLeft: "20px", // Padding for list items
+                            listStyleType: "disc", // Ensure bullets are displayed correctly
+                            listStylePosition: "inside", // Inside padding for markers
+                            margin: "0", // No extra margin for list
+                            lineHeight: "1.2", // Consistent line height for compactness
+                          }}
+                        >
+                          {children}
+                        </ul>
+                      ),
+                      li: ({ children }) => (
+                        <li style={{ marginBottom: "4px" }}>{children}</li>
+                      ),
+                    }}
+                  >
                     {msg.message}
                   </ReactMarkdown>
                 </Typography>
