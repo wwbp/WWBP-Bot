@@ -45,7 +45,6 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     ws.current = createWebSocket(session.id, chatMode === "audio");
 
     ws.current.onopen = () => {
-      // console.log("WebSocket connected");
       setIsWsConnected(true);
       if (chatMode === "audio") {
         setupPeerConnection();
@@ -57,8 +56,6 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
         return;
       }
 
-      // console.log("WebSocket message received:", event.data);
-
       if (chatMode === "audio") {
         handleAudioMessage(event);
       } else {
@@ -68,15 +65,24 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
 
     ws.current.onerror = (event) => {
       console.error("WebSocket error:", event);
-      enqueueSnackbar("WebSocket error observed", { variant: "error" });
-      setIsWsConnected(false);
+      // Instead of using enqueueSnackbar, silently handle or log the error
+      attemptReconnect();
     };
 
     ws.current.onclose = (event) => {
       console.log("WebSocket closed:", event);
-      enqueueSnackbar("WebSocket connection closed", { variant: "info" });
       setIsWsConnected(false);
+      attemptReconnect();
     };
+  };
+
+  const attemptReconnect = () => {
+    if (ws.current.readyState !== WebSocket.OPEN) {
+      setTimeout(() => {
+        console.log("Attempting to reconnect WebSocket...");
+        setupWebSocket();
+      }, 5000); 
+    }
   };
 
   const handleTextMessage = (event) => {
