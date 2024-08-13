@@ -230,7 +230,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def tasks(self, request, pk=None):
         module = self.get_object()
-        tasks = module.tasks.all()
+        tasks = module.tasks.all().filter(is_deleted=False)
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
 

@@ -31,6 +31,7 @@ function ModuleTasks() {
           ...task,
           // locked: index !== 0,
           completed: false,
+          selected: false,
         }));
         setTasks(updatedTasks);
         setLoading(false);
@@ -43,6 +44,7 @@ function ModuleTasks() {
 
   const handleTaskSelection = (task) => {
     if (!task.locked) {
+      task.selected = true;
       setSelectedTask(task);
     }
   };
@@ -51,6 +53,7 @@ function ModuleTasks() {
     const updatedTasks = tasks.map((task, index) => {
       if (task.id === taskId) {
         task.completed = true;
+        task.selected = false;
       }
       if (index === tasks.findIndex((t) => t.id === taskId) + 1) {
         task.locked = false;
@@ -61,8 +64,11 @@ function ModuleTasks() {
     const nextTask = updatedTasks.find(
       (task, index) => index === tasks.findIndex((t) => t.id === taskId) + 1
     );
+    if (nextTask)
+      {nextTask.selected = true;}
     setSelectedTask(nextTask);
   };
+
 
   if (loading) {
     return (
@@ -110,6 +116,8 @@ function ModuleTasks() {
                     ? "#f0f0f0"
                     : task.completed
                     ? "#d3d3d3"
+                    : task.selected
+                    ? "#E0B0FF"
                     : "white",
                   position: "relative",
                   width: "100%", // Make the card occupy full width of the column
