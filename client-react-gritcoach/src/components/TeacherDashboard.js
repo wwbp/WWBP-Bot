@@ -147,7 +147,7 @@ function TeacherDashboard() {
           `/modules/${selectedModule.id}/duplicate/`
         );
         setModules([...modules, duplicatedModule]);
-        enqueueSnackbar("Module duplicated successfully!", {
+        enqueueSnackbar("Recitation duplicated successfully!", {
           variant: "success",
         });
       } catch (error) {
@@ -171,7 +171,7 @@ function TeacherDashboard() {
     <Grid container spacing={3} py={5} px={3}>
       <Grid item xs={12} md={3} sx={columnStyle}>
         <Typography variant="h5" gutterBottom>
-          Modules
+          Recitations
         </Typography>
         <Grid container spacing={3}>
           {modules.map((module) => (
