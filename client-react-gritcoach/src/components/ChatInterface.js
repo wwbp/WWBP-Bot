@@ -45,7 +45,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     ws.current = createWebSocket(session.id, chatMode === "audio");
 
     ws.current.onopen = () => {
-      console.log("WebSocket connected");
+      // console.log("WebSocket connected");
       setIsWsConnected(true);
       if (chatMode === "audio") {
         setupPeerConnection();
@@ -57,7 +57,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
         return;
       }
 
-      console.log("WebSocket message received:", event.data);
+      // console.log("WebSocket message received:", event.data);
 
       if (chatMode === "audio") {
         handleAudioMessage(event);
