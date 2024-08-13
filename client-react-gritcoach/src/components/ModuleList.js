@@ -53,7 +53,7 @@ function ModuleList() {
       }}
     >
       <Typography variant="h5" gutterBottom>
-        Modules
+        Recitations
       </Typography>
       {modules.length === 0 ? (
         <Typography>No active modules assigned to you</Typography>

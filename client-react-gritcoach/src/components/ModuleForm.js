@@ -41,17 +41,17 @@ const ModuleForm = ({ module, onModuleCreated }) => {
     e.preventDefault();
     setSubmitted(true);
     if (!moduleData.name) {
-      enqueueSnackbar("Module name is required", { variant: "error" });
+      enqueueSnackbar("Recitation name is required", { variant: "error" });
       return;
     }
 
     try {
       if (module.id) {
         await putData(`/modules/${module.id}/`, { ...moduleData });
-        enqueueSnackbar("Module updated successfully!", { variant: "success" });
+        enqueueSnackbar("Recitation updated successfully!", { variant: "success" });
       } else {
         const newModule = await postData("/modules/", { ...moduleData });
-        enqueueSnackbar("Module created successfully!", { variant: "success" });
+        enqueueSnackbar("Recitation created successfully!", { variant: "success" });
         onModuleCreated(newModule);
         return;
       }
@@ -64,7 +64,7 @@ const ModuleForm = ({ module, onModuleCreated }) => {
   return (
     <Box py={5} display="flex" flexDirection="column" height="100%">
       <Typography variant="h6" gutterBottom>
-        {module.id ? "Edit Module" : "Create Module"}
+        {module.id ? "Edit Recitation" : "Create Recitation"}
       </Typography>
       <form onSubmit={handleSubmit} style={{ flex: 1 }}>
         <Grid container spacing={3}>
