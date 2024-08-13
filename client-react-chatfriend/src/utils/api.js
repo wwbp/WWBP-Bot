@@ -155,30 +155,6 @@ export async function postFile(url = "", file) {
   }
 }
 
-// export async function downloadTranscript(moduleId, startDate, endDate) {
-//   try {
-//     const response = await api.get(
-//       `/download_transcript/${moduleId}/${startDate}/${endDate}/`,
-//       {
-//         responseType: "blob",
-//       }
-//     );
-//     const url = window.URL.createObjectURL(new Blob([response.data]));
-//     const link = document.createElement("a");
-//     link.href = url;
-//     link.setAttribute(
-//       "download",
-//       `transcript_module_${moduleId}_${startDate}_to_${endDate}.csv`
-//     );
-//     document.body.appendChild(link);
-//     link.click();
-//     link.parentNode.removeChild(link);
-//   } catch (error) {
-//     console.error("Error downloading transcript:", error);
-//     throw error;
-//   }
-// }
-
 export async function fetchFile(url = "") {
   try {
     const response = await api.get(url, { responseType: "blob" });
