@@ -41,6 +41,7 @@ function ChatInterface({ session, clearChat }) {
   const textBufferRef = useRef([]);
   const [loading, setLoading] = useState(true);
   const [chatState, setChatState] = useState("idle");
+  const [dots, setDots] = useState("");
 
 
   const setupWebSocket = () => {
@@ -110,6 +111,18 @@ function ChatInterface({ session, clearChat }) {
     };
     fetchMode();
   },[]);
+
+  useEffect(()=>{
+    if(chatState==="processing"){
+      const interval = setInterval(()=>{
+        setDots((prevDots)=>(prevDots.length<3?prevDots+".":""))
+      },100);
+      return ()=>clearInterval(interval);
+    }else
+    {
+      setDots("");
+    }
+  },[chatState]);
 
   const handleTextMessage = (event) => {
     console.log("Handling text message:", event.data);
@@ -624,7 +637,7 @@ function ChatInterface({ session, clearChat }) {
       case "idle":
         return "Type a message...";
       case "processing":
-        return "Processing...";
+        return `${dots}`;
       case "speaking":
         return "Bot is Speaking"
       default:
