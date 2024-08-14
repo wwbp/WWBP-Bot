@@ -50,6 +50,7 @@
 /* Apply the font to your body or other elements as needed */
 body {
   font-family: 'NeutraText';
+  font-size: 18px; /* Increased base font size */
 }
 
 /* Existing CSS */
@@ -75,12 +76,13 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  font-size: calc(12px + 2vmin); /* Adjusted for better readability */
   color: white;
 }
 
 .App-link {
   color: #61dafb;
+  font-size: 1.1rem; /* Increased font size for links */
 }
 
 @keyframes App-logo-spin {
