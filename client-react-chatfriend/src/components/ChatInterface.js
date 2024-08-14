@@ -21,7 +21,7 @@ import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 import UploadedFile from "./UploadedFile";
 
-function ChatInterface({ session, clearChat, handleCompleteTask, selectedTask }) {
+function ChatInterface({ session, clearChat, selectedTask }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");
@@ -802,14 +802,14 @@ function ChatInterface({ session, clearChat, handleCompleteTask, selectedTask })
               </Button>
             </>
           )}
-          <Button
+          {/* <Button
             onClick={handleCompleteTask}
             color="primary"
             variant="contained"
             style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
           >
             Complete
-          </Button>
+          </Button> */}
         </Box>
       </Box>
     </Box>

@@ -30,15 +30,15 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
     }
   };
 
-  const handleCompleteTask = () => {
-    enqueueSnackbar("Task completed!", { variant: "success" });
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
-    onCompleteTask(selectedTask.id);
-  };
+  // const handleCompleteTask = () => {
+  //   enqueueSnackbar("Task completed!", { variant: "success" });
+  //   confetti({
+  //     particleCount: 100,
+  //     spread: 70,
+  //     origin: { y: 0.6 },
+  //   });
+  //   onCompleteTask(selectedTask.id);
+  // };
 
   if (error) {
     return (
@@ -77,8 +77,12 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
           <ChatInterface
             session={chatSession}
             clearChat={clearChat}
+<<<<<<< HEAD
             handleCompleteTask={handleCompleteTask}
             selectedTask={selectedTask}
+=======
+            // handleCompleteTask={handleCompleteTask}
+>>>>>>> 2a80e74c1 (Moving Complete Button and instead adding a Clickable Check Mark)
           />
         </Box>
       ) : (
