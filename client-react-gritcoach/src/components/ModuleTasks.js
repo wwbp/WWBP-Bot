@@ -21,6 +21,7 @@ function ModuleTasks() {
   const { moduleId } = useParams();
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [redoingTask, setRedoingTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const { enqueueSnackbar } = useSnackbar();
 
@@ -43,6 +44,7 @@ function ModuleTasks() {
 
   const handleTaskSelection = (task) => {
     if (!task.locked) {
+      setRedoingTask(task.completed ? task : null);
       setSelectedTask(task);
     }
   };
@@ -62,6 +64,7 @@ function ModuleTasks() {
       (task, index) => index === tasks.findIndex((t) => t.id === taskId) + 1
     );
     setSelectedTask(nextTask);
+    setRedoingTask(null);
   };
 
   if (loading) {
@@ -90,12 +93,16 @@ function ModuleTasks() {
           <Typography>No tasks available</Typography>
         ) : (
           <List dense sx={{ p: 2 }}>
-            {tasks.map((task, index) => (
+            {tasks.map((task) => (
               <Paper
                 elevation={3}
                 sx={{
                   ":hover": {
-                    backgroundColor: "#909090",
+                    backgroundColor: task.locked
+                      ? "#f0f0f0"
+                      : task.completed
+                      ? "#d3d3d3"
+                      : "#e0e0e0",
                     cursor: task.locked ? "default" : "pointer",
                   },
                   marginBottom: 2,
@@ -106,13 +113,17 @@ function ModuleTasks() {
                   justifyContent: "center",
                   alignItems: "center",
                   height: "120px",
-                  backgroundColor: task.locked
-                    ? "#f0f0f0"
-                    : task.completed
-                    ? "#d3d3d3"
-                    : "white",
+                  backgroundColor:
+                    task === selectedTask
+                      ? "#cfe8fc"
+                      : task.locked
+                      ? "#f0f0f0"
+                      : task.completed
+                      ? "#d3d3d3"
+                      : "white",
+                  border: task === selectedTask ? "2px solid #1976d2" : "none",
                   position: "relative",
-                  width: "100%", // Make the card occupy full width of the column
+                  width: "100%",
                   pointerEvents: task.locked ? "none" : "auto",
                   color: task.locked ? "grey" : "black",
                 }}
@@ -123,15 +134,22 @@ function ModuleTasks() {
                   <LockIcon style={{ position: "absolute", top: 8, left: 8 }} />
                 )}
                 {task.completed && (
-                  <RedoIcon style={{ position: "absolute", top: 8, left: 8 }} />
-                )}
-                {task.completed && (
                   <CheckCircleIcon
                     style={{
                       position: "absolute",
                       top: 8,
                       right: 8,
                       color: "green",
+                    }}
+                  />
+                )}
+                {redoingTask && task === redoingTask && (
+                  <RedoIcon
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      left: 8,
+                      color: "orange",
                     }}
                   />
                 )}
@@ -152,6 +170,7 @@ function ModuleTasks() {
             moduleId={moduleId}
             selectedTask={selectedTask}
             onCompleteTask={handleCompleteTask}
+            clearChat={true} // Clear chat on task switch
           />
         ) : (
           <Box
