@@ -107,6 +107,14 @@ function UserProfile() {
         />
         <TextField
           fullWidth
+          label="Preferred Name"
+          name="preferred_name"
+          value={user.preferred_name}
+          onChange={handleChange}
+          margin="normal"
+        />        
+        <TextField
+          fullWidth
           label="Email"
           name="email"
           value={user.email}

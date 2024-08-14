@@ -14,6 +14,7 @@ class User(AbstractUser):
     preferred_language = models.CharField(max_length=50, blank=True, null=True)
     voice_speed = models.FloatField(default=1.0)
     interaction_mode = models.CharField(max_length=20, default='text')
+    preferred_name = models.CharField(max_length=50, blank=True, null=True)
 
 
 class Module(models.Model):
