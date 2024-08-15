@@ -37,6 +37,13 @@ function UserProfile() {
     });
   };
 
+  // const handlePrefNameChange = (e,value) => {
+  //   setUser({
+  //     ...user,
+  //     preferred_name: value,
+  //   });
+  // };
+
   const handleSliderChange = (e, value) =>{
     setUser({
       ...user,

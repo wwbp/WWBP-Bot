@@ -135,6 +135,7 @@ def register(request):
             role = data.get('role', 'student')  # Default role is 'student'
             voice_speed = data.get('voice_speed', 1.0)
             preferred_name = data.get('preferred_name', username)
+            logger.debug(f"preferred_name: {preferred_name}")
 
             if not username or not email or not password:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
@@ -142,6 +143,8 @@ def register(request):
             user = get_user_model().objects.create_user(
                 username=username, email=email, password=password, role=role, voice_speed=voice_speed, preferred_name=preferred_name)
             user.save()
+
+            logger.debug(f"User created: {user}")
 
             # Log the user in after registration
             user = authenticate(request, username=username, password=password)

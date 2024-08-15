@@ -34,12 +34,14 @@ function Signup({ setLoggedIn, setRole }) {
     }
 
     try {
+      console.log("preferred_name: ", preferred_name);
       const response = await postData("/register/", {
         username,
         email,
         password,
         role,
         voice_speed,
+        preferred_name
       });
       if (response.message === "User created successfully") {
         localStorage.setItem("token", response.token);
