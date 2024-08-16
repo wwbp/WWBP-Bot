@@ -69,6 +69,7 @@ class PromptHook:
             user = session.user
             return {
                 "username": user.username,
+                "preferred_name": user.preferred_name,
                 "role": user.role,
                 "grade": user.grade,
                 "preferred_language": user.preferred_language,
