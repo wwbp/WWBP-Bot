@@ -19,7 +19,7 @@ import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 
-function ChatInterface({ session, clearChat, handleCompleteTask }) {
+function ChatInterface({ session, clearChat }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");
@@ -41,6 +41,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
   const textBufferRef = useRef([]);
   const [loading, setLoading] = useState(true);
   const [chatState, setChatState] = useState("idle");
+  const [dots, setDots] = useState("");
 
 
   const setupWebSocket = () => {
@@ -110,6 +111,18 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
     };
     fetchMode();
   },[]);
+
+  useEffect(()=>{
+    if(chatState==="processing"){
+      const interval = setInterval(()=>{
+        setDots((prevDots)=>(prevDots.length<3?prevDots+".":""))
+      },100);
+      return ()=>clearInterval(interval);
+    }else
+    {
+      setDots("");
+    }
+  },[chatState]);
 
   const handleTextMessage = (event) => {
     console.log("Handling text message:", event.data);
@@ -624,7 +637,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
       case "idle":
         return "Type a message...";
       case "processing":
-        return "Processing...";
+        return `${dots}`;
       case "speaking":
         return "Bot is Speaking"
       default:
@@ -776,14 +789,14 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
               </Button>
             </>
           )}
-          <Button
+          {/* <Button
             onClick={handleCompleteTask}
             color="primary"
             variant="contained"
             style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
           >
             Complete
-          </Button>
+          </Button> */}
         </Box>
       </Box>
     </Box>

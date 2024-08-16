@@ -37,6 +37,13 @@ function UserProfile() {
     });
   };
 
+  // const handlePrefNameChange = (e,value) => {
+  //   setUser({
+  //     ...user,
+  //     preferred_name: value,
+  //   });
+  // };
+
   const handleSliderChange = (e, value) =>{
     setUser({
       ...user,
@@ -105,6 +112,14 @@ function UserProfile() {
           error={submitted && !user.username}
           helperText={submitted && !user.username && "Username is required"}
         />
+        <TextField
+          fullWidth
+          label="Preferred Name"
+          name="preferred_name"
+          value={user.preferred_name}
+          onChange={handleChange}
+          margin="normal"
+        />        
         <TextField
           fullWidth
           label="Email"

@@ -19,6 +19,7 @@ function Signup({ setLoggedIn, setRole }) {
   const [role, setRoleState] = useState("student");
   const [voice_speed, setVoiceSpeed] = useState(1.0);
   const [submitted, setSubmitted] = useState(false);
+  const [preferred_name, setPreferredName] = useState("");
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,12 +34,14 @@ function Signup({ setLoggedIn, setRole }) {
     }
 
     try {
+      console.log("preferred_name: ", preferred_name);
       const response = await postData("/register/", {
         username,
         email,
         password,
         role,
         voice_speed,
+        preferred_name
       });
       if (response.message === "User created successfully") {
         localStorage.setItem("token", response.token);
@@ -78,6 +81,13 @@ function Signup({ setLoggedIn, setRole }) {
             error={submitted && !username}
             helperText={submitted && !username && "Username is required"}
           />
+          <TextField
+            fullWidth
+            label="Preferred Name"
+            margin="normal"
+            value={preferred_name}
+            onChange={(e) => setPreferredName(e.target.value)}
+          />          
           <TextField
             fullWidth
             label="Email"

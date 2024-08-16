@@ -92,6 +92,7 @@ def user_profile(request):
             "interaction_mode": request.user.interaction_mode,
             "grade": request.user.grade if request.user.role == 'student' else None,
             "preferred_language": request.user.preferred_language if request.user.role == 'student' else None,
+            "preferred_name": request.user.preferred_name
         }
         return JsonResponse(user_data, status=200)
 
@@ -109,6 +110,8 @@ def user_profile(request):
                     'preferred_language', request.user.preferred_language)
             request.user.voice_speed = data.get(
                 'voice_speed', request.user.voice_speed)
+            request.user.preferred_name = data.get(
+                'preferred_name', request.user.preferred_name)
 
             request.user.save()
             return JsonResponse({"message": "Profile updated"}, status=200)
@@ -131,13 +134,17 @@ def register(request):
             password = data.get('password')
             role = data.get('role', 'student')  # Default role is 'student'
             voice_speed = data.get('voice_speed', 1.0)
+            preferred_name = data.get('preferred_name', username)
+            logger.debug(f"preferred_name: {preferred_name}")
 
             if not username or not email or not password:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             user = get_user_model().objects.create_user(
-                username=username, email=email, password=password, role=role, voice_speed=voice_speed)
+                username=username, email=email, password=password, role=role, voice_speed=voice_speed, preferred_name=preferred_name)
             user.save()
+
+            logger.debug(f"User created: {user}")
 
             # Log the user in after registration
             user = authenticate(request, username=username, password=password)
