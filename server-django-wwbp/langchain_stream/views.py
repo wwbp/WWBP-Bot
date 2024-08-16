@@ -648,8 +648,8 @@ class AudioConsumer(BaseWebSocketConsumer):
         ssml_text = f"<speak>{text}</speak>"
         input_text = texttospeech.SynthesisInput(ssml=ssml_text)
         voice = texttospeech.VoiceSelectionParams(
-            language_code="en-IN",
-            name="en-IN-Standard-A",
+            language_code="en-US",
+            name="en-US-Standard-F",
             ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
         )
         voice_speed = 1.0
