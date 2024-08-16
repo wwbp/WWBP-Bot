@@ -546,6 +546,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
                 value={message}
                 onChange={handleInputChange}
                 placeholder="Type a message..."
+                autoComplete="off"
                 onKeyDown={onKeyPress}
               />
               <Button
