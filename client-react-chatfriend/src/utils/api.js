@@ -188,6 +188,29 @@ export async function getPresignedUrlForDisplay(fileName) {
   }
 }
 
+export async function fetchFile(url = "") {
+  try {
+    const response = await api.get(url, { responseType: "blob" });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching file:", error);
+    throw error;
+  }
+}
+
+export async function getPresignedUrl(fileName, fileType) {
+  try {
+    const response = await api.post("/generate_presigned_url/", {
+      file_name: fileName,
+      file_type: fileType,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error getting presigned URL:", error);
+    throw error;
+  }
+}
+
 export async function uploadToS3(url, fields, file) {
   const formData = new FormData();
   Object.entries({ ...fields, file }).forEach(([key, value]) => {
