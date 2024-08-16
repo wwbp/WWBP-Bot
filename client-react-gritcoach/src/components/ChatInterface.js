@@ -36,6 +36,9 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
   const messagesEndRef = useRef(null);
   const tempMessageRef = useRef(""); // Temporary buffer for user's message
   const { enqueueSnackbar } = useSnackbar();
+  const [chatState, setChatState] = useState("idle");
+  const [dots, setDots] = useState("");
+
 
   const setupWebSocket = () => {
     if (ws.current) {
@@ -191,6 +194,18 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
       });
     }
   };
+
+  useEffect(()=>{
+    if(chatState==="processing"){
+      const interval = setInterval(()=>{
+        setDots((prevDots)=>(prevDots.length<3?prevDots+".":""))
+      },100);
+      return ()=>clearInterval(interval);
+    }else
+    {
+      setDots("");
+    }
+  },[chatState]);
 
   useEffect(() => {
     setupWebSocket();
@@ -364,6 +379,19 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
         return <MouthIcon style={{ position: "absolute", top: "-30px" }} />;
       default:
         return null;
+    }
+  };
+
+  const getChatStateText = () =>{
+    switch(chatState){
+      case "idle":
+        return "Type a message...";
+      case "processing":
+        return `${dots}`;
+      case "speaking":
+        return "Bot is Speaking"
+      default:
+        return "Type a message...";       
     }
   };
 
@@ -545,7 +573,7 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
                 fullWidth
                 value={message}
                 onChange={handleInputChange}
-                placeholder="Type a message..."
+                placeholder={getChatStateText()}
                 onKeyDown={onKeyPress}
               />
               <Button
