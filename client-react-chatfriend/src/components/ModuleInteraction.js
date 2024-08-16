@@ -77,12 +77,6 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
           <ChatInterface
             session={chatSession}
             clearChat={clearChat}
-// <<<<<<< HEAD
-//             handleCompleteTask={handleCompleteTask}
-//             selectedTask={selectedTask}
-// =======
-//             // handleCompleteTask={handleCompleteTask}
-//             selectedTask={selectedTask}
           />
         </Box>
       ) : (

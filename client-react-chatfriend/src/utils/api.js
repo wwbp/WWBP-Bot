@@ -165,38 +165,7 @@ export async function fetchFile(url = "") {
   }
 }
 
-export async function getPresignedUrl(fileName, fileType) {
-  try {
-    const response = await api.post("/generate_presigned_url/", {
-      file_name: fileName,
-      file_type: fileType,
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error getting presigned URL:", error);
-    throw error;
-  }
-}
 
-export async function getPresignedUrlForDisplay(fileName) {
-  try {
-    const response = await api.get(`/generate_presigned_url/?file_name=${encodeURIComponent(fileName)}`);
-    return response.data;
-  } catch (error) {
-    console.error("Error getting presigned URL:", error);
-    throw error;
-  }
-}
-
-export async function fetchFile(url = "") {
-  try {
-    const response = await api.get(url, { responseType: "blob" });
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching file:", error);
-    throw error;
-  }
-}
 
 export async function getPresignedUrl(fileName, fileType) {
   try {
@@ -211,6 +180,18 @@ export async function getPresignedUrl(fileName, fileType) {
   }
 }
 
+
+export async function getPresignedUrlForDisplay(fileName) {
+  try {
+    const response = await api.get(`/generate_presigned_url/?file_name=${encodeURIComponent(fileName)}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting presigned URL:", error);
+    throw error;
+  }
+}
+
+
 export async function getPresignedUrlForDisplay(fileName) {
   try {
     const response = await api.get(`/generate_presigned_url/?file_name=${encodeURIComponent(fileName)}`);
@@ -221,6 +202,7 @@ export async function getPresignedUrlForDisplay(fileName) {
     throw error;
   }
 }
+
 
 export async function uploadToS3(url, fields, file) {
   const formData = new FormData();

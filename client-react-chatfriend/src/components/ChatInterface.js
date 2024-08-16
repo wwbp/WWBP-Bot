@@ -21,7 +21,8 @@ import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 import UploadedFile from "./UploadedFile";
 
-function ChatInterface({ session, clearChat, selectedTask }) {
+
+function ChatInterface({ session, clearChat }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");
