@@ -570,7 +570,6 @@ class AudioConsumer(BaseWebSocketConsumer):
             ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
         )
         voice_speed = 1.0
-        # user_profile = await self.session_manager.get_user_profile(self.session_id)
         voice_speed = await self.fetch_voice_speed()
 
         audio_config = texttospeech.AudioConfig(
