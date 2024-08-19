@@ -22,7 +22,7 @@ import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 import UploadedFile from "./UploadedFile";
 
 
-function ChatInterface({ session, clearChat }) {
+function ChatInterface({ session, clearChat, selectedTask }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");

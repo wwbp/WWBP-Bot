@@ -184,6 +184,7 @@ export async function getPresignedUrl(fileName, fileType) {
 export async function getPresignedUrlForDisplay(fileName) {
   try {
     const response = await api.get(`/generate_presigned_url/?file_name=${encodeURIComponent(fileName)}`);
+    console.log("Response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error getting presigned URL:", error);
@@ -191,14 +192,15 @@ export async function getPresignedUrlForDisplay(fileName) {
   }
 }
 
-
-export async function getPresignedUrlForDisplay(fileName) {
+export async function getLocalFile(fileName) {
   try {
-    const response = await api.get(`/generate_presigned_url/?file_name=${encodeURIComponent(fileName)}`);
+    console.log("Getting local file:", fileName);
+    const response = await api.get(`/local_upload/?file_name=${fileName}`, {
+      responseType: 'blob', // Treat the response as a Blob
+    });
     return response.data;
   } catch (error) {
-    console.error("Error getting presigned URL:", error);
-    console.error("Error getting presigned URL:", error);
+    console.error("Error getting local file:", error);
     throw error;
   }
 }

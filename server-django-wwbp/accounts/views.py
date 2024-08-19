@@ -18,7 +18,7 @@ from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseNotAllowed, JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponseNotAllowed, JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.apps import apps
 
 from rest_framework import status, viewsets, permissions
@@ -462,6 +462,22 @@ class LocalFileUploadView(APIView):
             return Response({"detail": f"Error saving the file: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'file_path': file_url}, status=status.HTTP_201_CREATED)
+
+    def get(self, request, *args, **kwargs):
+        # Sanitize the filename
+        filename = request.GET.get('file_name')
+        logger.debug(f"Request for file: {filename}")
+        # sanitized_filename = self.sanitize_filename(filename)
+        sanitized_filename = filename
+        # Use the same directory as in the post method
+        local_upload_dir = os.path.join(settings.BASE_DIR, 'data/upload/')
+        file_path = os.path.join(local_upload_dir, sanitized_filename)
+
+        # Check if the file exists and return it, otherwise raise 404
+        if os.path.exists(file_path):
+            return FileResponse(open(file_path, 'rb'), content_type='application/pdf')  # Adjust content_type as needed
+        else:
+            raise Http404("File not found")    
 
 
 class CSVCreateView(APIView):

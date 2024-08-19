@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {getPresignedUrlForDisplay}  from "../utils/api";
+import {getPresignedUrlForDisplay, getLocalFile}  from "../utils/api";
 
 
 function UploadedFile({ files }) {
@@ -18,6 +18,14 @@ useEffect(()=>{
             const fileName = files.files[0].split('/upload/')[1]
             const preSignedUrl = await getPresignedUrlForDisplay(fileName);
             console.log("PreSignedUrl:", preSignedUrl);
+            
+            if(preSignedUrl.url==='local'){
+                const fetchedFile = await getLocalFile(fileName);
+                setPdfFile(URL.createObjectURL(fetchedFile));
+                return;
+            }
+
+
             const response = await fetch(preSignedUrl.url);
             if(!response.ok){
                 throw new Error("Failed to fetch file");
