@@ -76,6 +76,7 @@ const ModuleForm = ({ module, onModuleCreated }) => {
               value={moduleData.name}
               onChange={handleModuleChange}
               margin="normal"
+              autoComplete="off"
               required
               error={submitted && !moduleData.name}
               helperText={submitted && !moduleData.name && "Name is required"}

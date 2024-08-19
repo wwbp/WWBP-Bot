@@ -83,6 +83,7 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
               name="title"
               value={taskData.title}
               onChange={handleTaskChange}
+              autoComplete="off"
               margin="normal"
               required
               error={submitted && !taskData.title}
