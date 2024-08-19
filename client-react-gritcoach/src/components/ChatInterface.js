@@ -573,7 +573,9 @@ function ChatInterface({ session, clearChat, handleCompleteTask }) {
                 fullWidth
                 value={message}
                 onChange={handleInputChange}
+                autoComplete="off"
                 placeholder={getChatStateText()}
+
                 onKeyDown={onKeyPress}
               />
               <Button
