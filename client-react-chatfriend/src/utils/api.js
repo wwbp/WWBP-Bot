@@ -138,12 +138,12 @@ export const createWebSocket = (sessionId, isAudioMode) => {
   return new WebSocket(`${wsUrl}${endpoint}`);
 };
 
-export async function postFile(url = "", file) {
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
+export const postFile = async (filePath, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
 
-    const response = await api.post(url, formData, {
+  try {
+    const response = await api.post(filePath, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -153,7 +153,7 @@ export async function postFile(url = "", file) {
     console.error("Error posting file:", error);
     throw error;
   }
-}
+};
 
 export async function fetchFile(url = "") {
   try {
@@ -164,6 +164,8 @@ export async function fetchFile(url = "") {
     throw error;
   }
 }
+
+
 
 export async function getPresignedUrl(fileName, fileType) {
   try {
@@ -177,6 +179,32 @@ export async function getPresignedUrl(fileName, fileType) {
     throw error;
   }
 }
+
+
+export async function getPresignedUrlForDisplay(fileName) {
+  try {
+    const response = await api.get(`/generate_presigned_url/?file_name=${encodeURIComponent(fileName)}`);
+    console.log("Response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error getting presigned URL:", error);
+    throw error;
+  }
+}
+
+export async function getLocalFile(fileName) {
+  try {
+    console.log("Getting local file:", fileName);
+    const response = await api.get(`/local_upload/?file_name=${fileName}`, {
+      responseType: 'blob', // Treat the response as a Blob
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error getting local file:", error);
+    throw error;
+  }
+}
+
 
 export async function uploadToS3(url, fields, file) {
   const formData = new FormData();
