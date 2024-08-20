@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { createWebSocket } from "../utils/api";
+import { createWebSocket, fetchData } from "../utils/api";
 import {
   Box,
   TextField,
@@ -36,6 +36,10 @@ function ChatInterface({ session, clearChat }) {
   const messagesEndRef = useRef(null);
   const tempMessageRef = useRef(""); // Temporary buffer for user's message
   const { enqueueSnackbar } = useSnackbar();
+  const audioBuffer = useRef([]);
+  const [textBuffer, setTextBuffer] = useState([]);
+  const textBufferRef = useRef([]);
+  const [loading, setLoading] = useState(true);
   const [chatState, setChatState] = useState("idle");
   const [dots, setDots] = useState("");
 
@@ -45,9 +49,10 @@ function ChatInterface({ session, clearChat }) {
       ws.current.close();
     }
 
-    ws.current = createWebSocket(session.id, chatMode === "audio");
+    ws.current = createWebSocket(session.id, chatMode !== "text");
 
     ws.current.onopen = () => {
+      console.log("WebSocket connected");
       setIsWsConnected(true);
       if (chatMode === "audio") {
         setupPeerConnection();
@@ -59,38 +64,70 @@ function ChatInterface({ session, clearChat }) {
         return;
       }
 
+      console.log("WebSocket message received:", event.data);
+
       if (chatMode === "audio") {
         handleAudioMessage(event);
-      } else {
+      } else if (chatMode === "text-then-audio") {
+        handleTextThenAudio(event);
+      }
+      else if (chatMode === "audio-then-text") {
+        handleAudioThenText(event);
+      }
+      else if (chatMode === "audio-only") {
+        handleAudioOnly(event);
+      }
+        else {
         handleTextMessage(event);
       }
     };
 
     ws.current.onerror = (event) => {
       console.error("WebSocket error:", event);
-      // Instead of using enqueueSnackbar, silently handle or log the error
-      attemptReconnect();
+      // enqueueSnackbar("WebSocket error observed", { variant: "error" });
+      setIsWsConnected(false);
     };
 
     ws.current.onclose = (event) => {
       console.log("WebSocket closed:", event);
+      // enqueueSnackbar("WebSocket connection closed", { variant: "info" });
       setIsWsConnected(false);
-      attemptReconnect();
     };
   };
 
-  const attemptReconnect = () => {
-    if (ws.current.readyState !== WebSocket.OPEN) {
-      setTimeout(() => {
-        console.log("Attempting to reconnect WebSocket...");
-        setupWebSocket();
-      }, 5000);
+  useEffect(()=>{
+    const fetchMode = async ()=>{
+      try{
+        const response = await fetchData('/profile')
+        console.log("Interaction mode is ", response)
+        setChatMode(response.interaction_mode)
+
+      }catch (err)
+      {
+        console.log("Error fetching")
+      }finally{
+        setLoading(false);
+      }
+    };
+    fetchMode();
+  },[]);
+
+  useEffect(()=>{
+    if(chatState==="processing"){
+      const interval = setInterval(()=>{
+        setDots((prevDots)=>(prevDots.length<3?prevDots+".":""))
+      },100);
+      return ()=>clearInterval(interval);
+    }else
+    {
+      setDots("");
     }
-  };
+  },[chatState]);
 
   const handleTextMessage = (event) => {
     console.log("Handling text message:", event.data);
     const data = JSON.parse(event.data);
+    setChatState("speaking");
     if (data.event === "on_parser_start") {
       setMessages((prevMessages) => [
         ...prevMessages,
@@ -107,6 +144,7 @@ function ChatInterface({ session, clearChat }) {
     } else if (data.event === "on_parser_end") {
       setMessageId((prevId) => prevId + 1);
       setMessage(tempMessageRef.current); // Restore temporary buffer
+      setChatState("idle");
     }
   };
 
@@ -173,6 +211,219 @@ function ChatInterface({ session, clearChat }) {
     }
   };
 
+  const handleTextThenAudio = async (event) => {
+    if (event.data instanceof Blob) {
+      audioBuffer.current.push(event.data);
+    } else if (typeof event.data === "string") {
+      const data = JSON.parse(event.data);
+      if (data.sdp) {
+        try {
+          await peerConnection.current.setRemoteDescription(
+            new RTCSessionDescription(data.sdp)
+          );
+          if (data.sdp.type === "offer") {
+            const answer = await peerConnection.current.createAnswer();
+            await peerConnection.current.setLocalDescription(answer);
+            ws.current.send(
+              JSON.stringify({
+                sdp: peerConnection.current.localDescription,
+              })
+            );
+          }
+        } catch (error) {
+          enqueueSnackbar("Failed to set remote description", {
+            variant: "error",
+          });
+          console.error("Failed to set remote description:", error);
+        }
+      } else if (data.candidate) {
+        try {
+          await peerConnection.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+        } catch (error) {
+          enqueueSnackbar("Error adding received ICE candidate", {
+            variant: "error",
+          });
+          console.error("Error adding received ICE candidate", error);
+        }
+      } else if (data.transcript) {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: "You", message: data.transcript, id: data.message_id },
+        ]);
+        setMessageId((prevId) => prevId + 1);
+        setMessage("");
+      } else if (data.event === "on_parser_start") {
+        textBufferRef.current = [];
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: "GritCoach", message: "", id: data.message_id },
+        ]);
+      } else if (data.event === "on_parser_stream") {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === data.message_id
+              ? { ...msg, message: msg.message + data.value }
+              : msg
+          )
+        );
+      } else if (data.event === "on_parser_end") {
+        setMessageId((prevId) => prevId + 1);
+        setMessage(tempMessageRef.current); // Restore temporary buffer
+        if(audioBuffer.current.length > 0){
+          const audioBlob = new Blob(audioBuffer.current, { type: "audio/webm" });
+          setAudioQueue([audioBlob]);
+          audioBuffer.current = [];
+        }
+      }
+    }
+  };
+
+  
+  const handleAudioOnly = async (event) => {
+    if (event.data instanceof Blob) {
+      setAudioQueue((prevQueue) => [...prevQueue, event.data]);
+    } else if (typeof event.data === "string") {
+      const data = JSON.parse(event.data);
+      if (data.sdp) {
+        try {
+          await peerConnection.current.setRemoteDescription(
+            new RTCSessionDescription(data.sdp)
+          );
+          if (data.sdp.type === "offer") {
+            const answer = await peerConnection.current.createAnswer();
+            await peerConnection.current.setLocalDescription(answer);
+            ws.current.send(
+              JSON.stringify({
+                sdp: peerConnection.current.localDescription,
+              })
+            );
+          }
+        } catch (error) {
+          enqueueSnackbar("Failed to set remote description", {
+            variant: "error",
+          });
+          console.error("Failed to set remote description:", error);
+        }
+      } else if (data.candidate) {
+        try {
+          await peerConnection.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+        } catch (error) {
+          enqueueSnackbar("Error adding received ICE candidate", {
+            variant: "error",
+          });
+          console.error("Error adding received ICE candidate", error);
+        }
+      } else if (data.transcript) {
+        // setMessages((prevMessages) => [
+        //   ...prevMessages,
+        //   { sender: "You", message: data.transcript, id: data.message_id },
+        // ]);
+        setMessageId((prevId) => prevId + 1);
+        setMessage("");
+      } else if (data.event === "on_parser_start") {
+        textBufferRef.current = [];
+        setTextBuffer((prevBuffer)=>[...prevBuffer, { sender: "GritCoach", message: "", id: data.message_id }]);
+        // setMessages((prevMessages) => [
+        //   ...prevMessages,
+        //   { sender: "GritCoach", message: "", id: data.message_id },
+        // ]);
+      } else if (data.event === "on_parser_stream") {
+        setTextBuffer((prevBuffer) => prevBuffer.map((msg)=>msg.id === data.message_id?
+        { ...msg, message: msg.message + data.value}:msg) );
+        // setMessages((prevMessages) =>
+        //   prevMessages.map((msg) =>
+        //     msg.id === data.message_id
+        //       ? { ...msg, message: msg.message + data.value }
+        //       : msg
+        //   )
+        // );
+      } else if (data.event === "on_parser_end") {
+        setMessageId((prevId) => prevId + 1);
+        setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
+        setTextBuffer([]);
+        setMessage(""); // Restore temporary buffer
+      }
+    }
+  };
+
+  const handleAudioThenText = async (event) => {
+    if (event.data instanceof Blob) {
+      setAudioQueue((prevQueue) => [...prevQueue, event.data]);
+    } else if (typeof event.data === "string") {
+      const data = JSON.parse(event.data);
+      if (data.sdp) {
+        try {
+          await peerConnection.current.setRemoteDescription(
+            new RTCSessionDescription(data.sdp)
+          );
+          if (data.sdp.type === "offer") {
+            const answer = await peerConnection.current.createAnswer();
+            await peerConnection.current.setLocalDescription(answer);
+            ws.current.send(
+              JSON.stringify({
+                sdp: peerConnection.current.localDescription,
+              })
+            );
+          }
+        } catch (error) {
+          enqueueSnackbar("Failed to set remote description", {
+            variant: "error",
+          });
+          console.error("Failed to set remote description:", error);
+        }
+      } else if (data.candidate) {
+        try {
+          await peerConnection.current.addIceCandidate(
+            new RTCIceCandidate(data.candidate)
+          );
+        } catch (error) {
+          enqueueSnackbar("Error adding received ICE candidate", {
+            variant: "error",
+          });
+          console.error("Error adding received ICE candidate", error);
+        }
+      } else if (data.transcript) {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: "You", message: data.transcript, id: data.message_id },
+        ]);
+        setMessageId((prevId) => prevId + 1);
+        setMessage("");
+      } else if (data.event === "on_parser_start") {
+        textBufferRef.current = [];
+        textBufferRef.current.push({ sender: "GritCoach", message: "", id: data.message_id });
+        // setMessages((prevMessages) => [
+        //   ...prevMessages,
+        //   { sender: "GritCoach", message: "", id: data.message_id },
+        // ]);
+      } else if (data.event === "on_parser_stream") {
+        textBufferRef.current = textBufferRef.current.map((msg) =>
+        msg.id === data.message_id
+          ? { ...msg, message: msg.message + data.value }
+          : msg
+      );
+        // setMessages((prevMessages) =>
+        //   prevMessages.map((msg) =>
+        //     msg.id === data.message_id
+        //       ? { ...msg, message: msg.message + data.value }
+        //       : msg
+        //   )
+        // );
+      } else if (data.event === "on_parser_end") {
+        console.log("On parser end textBuffer is ", textBufferRef.current)
+        console.log("On parser end messages is ", messages)
+        setMessageId((prevId) => prevId + 1);
+        // setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
+        // setTextBuffer([]);
+        setMessage(""); // Restore temporary buffer
+      }
+    }
+  };  
+
   const setupPeerConnection = () => {
     peerConnection.current = new RTCPeerConnection();
 
@@ -195,20 +446,11 @@ function ChatInterface({ session, clearChat }) {
     }
   };
 
-  useEffect(()=>{
-    if(chatState==="processing"){
-      const interval = setInterval(()=>{
-        setDots((prevDots)=>(prevDots.length<3?prevDots+".":""))
-      },100);
-      return ()=>clearInterval(interval);
-    }else
-    {
-      setDots("");
-    }
-  },[chatState]);
-
   useEffect(() => {
-    setupWebSocket();
+    if (!loading) {
+      setupWebSocket();
+      setChatState("processing");
+    }
 
     return () => {
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -218,7 +460,7 @@ function ChatInterface({ session, clearChat }) {
         peerConnection.current.close();
       }
     };
-  }, [session.id, chatMode]);
+  }, [session.id, chatMode,loading]);
 
   useEffect(() => {
     if (clearChat) {
@@ -234,6 +476,14 @@ function ChatInterface({ session, clearChat }) {
     if (!isPlaying && audioQueue.length > 0) {
       playNextAudio();
     }
+    if(!isPlaying && !audioQueue.length)
+    {
+      setMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages, ...textBufferRef.current];
+        console.log("Updated messages:", updatedMessages);
+        return updatedMessages;
+      });
+    }    
   }, [audioQueue, isPlaying]);
 
   useEffect(() => {
@@ -409,7 +659,7 @@ function ChatInterface({ session, clearChat }) {
         width="100%"
         maxWidth="800px"
       >
-        <Box display="flex" justifyContent="flex-end" p={2}>
+        {/* <Box display="flex" justifyContent="flex-end" p={2}>
           <Select
             value={chatMode}
             onChange={handleModeChange}
@@ -421,8 +671,11 @@ function ChatInterface({ session, clearChat }) {
           >
             <MenuItem value="text">Text Mode</MenuItem>
             <MenuItem value="audio">Audio Mode</MenuItem>
+            <MenuItem value="text-then-audio">Text then Audio Mode</MenuItem>
+            <MenuItem value="audio-then-text">Audio Then Text Mode</MenuItem>
+            <MenuItem value="audio-only">Audio Only</MenuItem>            
           </Select>
-        </Box>
+        </Box> */}
         <Box
           flexGrow={1}
           overflow="auto"
@@ -445,71 +698,20 @@ function ChatInterface({ session, clearChat }) {
             >
               {msg.sender === "GritCoach" && (
                 <Avatar
-                  alt="Bot Avatar"
+                  alt="bot Avatar"
                   src={botAvatar}
                   style={{ marginRight: "8px" }}
                 />
               )}
               <Box
                 bgcolor={msg.sender === "GritCoach" ? "#f0f0f0" : "#cfe8fc"}
-                p={2}
+                p={1}
                 borderRadius={2}
                 maxWidth="60%"
-                sx={{
-                  wordBreak: "break-word",
-                  overflowWrap: "break-word",
-                  whiteSpace: "pre-wrap",
-                  display: "inline-block",
-                  maxWidth: "100%",
-                  boxSizing: "border-box",
-                  marginBottom: "8px",
-                  padding: "16px", // Padding to ensure content stays inside
-                  listStylePosition: "inside", // Ensures list markers are inside the padding
-                }}
               >
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
-                  sx={{
-                    lineHeight: "1.2", // Further reduced line height for compact text
-                    margin: "0", // Ensure no extra margin is applied to the Typography
-                  }}
-                >
+                <Typography variant="body2" color="textSecondary">
                   <strong>{msg.sender}:</strong>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      ol: ({ children }) => (
-                        <ol
-                          style={{
-                            paddingLeft: "20px", // Padding for list items
-                            listStyleType: "decimal", // Ensure numbered lists are displayed correctly
-                            listStylePosition: "inside", // Inside padding for markers
-                            margin: "0", // No extra margin for list
-                            lineHeight: "1.2", // Consistent line height for compactness
-                          }}
-                        >
-                          {children}
-                        </ol>
-                      ),
-                      ul: ({ children }) => (
-                        <ul
-                          style={{
-                            paddingLeft: "20px", // Padding for list items
-                            listStyleType: "disc", // Ensure bullets are displayed correctly
-                            listStylePosition: "inside", // Inside padding for markers
-                            margin: "0", // No extra margin for list
-                            lineHeight: "1.2", // Consistent line height for compactness
-                          }}
-                        >
-                          {children}
-                        </ul>
-                      ),
-                      li: ({ children }) => (
-                        <li style={{ marginBottom: "4px" }}>{children}</li>
-                      ),
-                    }}
-                  >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {msg.message}
                   </ReactMarkdown>
                 </Typography>
@@ -519,7 +721,7 @@ function ChatInterface({ session, clearChat }) {
           <div ref={messagesEndRef} />
         </Box>
         <Box display="flex" alignItems="center" p={2}>
-          {chatMode === "audio" ? (
+          {chatMode !== "text" ? (
             <Box
               display="flex"
               justifyContent="center"
@@ -573,10 +775,9 @@ function ChatInterface({ session, clearChat }) {
                 fullWidth
                 value={message}
                 onChange={handleInputChange}
-                autoComplete="off"
                 placeholder={getChatStateText()}
-
                 onKeyDown={onKeyPress}
+                autoComplete="off"
               />
               <Button
                 onClick={handleSubmit}
