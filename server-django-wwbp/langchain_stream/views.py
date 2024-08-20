@@ -14,8 +14,13 @@ from google.cloud import speech, texttospeech
 from langchain_stream.tasks import save_message_to_transcript, get_file_streams, save_usage_stats
 from openai import OpenAI
 
+
 DEFAULT_VOICE_ID = "en-US-Wavenet-D"
 CHUNK_SIZE = 1024
+
+from django.core.cache import cache
+ 
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -576,6 +581,7 @@ class AudioConsumer(BaseWebSocketConsumer):
         text = re.sub(r'[,.!?;*#]', '', text)
         return text
     
+
     # async def fetch_available_voices(self):
     #     url = "https://api.elevenlabs.io/v1/voices"
     #     headers = {
@@ -641,6 +647,21 @@ class AudioConsumer(BaseWebSocketConsumer):
     #         await self.send(text_data=json.dumps({"error": response.text}))
     #         return b""
 
+
+
+    async def fetch_voice_speed(self):
+        cache_key = f"voice_speed_{self.session_id}"
+        voice_speed = cache.get(cache_key)
+
+        if voice_speed is None:
+            logger.debug(f"Fetching voice speed for session_id={self.session_id}")
+            user_profile = await self.session_manager.get_user_profile(self.session_id)
+            voice_speed = float(user_profile['voice_speed'])
+            cache.set(cache_key, voice_speed, timeout=3600)
+        else:
+            logger.debug(f"Using cached voice speed: {voice_speed}")      
+
+        return voice_speed    
     # Google Text to Speech
     async def text_to_speech(self, text):
         logger.debug(f"Text to speech: {text}")
@@ -653,8 +674,7 @@ class AudioConsumer(BaseWebSocketConsumer):
             ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
         )
         voice_speed = 1.0
-        user_profile = await self.session_manager.get_user_profile(self.session_id)
-        voice_speed = float(user_profile['voice_speed'])
+        voice_speed = await self.fetch_voice_speed()
 
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
