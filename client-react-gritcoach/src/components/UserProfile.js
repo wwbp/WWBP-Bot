@@ -9,6 +9,7 @@ import {
   Container,
   Slider,
 } from "@mui/material";
+import InteractionMode from './InteractionMode';
 import { useSnackbar } from "notistack";
 
 function UserProfile() {
@@ -35,12 +36,21 @@ function UserProfile() {
       [e.target.name]: e.target.value,
     });
   };
+
   const handleSliderChange = (e, value) =>{
     setUser({
       ...user,
       voice_speed: value,
     });
   }
+
+  const handleModeChange = (mode) => {
+    setUser({
+      ...user,
+      interaction_mode: mode,
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setSubmitted(true);
@@ -153,6 +163,8 @@ function UserProfile() {
             />
           </>
         )}
+        <InteractionMode selectedMode={user.interaction_mode} handleModeChange={handleModeChange} />
+
         <Box mt={3} display="flex" justifyContent="flex-end">
           <Button variant="contained" color="primary" type="submit">
             Update Profile
