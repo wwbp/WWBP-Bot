@@ -256,6 +256,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
+        audioBuffer.current = [];
         capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
@@ -365,6 +366,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
     } else if (typeof event.data === "string") {
       const data = JSON.parse(event.data);
       if (data.sdp) {
+        textBufferRef.current = [];
         try {
           await peerConnection.current.setRemoteDescription(
             new RTCSessionDescription(data.sdp)
@@ -404,7 +406,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         setMessageId((prevId) => prevId + 1);
         setMessage("");
       } else if (data.event === "on_parser_start") {
-        textBufferRef.current = [];
+        
         textBufferRef.current.push({ sender: "ChatFriend", message: "", id: data.message_id });
         // setMessages((prevMessages) => [
         //   ...prevMessages,
@@ -483,16 +485,26 @@ function ChatInterface({ session, clearChat, selectedTask }) {
   }, [messages]);
 
   useEffect(() => {
+    if (!isPlaying && !audioQueue.length) {
+      // Clear the text buffer after messages have been updated
+      textBufferRef.current = [];
+      console.log("Text buffer cleared");
+    }
+  }, [messages]);
+
+  useEffect(() => {
     if (!isPlaying && audioQueue.length > 0) {
       playNextAudio();
     }
     if(!isPlaying && !audioQueue.length)
-    {
+    { 
       setMessages((prevMessages) => {
+        console.log("Text buffer is ", textBufferRef.current);
         const updatedMessages = [...prevMessages, ...textBufferRef.current];
         console.log("Updated messages:", updatedMessages);
         return updatedMessages;
       });
+      // textBufferRef.current = [];
     }    
   }, [audioQueue, isPlaying]);
 
@@ -656,7 +668,6 @@ function ChatInterface({ session, clearChat, selectedTask }) {
   };
 
   return (
-    console.log("Selected task is ", selectedTask),
     <Box
       display="flex"
       justifyContent="center"
