@@ -35,15 +35,15 @@ function ModuleInteraction({
     }
   };
 
-  const handleCompleteTask = () => {
-    enqueueSnackbar("Task completed!", { variant: "success" });
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
-    onCompleteTask(selectedTask.id);
-  };
+  // const handleCompleteTask = () => {
+  //   enqueueSnackbar("Task completed!", { variant: "success" });
+  //   confetti({
+  //     particleCount: 100,
+  //     spread: 70,
+  //     origin: { y: 0.6 },
+  //   });
+  //   onCompleteTask(selectedTask.id);
+  // };
 
   if (error) {
     return (
@@ -82,7 +82,7 @@ function ModuleInteraction({
           <ChatInterface
             session={chatSession}
             clearChat={clearChat}
-            handleCompleteTask={handleCompleteTask}
+            // handleCompleteTask={handleCompleteTask}
           />
         </Box>
       ) : (
