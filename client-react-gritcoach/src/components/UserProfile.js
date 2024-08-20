@@ -7,6 +7,7 @@ import {
   Typography,
   CircularProgress,
   Container,
+  Slider,
 } from "@mui/material";
 import InteractionMode from './InteractionMode';
 import { useSnackbar } from "notistack";
@@ -36,13 +37,19 @@ function UserProfile() {
     });
   };
 
+  const handleSliderChange = (e, value) =>{
+    setUser({
+      ...user,
+      voice_speed: value,
+    });
+  }
+
   const handleModeChange = (mode) => {
     setUser({
       ...user,
       interaction_mode: mode,
     });
   };
-
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -100,6 +107,14 @@ function UserProfile() {
         />
         <TextField
           fullWidth
+          label="Preferred Name"
+          name="preferred_name"
+          value={user.preferred_name}
+          onChange={handleChange}
+          margin="normal"
+        /> 
+        <TextField
+          fullWidth
           label="Email"
           name="email"
           value={user.email}
@@ -108,6 +123,17 @@ function UserProfile() {
           required
           error={submitted && !user.email}
           helperText={submitted && !user.email && "Email is required"}
+        />
+        <Typography gutterBottom>Voice Speed</Typography>
+        <Slider
+          name="voice_speed"
+          label="Voice Speed"
+          value={user.voice_speed || 1.0}
+          onChange={handleSliderChange}
+          valueLabelDisplay="auto"
+          step={0.5}
+          min={0.5}
+          max={2.0}
         />
         <TextField
           fullWidth
