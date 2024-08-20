@@ -9,6 +9,7 @@ import {
   Avatar,
   MenuItem,
   Select,
+  Stack,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import { useSnackbar } from "notistack";
@@ -18,8 +19,10 @@ import chatFriendAvatar from "../assets/chatFriend-avatar.png";
 import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
+import UploadedFile from "./UploadedFile";
 
-function ChatInterface({ session, clearChat }) {
+
+function ChatInterface({ session, clearChat, selectedTask }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");
@@ -94,6 +97,10 @@ function ChatInterface({ session, clearChat }) {
       setIsWsConnected(false);
     };
   };
+
+  // useEffect(()=>{
+  //   fileRef.current = selectedTask;
+  // },[])
 
   useEffect(()=>{
     const fetchMode = async ()=>{
@@ -185,6 +192,7 @@ function ChatInterface({ session, clearChat }) {
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
+        capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
           { sender: "You", message: data.transcript, id: data.message_id },
@@ -248,6 +256,7 @@ function ChatInterface({ session, clearChat }) {
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
+        capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
           { sender: "You", message: data.transcript, id: data.message_id },
@@ -387,6 +396,7 @@ function ChatInterface({ session, clearChat }) {
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
+        capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
           { sender: "You", message: data.transcript, id: data.message_id },
@@ -646,6 +656,7 @@ function ChatInterface({ session, clearChat }) {
   };
 
   return (
+    console.log("Selected task is ", selectedTask),
     <Box
       display="flex"
       justifyContent="center"
@@ -676,50 +687,66 @@ function ChatInterface({ session, clearChat }) {
             <MenuItem value="audio-only">Audio Only</MenuItem>            
           </Select>
         </Box> */}
-        <Box
-          flexGrow={1}
-          overflow="auto"
-          p={2}
-          sx={{
-            width: "100%",
-            height: "500px",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {messages.map((msg, index) => (
-            <Box
-              key={index}
-              display="flex"
-              justifyContent={
-                msg.sender === "ChatFriend" ? "flex-start" : "flex-end"
-              }
-              mb={2}
-            >
-              {msg.sender === "ChatFriend" && (
-                <Avatar
-                  alt="ChatFriend Avatar"
-                  src={chatFriendAvatar}
-                  style={{ marginRight: "8px" }}
-                />
-              )}
+        {/* <Box
+
+          overflow="hidden"
+        > */}
+        <Stack direction="row" spacing={2} height="100%">
+          <Box
+            flexGrow={1}
+            overflow="auto"
+            p={2}
+            sx={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {messages.map((msg, index) => (
               <Box
-                bgcolor={msg.sender === "ChatFriend" ? "#f0f0f0" : "#cfe8fc"}
-                p={1}
-                borderRadius={2}
-                maxWidth="60%"
+                key={index}
+                display="flex"
+                justifyContent={
+                  msg.sender === "ChatFriend" ? "flex-start" : "flex-end"
+                }
+                mb={2}
               >
-                <Typography variant="body2" color="textSecondary">
-                  <strong>{msg.sender}:</strong>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {msg.message}
-                  </ReactMarkdown>
-                </Typography>
+                {msg.sender === "ChatFriend" && (
+                  <Avatar
+                    alt="ChatFriend Avatar"
+                    src={chatFriendAvatar}
+                    style={{ marginRight: "8px" }}
+                  />
+                )}
+                <Box
+                  bgcolor={msg.sender === "ChatFriend" ? "#f0f0f0" : "#cfe8fc"}
+                  p={1}
+                  borderRadius={2}
+                  maxWidth="60%"
+                >
+                  <Typography variant="body2" color="textSecondary">
+                    <strong>{msg.sender}:</strong>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.message}
+                    </ReactMarkdown>
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
-          ))}
-          <div ref={messagesEndRef} />
-        </Box>
+            ))}
+            <div ref={messagesEndRef} />
+          </Box>
+          {selectedTask.files?.length>0?
+          <Box
+            width={ "150%" } // Adjust this value to allocate space for the UploadedFile component
+            height={ "100%" } 
+            overflow="auto"
+            p={2}
+          >
+              <UploadedFile files = {selectedTask} />
+          </Box>:<></>}
+        </Stack>  
+        {/* </Box>   */}
         <Box display="flex" alignItems="center" p={2}>
           {chatMode !== "text" ? (
             <Box
@@ -804,3 +831,7 @@ function ChatInterface({ session, clearChat }) {
 }
 
 export default ChatInterface;
+
+function capitalizeTranscript(data) {
+  data.transcript = data.transcript[0].toUpperCase() + data.transcript.slice(1);
+}
