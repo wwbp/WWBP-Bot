@@ -455,7 +455,15 @@ class AudioConsumer(BaseWebSocketConsumer):
                 await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": assistant_message_id})
 
             else:
-                await self.send_audio_chunk(await self.text_to_speech("Sorry, I couldn't hear you."))
+                initial_message = cache.get(f'input_not_clear_{self.session_id}', False)
+                if not initial_message:
+                    initial_message = "This is an invalid message. Tell the user Sorry and that you couldn't hear them."
+                await self.session_manager.create_user_message(message=initial_message)
+                assistant_message_id = str(int(self.current_message_id) + 1)
+                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": assistant_message_id})
+                cache.set(f'input_not_clear_{self.session_id}', True)
+                # await self.send_audio_chunk(await self.text_to_speech("Sorry, I couldn't hear you."))
+
 
     async def process_audio(self, audio_data):
         logger.debug(f"Audio data size: {len(audio_data)} bytes")
