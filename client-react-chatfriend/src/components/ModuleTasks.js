@@ -200,7 +200,7 @@ function ModuleTasks() {
                 {task.completed && (
                   <RedoIcon style={{ position: "absolute", top: 8, left: 8 }} />
                 )}
-                {task.completed && (
+                {/* {task.completed && (
                   <CheckCircleIcon
                     style={{
                       position: "absolute",
@@ -209,7 +209,7 @@ function ModuleTasks() {
                       color: "green",
                     }}
                   />
-                )}
+                )} */}
                 <ListItem>
                   <ListItemText
                     primary={task.title}
