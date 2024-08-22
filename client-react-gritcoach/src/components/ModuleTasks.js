@@ -183,7 +183,7 @@ function ModuleTasks() {
                 {task.locked && (
                   <LockIcon style={{ position: "absolute", top: 8, left: 8 }} />
                 )}
-                {task.completed && (
+                {/* {task.completed && (
                   <CheckCircleIcon
                     style={{
                       position: "absolute",
@@ -192,7 +192,7 @@ function ModuleTasks() {
                       color: "green",
                     }}
                   />
-                )}
+                )} */}
                 {redoingTask && task === redoingTask && (
                   <RedoIcon
                     style={{
