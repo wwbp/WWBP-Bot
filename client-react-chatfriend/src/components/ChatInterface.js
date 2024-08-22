@@ -45,6 +45,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
   const [loading, setLoading] = useState(true);
   const [chatState, setChatState] = useState("idle");
   const [dots, setDots] = useState("");
+  const textTimeout = useRef(false);
 
 
   const setupWebSocket = () => {
@@ -222,6 +223,19 @@ function ChatInterface({ session, clearChat, selectedTask }) {
   const handleTextThenAudio = async (event) => {
     if (event.data instanceof Blob) {
       audioBuffer.current.push(event.data);
+      // console.log("Timeout is ", textTimeout.current);
+      // if (!textTimeout.current) {
+
+      //   textTimeout.current = setTimeout(() => {
+      //     if (audioBuffer.current.length > 0) {
+      //       const audioBlob = new Blob(audioBuffer.current, { type: "audio/webm" });
+      //       setAudioQueue([audioBlob]);
+      //       audioBuffer.current = [];
+      //       console.log("Fallback: Playing audio buffer as parser_start was not received.");
+      //     }
+      //   }, 2000); // Adjust the timeout duration as needed
+      //   console.log("Timeout set to ", textTimeout.current);
+      // }
     } else if (typeof event.data === "string") {
       const data = JSON.parse(event.data);
       if (data.sdp) {
@@ -256,6 +270,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
+        audioBuffer.current = [];
         capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
@@ -270,6 +285,9 @@ function ChatInterface({ session, clearChat, selectedTask }) {
           { sender: "ChatFriend", message: "", id: data.message_id },
         ]);
       } else if (data.event === "on_parser_stream") {
+        // clearTimeout(textTimeout.current);
+        // textTimeout.current = null;
+        // console.log("Timeout cleared in parser_stream");
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg.id === data.message_id
@@ -278,6 +296,8 @@ function ChatInterface({ session, clearChat, selectedTask }) {
           )
         );
       } else if (data.event === "on_parser_end") {
+        clearTimeout(textTimeout.current);
+        textTimeout.current = null;
         setMessageId((prevId) => prevId + 1);
         setMessage(tempMessageRef.current); // Restore temporary buffer
         if(audioBuffer.current.length > 0){
@@ -365,6 +385,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
     } else if (typeof event.data === "string") {
       const data = JSON.parse(event.data);
       if (data.sdp) {
+        textBufferRef.current = [];
         try {
           await peerConnection.current.setRemoteDescription(
             new RTCSessionDescription(data.sdp)
@@ -404,7 +425,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         setMessageId((prevId) => prevId + 1);
         setMessage("");
       } else if (data.event === "on_parser_start") {
-        textBufferRef.current = [];
+        
         textBufferRef.current.push({ sender: "ChatFriend", message: "", id: data.message_id });
         // setMessages((prevMessages) => [
         //   ...prevMessages,
@@ -483,16 +504,27 @@ function ChatInterface({ session, clearChat, selectedTask }) {
   }, [messages]);
 
   useEffect(() => {
+    if (!isPlaying && !audioQueue.length) {
+      // Clear the text buffer after messages have been updated
+      textBufferRef.current = [];
+      console.log("Text buffer cleared");
+    }
+  }, [messages]);
+
+  useEffect(() => {
     if (!isPlaying && audioQueue.length > 0) {
       playNextAudio();
     }
     if(!isPlaying && !audioQueue.length)
-    {
+    { 
       setMessages((prevMessages) => {
+        console.log("Text buffer is ", textBufferRef.current);
         const updatedMessages = [...prevMessages, ...textBufferRef.current];
         console.log("Updated messages:", updatedMessages);
         return updatedMessages;
       });
+      textTimeout.current = null;
+      // textBufferRef.current = [];
     }    
   }, [audioQueue, isPlaying]);
 
@@ -656,7 +688,6 @@ function ChatInterface({ session, clearChat, selectedTask }) {
   };
 
   return (
-    console.log("Selected task is ", selectedTask),
     <Box
       display="flex"
       justifyContent="center"
