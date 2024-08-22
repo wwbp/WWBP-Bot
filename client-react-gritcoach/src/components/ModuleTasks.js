@@ -16,6 +16,9 @@ import Grid from "@mui/material/Grid";
 import LockIcon from "@mui/icons-material/Lock";
 import RedoIcon from "@mui/icons-material/Redo";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import confetti from "canvas-confetti";
+import Checkbox from "@mui/material/Checkbox";
 
 function ModuleTasks() {
   const { moduleId } = useParams();
@@ -42,7 +45,12 @@ function ModuleTasks() {
       });
   }, [moduleId]);
 
-  const handleTaskSelection = (task) => {
+  const handleTaskSelection = (task,event) => {
+
+    if(event.target.type === "checkbox") {
+      return;
+    }
+
     if (!task.locked) {
       setRedoingTask(task.completed ? task : null);
       setSelectedTask(task);
@@ -50,6 +58,13 @@ function ModuleTasks() {
   };
 
   const handleCompleteTask = (taskId) => {
+    enqueueSnackbar("Task completed!", { variant: "success" });
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+    });
+
     const updatedTasks = tasks.map((task, index) => {
       if (task.id === taskId) {
         task.completed = true;
@@ -65,6 +80,24 @@ function ModuleTasks() {
     );
     setSelectedTask(nextTask);
     setRedoingTask(null);
+  };
+
+  const handleUncheckedTask = (taskId) => {
+    updatingTasks(tasks, taskId, setTasks);
+  }
+
+  const toggleTask = (id)=>{
+    tasks.map(task=>{
+      if(task.id === id){
+        if(!task.completed)
+        {
+          handleCompleteTask(id);
+        }else{
+          handleUncheckedTask(id);
+        }
+      }
+      return task;
+    });
   };
 
   if (loading) {
@@ -109,8 +142,8 @@ function ModuleTasks() {
                   padding: 2,
                   borderRadius: 2,
                   display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
+                  flexDirection: "row",
+                  justifyContent: "flex-start",
                   alignItems: "center",
                   height: "120px",
                   backgroundColor:
@@ -127,13 +160,30 @@ function ModuleTasks() {
                   pointerEvents: task.locked ? "none" : "auto",
                   color: task.locked ? "grey" : "black",
                 }}
-                onClick={() => handleTaskSelection(task)}
+                onClick={(event) => handleTaskSelection(task,event)}
                 key={task.id}
               >
+                <div style={{ display: 'flex', alignItems: 'center', width: '15%' }}>
+                  <Checkbox
+                    icon={<RadioButtonUncheckedIcon />}
+                    checkedIcon={<CheckCircleIcon />}
+                    checked={task.completed}
+                    onChange={(event) => {
+                      event.stopPropagation();
+                      toggleTask(task.id)}}
+                    disabled={task.locked}
+                    sx={{
+                      padding: 0, 
+                      marginRight: '10px', 
+
+                    }}
+                  />
+                  <div style={{ flex: 1, textAlign: 'center', alignSelf:'center' }}>{task.name}</div>
+                </div>                 
                 {task.locked && (
                   <LockIcon style={{ position: "absolute", top: 8, left: 8 }} />
                 )}
-                {task.completed && (
+                {/* {task.completed && (
                   <CheckCircleIcon
                     style={{
                       position: "absolute",
@@ -142,7 +192,7 @@ function ModuleTasks() {
                       color: "green",
                     }}
                   />
-                )}
+                )} */}
                 {redoingTask && task === redoingTask && (
                   <RedoIcon
                     style={{
@@ -193,3 +243,14 @@ function ModuleTasks() {
 }
 
 export default ModuleTasks;
+
+function updatingTasks(tasks, taskId, setTasks) {
+  const updatedTasks = tasks.map((task) => {
+    if (task.id === taskId) {
+      task.completed = !task.completed;
+      task.selected = false;
+    }
+    return task;
+  });
+  setTasks(updatedTasks);
+}

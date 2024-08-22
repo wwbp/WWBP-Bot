@@ -18,7 +18,7 @@ from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseNotAllowed, JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponseNotAllowed, JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.apps import apps
 
 from rest_framework import status, viewsets, permissions
@@ -92,6 +92,7 @@ def user_profile(request):
             "interaction_mode": request.user.interaction_mode,
             "grade": request.user.grade if request.user.role == 'student' else None,
             "preferred_language": request.user.preferred_language if request.user.role == 'student' else None,
+            "preferred_name": request.user.preferred_name
         }
         return JsonResponse(user_data, status=200)
 
@@ -109,6 +110,8 @@ def user_profile(request):
                     'preferred_language', request.user.preferred_language)
             request.user.voice_speed = data.get(
                 'voice_speed', request.user.voice_speed)
+            request.user.preferred_name = data.get(
+                'preferred_name', request.user.preferred_name)
 
             request.user.save()
             return JsonResponse({"message": "Profile updated"}, status=200)
@@ -131,13 +134,17 @@ def register(request):
             password = data.get('password')
             role = data.get('role', 'student')  # Default role is 'student'
             voice_speed = data.get('voice_speed', 1.0)
+            preferred_name = data.get('preferred_name', username)
+            logger.debug(f"preferred_name: {preferred_name}")
 
             if not username or not email or not password:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             user = get_user_model().objects.create_user(
-                username=username, email=email, password=password, role=role, voice_speed=voice_speed)
+                username=username, email=email, password=password, role=role, voice_speed=voice_speed, preferred_name=preferred_name)
             user.save()
+
+            logger.debug(f"User created: {user}")
 
             # Log the user in after registration
             user = authenticate(request, username=username, password=password)
@@ -402,6 +409,27 @@ class GeneratePresignedURL(APIView):
         except Exception as e:
             logger.error(f"Error generating presigned URL: {e}")
             return Response({"error": str(e)}, status=500)
+        
+    @csrf_exempt
+    def get(self, request):
+        logger.debug(f"Request for presigned: {request.GET}")
+        file_name = request.GET.get('file_name')
+        if settings.ENVIRONMENT == 'local':
+            file_path = os.path.join(
+            settings.BASE_DIR, 'data/upload/', file_name)
+            return Response({
+                    "url": "local",
+                    "file_path": file_path
+                })
+
+        s3_client = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
+        presigned_url = s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': f"data/upload/{file_name}"},
+                ExpiresIn=3600
+            )
+        
+        return JsonResponse({'url': presigned_url})
 
 
 class LocalFileUploadView(APIView):
@@ -434,6 +462,22 @@ class LocalFileUploadView(APIView):
             return Response({"detail": f"Error saving the file: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'file_path': file_url}, status=status.HTTP_201_CREATED)
+
+    def get(self, request, *args, **kwargs):
+        # Sanitize the filename
+        filename = request.GET.get('file_name')
+        logger.debug(f"Request for file: {filename}")
+        # sanitized_filename = self.sanitize_filename(filename)
+        sanitized_filename = filename
+        # Use the same directory as in the post method
+        local_upload_dir = os.path.join(settings.BASE_DIR, 'data/upload/')
+        file_path = os.path.join(local_upload_dir, sanitized_filename)
+
+        # Check if the file exists and return it, otherwise raise 404
+        if os.path.exists(file_path):
+            return FileResponse(open(file_path, 'rb'), content_type='application/pdf')  # Adjust content_type as needed
+        else:
+            raise Http404("File not found")    
 
 
 class CSVCreateView(APIView):
