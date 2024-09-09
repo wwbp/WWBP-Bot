@@ -38,6 +38,11 @@ function ModuleTasks() {
         }));
         setTasks(updatedTasks);
         setLoading(false);
+
+        // Auto-select the first task if tasks are available
+        if (updatedTasks.length > 0) {
+          setSelectedTask(updatedTasks[0]);
+        }
       })
       .catch((error) => {
         enqueueSnackbar(error.message, { variant: "error" });
@@ -45,9 +50,8 @@ function ModuleTasks() {
       });
   }, [moduleId]);
 
-  const handleTaskSelection = (task,event) => {
-
-    if(event.target.type === "checkbox") {
+  const handleTaskSelection = (task, event) => {
+    if (event.target.type === "checkbox") {
       return;
     }
 
@@ -84,15 +88,14 @@ function ModuleTasks() {
 
   const handleUncheckedTask = (taskId) => {
     updatingTasks(tasks, taskId, setTasks);
-  }
+  };
 
-  const toggleTask = (id)=>{
-    tasks.map(task=>{
-      if(task.id === id){
-        if(!task.completed)
-        {
+  const toggleTask = (id) => {
+    tasks.map((task) => {
+      if (task.id === id) {
+        if (!task.completed) {
           handleCompleteTask(id);
-        }else{
+        } else {
           handleUncheckedTask(id);
         }
       }
@@ -160,39 +163,43 @@ function ModuleTasks() {
                   pointerEvents: task.locked ? "none" : "auto",
                   color: task.locked ? "grey" : "black",
                 }}
-                onClick={(event) => handleTaskSelection(task,event)}
+                onClick={(event) => handleTaskSelection(task, event)}
                 key={task.id}
               >
-                <div style={{ display: 'flex', alignItems: 'center', width: '15%' }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    width: "15%",
+                  }}
+                >
                   <Checkbox
                     icon={<RadioButtonUncheckedIcon />}
                     checkedIcon={<CheckCircleIcon />}
                     checked={task.completed}
                     onChange={(event) => {
                       event.stopPropagation();
-                      toggleTask(task.id)}}
+                      toggleTask(task.id);
+                    }}
                     disabled={task.locked}
                     sx={{
-                      padding: 0, 
-                      marginRight: '10px', 
-
+                      padding: 0,
+                      marginRight: "10px",
                     }}
                   />
-                  <div style={{ flex: 1, textAlign: 'center', alignSelf:'center' }}>{task.name}</div>
-                </div>                 
+                  <div
+                    style={{
+                      flex: 1,
+                      textAlign: "center",
+                      alignSelf: "center",
+                    }}
+                  >
+                    {task.name}
+                  </div>
+                </div>
                 {task.locked && (
                   <LockIcon style={{ position: "absolute", top: 8, left: 8 }} />
                 )}
-                {/* {task.completed && (
-                  <CheckCircleIcon
-                    style={{
-                      position: "absolute",
-                      top: 8,
-                      right: 8,
-                      color: "green",
-                    }}
-                  />
-                )} */}
                 {redoingTask && task === redoingTask && (
                   <RedoIcon
                     style={{
