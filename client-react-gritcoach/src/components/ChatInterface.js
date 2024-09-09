@@ -639,7 +639,7 @@ function ChatInterface({ session, clearChat }) {
       case "processing":
         return `${dots}`;
       case "speaking":
-        return "Bot is Speaking"
+        return "GritCoach is typing..."
       default:
         return "Type a message...";       
     }
