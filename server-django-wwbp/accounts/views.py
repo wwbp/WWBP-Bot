@@ -32,8 +32,8 @@ from rest_framework.views import exception_handler
 import openai
 import pytz
 
-from .models import User, Task, Module, ChatSession, SystemPrompt, UserCSVDownload
-from .serializers import UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, SystemPromptSerializer
+from .models import Persona, User, Task, Module, ChatSession, SystemPrompt, UserCSVDownload
+from .serializers import PersonaSerializer, UserSerializer, TaskSerializer, ModuleSerializer, ChatSessionSerializer, SystemPromptSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -289,6 +289,12 @@ class ModuleViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"Error duplicating module: {e}")
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PersonaViewSet(viewsets.ModelViewSet):
+    queryset = Persona.objects.all()
+    serializer_class = PersonaSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class TaskViewSet(viewsets.ModelViewSet):

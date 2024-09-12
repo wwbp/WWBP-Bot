@@ -9,9 +9,13 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
     title: "",
     content: "",
     instruction_prompt: "",
-    persona_prompt: "",
+    persona: {
+      name: "",
+      instructions: "",
+    },
     files: [],
   };
+
   const [taskData, setTaskData] = useState(initialTaskData);
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
@@ -22,7 +26,7 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
         title: task.title,
         content: task.content,
         instruction_prompt: task.instruction_prompt,
-        persona_prompt: task.persona_prompt,
+        persona: task.persona || { name: "", instructions: "" },
         files: task.files || [],
       });
     } else {
@@ -33,6 +37,14 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   const handleTaskChange = (e) => {
     const { name, value } = e.target;
     setTaskData({ ...taskData, [name]: value });
+  };
+
+  const handlePersonaChange = (e) => {
+    const { name, value } = e.target;
+    setTaskData({
+      ...taskData,
+      persona: { ...taskData.persona, [name]: value },
+    });
   };
 
   const handleFileUploaded = (filePath) => {
@@ -57,15 +69,34 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
     }
 
     try {
+      // Step 1: Create Persona
+      const personaResponse = await postData("/personas/", {
+        name: taskData.persona.name,
+        instructions: taskData.persona.instructions,
+      });
+
+      if (!personaResponse || !personaResponse.id) {
+        enqueueSnackbar("Failed to create persona.", { variant: "error" });
+        return;
+      }
+
+      const personaId = personaResponse.id;
+
+      // Step 2: Create or Update Task
+      const taskPayload = {
+        ...taskData,
+        persona_id: personaId, // Attach created persona
+        module: moduleId,
+      };
+
       if (task.id) {
-        const updatedTaskData = { ...taskData, module: moduleId };
-        await putData(`/tasks/${task.id}/`, updatedTaskData);
+        await putData(`/tasks/${task.id}/`, taskPayload);
         enqueueSnackbar("Task updated successfully!", { variant: "success" });
       } else {
-        const taskPayload = { ...taskData, module: moduleId };
         await postData(`/modules/${moduleId}/add_task/`, taskPayload);
         enqueueSnackbar("Task created successfully!", { variant: "success" });
       }
+
       onTaskCreated();
     } catch (error) {
       enqueueSnackbar(error.message, { variant: "error" });
@@ -119,18 +150,37 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
               rows={5}
             />
           </Grid>
+
+          {/* Persona creation form */}
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Persona Prompt"
-              name="persona_prompt"
-              value={taskData.persona_prompt}
-              onChange={handleTaskChange}
+              label="Persona Name"
+              name="name"
+              value={taskData.persona.name}
+              onChange={handlePersonaChange}
               margin="normal"
-              multiline
-              rows={5}
+              required
+              helperText={
+                submitted &&
+                !taskData.persona.name &&
+                "Persona name is required"
+              }
             />
           </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Persona Instructions"
+              name="instructions"
+              value={taskData.persona.instructions}
+              onChange={handlePersonaChange}
+              margin="normal"
+              multiline
+              rows={3}
+            />
+          </Grid>
+
           <Grid item xs={12}>
             <FileUpload
               existingFiles={taskData.files}

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Module, Task, ChatSession, SystemPrompt
+from .models import Persona, User, Module, Task, ChatSession, SystemPrompt
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -9,11 +9,22 @@ class UserSerializer(serializers.ModelSerializer):
                   'email', 'role', 'voice_speed', 'interaction_mode', 'grade', 'preferred_language', 'preferred_name']
 
 
+class PersonaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Persona
+        fields = ['id', 'name', 'instructions']
+
+
 class TaskSerializer(serializers.ModelSerializer):
+
+    persona = PersonaSerializer(read_only=True)
+    persona_id = serializers.PrimaryKeyRelatedField(
+        queryset=Persona.objects.all(), source='persona', write_only=True)
+
     class Meta:
         model = Task
         fields = ['id', 'title', 'content', 'instruction_prompt',
-                  'persona_prompt', 'module', 'files']
+                  'persona_prompt', 'persona', 'persona_id', 'module', 'files']
 
 
 class ModuleSerializer(serializers.ModelSerializer):
