@@ -19,7 +19,9 @@ import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 
-function ChatInterface({ session, clearChat }) {
+function ChatInterface({ session, clearChat, persona }) {
+  const botName = persona?.name || "GritCoach";
+
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");
@@ -42,7 +44,6 @@ function ChatInterface({ session, clearChat }) {
   const [loading, setLoading] = useState(true);
   const [chatState, setChatState] = useState("idle");
   const [dots, setDots] = useState("");
-
 
   const setupWebSocket = () => {
     if (ws.current) {
@@ -70,14 +71,11 @@ function ChatInterface({ session, clearChat }) {
         handleAudioMessage(event);
       } else if (chatMode === "text-then-audio") {
         handleTextThenAudio(event);
-      }
-      else if (chatMode === "audio-then-text") {
+      } else if (chatMode === "audio-then-text") {
         handleAudioThenText(event);
-      }
-      else if (chatMode === "audio-only") {
+      } else if (chatMode === "audio-only") {
         handleAudioOnly(event);
-      }
-        else {
+      } else {
         handleTextMessage(event);
       }
     };
@@ -95,34 +93,31 @@ function ChatInterface({ session, clearChat }) {
     };
   };
 
-  useEffect(()=>{
-    const fetchMode = async ()=>{
-      try{
-        const response = await fetchData('/profile')
-        console.log("Interaction mode is ", response)
-        setChatMode(response.interaction_mode)
-
-      }catch (err)
-      {
-        console.log("Error fetching")
-      }finally{
+  useEffect(() => {
+    const fetchMode = async () => {
+      try {
+        const response = await fetchData("/profile");
+        console.log("Interaction mode is ", response);
+        setChatMode(response.interaction_mode);
+      } catch (err) {
+        console.log("Error fetching");
+      } finally {
         setLoading(false);
       }
     };
     fetchMode();
-  },[]);
+  }, []);
 
-  useEffect(()=>{
-    if(chatState==="processing"){
-      const interval = setInterval(()=>{
-        setDots((prevDots)=>(prevDots.length<3?prevDots+".":""))
-      },100);
-      return ()=>clearInterval(interval);
-    }else
-    {
+  useEffect(() => {
+    if (chatState === "processing") {
+      const interval = setInterval(() => {
+        setDots((prevDots) => (prevDots.length < 3 ? prevDots + "." : ""));
+      }, 100);
+      return () => clearInterval(interval);
+    } else {
       setDots("");
     }
-  },[chatState]);
+  }, [chatState]);
 
   const handleTextMessage = (event) => {
     console.log("Handling text message:", event.data);
@@ -131,7 +126,7 @@ function ChatInterface({ session, clearChat }) {
     if (data.event === "on_parser_start") {
       setMessages((prevMessages) => [
         ...prevMessages,
-        { sender: "GritCoach", message: "", id: data.message_id },
+        { sender: botName, message: "", id: data.message_id },
       ]);
     } else if (data.event === "on_parser_stream") {
       setMessages((prevMessages) =>
@@ -194,7 +189,7 @@ function ChatInterface({ session, clearChat }) {
       } else if (data.event === "on_parser_start") {
         setMessages((prevMessages) => [
           ...prevMessages,
-          { sender: "GritCoach", message: "", id: data.message_id },
+          { sender: botName, message: "", id: data.message_id },
         ]);
       } else if (data.event === "on_parser_stream") {
         setMessages((prevMessages) =>
@@ -258,7 +253,7 @@ function ChatInterface({ session, clearChat }) {
         textBufferRef.current = [];
         setMessages((prevMessages) => [
           ...prevMessages,
-          { sender: "GritCoach", message: "", id: data.message_id },
+          { sender: botName, message: "", id: data.message_id },
         ]);
       } else if (data.event === "on_parser_stream") {
         setMessages((prevMessages) =>
@@ -271,8 +266,10 @@ function ChatInterface({ session, clearChat }) {
       } else if (data.event === "on_parser_end") {
         setMessageId((prevId) => prevId + 1);
         setMessage(tempMessageRef.current); // Restore temporary buffer
-        if(audioBuffer.current.length > 0){
-          const audioBlob = new Blob(audioBuffer.current, { type: "audio/webm" });
+        if (audioBuffer.current.length > 0) {
+          const audioBlob = new Blob(audioBuffer.current, {
+            type: "audio/webm",
+          });
           setAudioQueue([audioBlob]);
           audioBuffer.current = [];
         }
@@ -280,7 +277,6 @@ function ChatInterface({ session, clearChat }) {
     }
   };
 
-  
   const handleAudioOnly = async (event) => {
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
@@ -326,14 +322,22 @@ function ChatInterface({ session, clearChat }) {
         setMessage("");
       } else if (data.event === "on_parser_start") {
         textBufferRef.current = [];
-        setTextBuffer((prevBuffer)=>[...prevBuffer, { sender: "GritCoach", message: "", id: data.message_id }]);
+        setTextBuffer((prevBuffer) => [
+          ...prevBuffer,
+          { sender: botName, message: "", id: data.message_id },
+        ]);
         // setMessages((prevMessages) => [
         //   ...prevMessages,
         //   { sender: "GritCoach", message: "", id: data.message_id },
         // ]);
       } else if (data.event === "on_parser_stream") {
-        setTextBuffer((prevBuffer) => prevBuffer.map((msg)=>msg.id === data.message_id?
-        { ...msg, message: msg.message + data.value}:msg) );
+        setTextBuffer((prevBuffer) =>
+          prevBuffer.map((msg) =>
+            msg.id === data.message_id
+              ? { ...msg, message: msg.message + data.value }
+              : msg
+          )
+        );
         // setMessages((prevMessages) =>
         //   prevMessages.map((msg) =>
         //     msg.id === data.message_id
@@ -395,17 +399,21 @@ function ChatInterface({ session, clearChat }) {
         setMessage("");
       } else if (data.event === "on_parser_start") {
         textBufferRef.current = [];
-        textBufferRef.current.push({ sender: "GritCoach", message: "", id: data.message_id });
+        textBufferRef.current.push({
+          sender: botName,
+          message: "",
+          id: data.message_id,
+        });
         // setMessages((prevMessages) => [
         //   ...prevMessages,
         //   { sender: "GritCoach", message: "", id: data.message_id },
         // ]);
       } else if (data.event === "on_parser_stream") {
         textBufferRef.current = textBufferRef.current.map((msg) =>
-        msg.id === data.message_id
-          ? { ...msg, message: msg.message + data.value }
-          : msg
-      );
+          msg.id === data.message_id
+            ? { ...msg, message: msg.message + data.value }
+            : msg
+        );
         // setMessages((prevMessages) =>
         //   prevMessages.map((msg) =>
         //     msg.id === data.message_id
@@ -414,15 +422,15 @@ function ChatInterface({ session, clearChat }) {
         //   )
         // );
       } else if (data.event === "on_parser_end") {
-        console.log("On parser end textBuffer is ", textBufferRef.current)
-        console.log("On parser end messages is ", messages)
+        console.log("On parser end textBuffer is ", textBufferRef.current);
+        console.log("On parser end messages is ", messages);
         setMessageId((prevId) => prevId + 1);
         // setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
         // setTextBuffer([]);
         setMessage(""); // Restore temporary buffer
       }
     }
-  };  
+  };
 
   const setupPeerConnection = () => {
     peerConnection.current = new RTCPeerConnection();
@@ -460,7 +468,7 @@ function ChatInterface({ session, clearChat }) {
         peerConnection.current.close();
       }
     };
-  }, [session.id, chatMode,loading]);
+  }, [session.id, chatMode, loading]);
 
   useEffect(() => {
     if (clearChat) {
@@ -476,14 +484,13 @@ function ChatInterface({ session, clearChat }) {
     if (!isPlaying && audioQueue.length > 0) {
       playNextAudio();
     }
-    if(!isPlaying && !audioQueue.length)
-    {
+    if (!isPlaying && !audioQueue.length) {
       setMessages((prevMessages) => {
         const updatedMessages = [...prevMessages, ...textBufferRef.current];
         console.log("Updated messages:", updatedMessages);
         return updatedMessages;
       });
-    }    
+    }
   }, [audioQueue, isPlaying]);
 
   useEffect(() => {
@@ -632,16 +639,16 @@ function ChatInterface({ session, clearChat }) {
     }
   };
 
-  const getChatStateText = () =>{
-    switch(chatState){
+  const getChatStateText = () => {
+    switch (chatState) {
       case "idle":
         return "Type a message...";
       case "processing":
         return `${dots}`;
       case "speaking":
-        return "GritCoach is typing..."
+        return `${botName} is typing...`;
       default:
-        return "Type a message...";       
+        return "Type a message...";
     }
   };
 
@@ -692,11 +699,11 @@ function ChatInterface({ session, clearChat }) {
               key={index}
               display="flex"
               justifyContent={
-                msg.sender === "GritCoach" ? "flex-start" : "flex-end"
+                msg.sender === botName ? "flex-start" : "flex-end"
               }
               mb={2}
             >
-              {msg.sender === "GritCoach" && (
+              {msg.sender === botName && (
                 <Avatar
                   alt="bot Avatar"
                   src={botAvatar}
@@ -704,7 +711,7 @@ function ChatInterface({ session, clearChat }) {
                 />
               )}
               <Box
-                bgcolor={msg.sender === "GritCoach" ? "#f0f0f0" : "#cfe8fc"}
+                bgcolor={msg.sender === botName ? "#f0f0f0" : "#cfe8fc"}
                 p={1}
                 borderRadius={2}
                 maxWidth="60%"
