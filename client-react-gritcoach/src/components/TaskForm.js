@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { postData, putData } from "../utils/api";
-import { TextField, Box, Button, Grid } from "@mui/material";
+import { postData, putData, fetchData } from "../utils/api";
+import {
+  TextField,
+  Box,
+  Button,
+  Grid,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+} from "@mui/material";
 import { useSnackbar } from "notistack";
 import FileUpload from "./FileUpload";
 
@@ -10,6 +19,7 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
     content: "",
     instruction_prompt: "",
     persona: {
+      id: "",
       name: "",
       instructions: "",
     },
@@ -17,16 +27,28 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   };
 
   const [taskData, setTaskData] = useState(initialTaskData);
+  const [personas, setPersonas] = useState([]); // To store list of personas
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
+    // Fetch existing personas on load
+    const fetchPersonas = async () => {
+      try {
+        const response = await fetchData("/personas/");
+        setPersonas(response || []);
+      } catch (error) {
+        enqueueSnackbar("Failed to fetch personas", { variant: "error" });
+      }
+    };
+    fetchPersonas();
+
     if (task.id) {
       setTaskData({
         title: task.title,
         content: task.content,
         instruction_prompt: task.instruction_prompt,
-        persona: task.persona || { name: "", instructions: "" },
+        persona: task.persona || { id: "", name: "", instructions: "" },
         files: task.files || [],
       });
     } else {
@@ -45,6 +67,28 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
       ...taskData,
       persona: { ...taskData.persona, [name]: value },
     });
+  };
+
+  const handlePersonaSelect = (e) => {
+    const selectedPersonaId = e.target.value;
+    if (selectedPersonaId) {
+      // Find selected persona and update form fields
+      const selectedPersona = personas.find((p) => p.id === selectedPersonaId);
+      setTaskData({
+        ...taskData,
+        persona: {
+          id: selectedPersona.id,
+          name: selectedPersona.name,
+          instructions: selectedPersona.instructions,
+        },
+      });
+    } else {
+      // Reset to allow new persona creation
+      setTaskData({
+        ...taskData,
+        persona: { id: "", name: "", instructions: "" },
+      });
+    }
   };
 
   const handleFileUploaded = (filePath) => {
@@ -69,23 +113,34 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
     }
 
     try {
-      // Step 1: Create Persona
-      const personaResponse = await postData("/personas/", {
-        name: taskData.persona.name,
-        instructions: taskData.persona.instructions,
-      });
+      let personaId = taskData.persona.id;
 
-      if (!personaResponse || !personaResponse.id) {
-        enqueueSnackbar("Failed to create persona.", { variant: "error" });
-        return;
+      // Step 1: Create or Update Persona
+      if (personaId) {
+        // Update existing persona
+        await putData(`/personas/${personaId}/`, {
+          name: taskData.persona.name,
+          instructions: taskData.persona.instructions,
+        });
+      } else {
+        // Create a new persona
+        const personaResponse = await postData("/personas/", {
+          name: taskData.persona.name,
+          instructions: taskData.persona.instructions,
+        });
+
+        if (!personaResponse || !personaResponse.id) {
+          enqueueSnackbar("Failed to create persona.", { variant: "error" });
+          return;
+        }
+
+        personaId = personaResponse.id;
       }
-
-      const personaId = personaResponse.id;
 
       // Step 2: Create or Update Task
       const taskPayload = {
         ...taskData,
-        persona_id: personaId, // Attach created persona
+        persona_id: personaId, // Attach created or updated persona
         module: moduleId,
       };
 
@@ -151,7 +206,28 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
             />
           </Grid>
 
-          {/* Persona creation form */}
+          {/* Persona Dropdown */}
+          <Grid item xs={12}>
+            <FormControl fullWidth>
+              <InputLabel shrink>Select Persona</InputLabel>{" "}
+              {/* Added shrink */}
+              <Select
+                value={taskData.persona.id || ""}
+                onChange={handlePersonaSelect}
+                displayEmpty
+              >
+                <MenuItem value="">
+                  <em>Create New Persona</em>
+                </MenuItem>
+                {personas.map((persona) => (
+                  <MenuItem key={persona.id} value={persona.id}>
+                    {persona.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
           <Grid item xs={12}>
             <TextField
               fullWidth
