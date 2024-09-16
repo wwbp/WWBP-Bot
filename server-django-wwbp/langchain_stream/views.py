@@ -14,7 +14,7 @@ from langchain_stream.tasks import save_message_to_transcript, get_file_streams,
 from openai import OpenAI
 
 from django.core.cache import cache
- 
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -56,9 +56,20 @@ class PromptHook:
         try:
             session = ChatSession.objects.get(id=session_id)
             task = session.task
-            return task.content, task.instruction_prompt, task.persona_prompt
+            return task.content, task.instruction_prompt
         except Exception as e:
             logger.error(f"Error fetching task prompts: {e}")
+
+    @sync_to_async
+    def get_persona_prompts(self, session_id):
+        ChatSession = apps.get_model('accounts', 'ChatSession')
+        try:
+            session = ChatSession.objects.get(id=session_id)
+            task = session.task
+            persona = task.persona
+            return persona.name, persona.instructions
+        except Exception as e:
+            logger.error(f"Error fetching persona prompts: {e}")
 
     @sync_to_async
     def get_user_profile(self, session_id):
@@ -80,16 +91,27 @@ class PromptHook:
     async def get_cumulative_setup_instructions(self, session_id):
         try:
             system_prompts = await self.get_system_prompt()
-            task_content, task_instruction, task_persona = await self.get_task_prompts(session_id)
+            task_content, task_instruction = await self.get_task_prompts(session_id)
+            persona_name, persona_prompt = await self.get_persona_prompts(session_id)
             user_profile_details = await self.get_user_profile(session_id)
             module_content = await self.get_module_prompts(session_id)
             return f"""
-                System: {system_prompts}
-                Module Content: {module_content}
-                Task Content: {task_content}
-                Task Instruction: {task_instruction}
-                Task Persona: {task_persona}
-                User Profile: {user_profile_details}
+                ### System Guidelines:
+                {system_prompts}
+
+                ### Module Content:
+                {module_content}
+
+                ### Task Details:
+                - **Content**: {task_content}
+                - **Instructions**: {task_instruction}
+
+                ### Persona Information:
+                - **Name**: {persona_name}
+                - **Persona Prompt**: {persona_prompt}
+
+                ### User Profile:
+                {user_profile_details}
             """
         except Exception as e:
             logger.error(f"Error creating cumulative setup instructions: {e}")
@@ -455,7 +477,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                 await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": assistant_message_id})
 
             else:
-                initial_message = cache.get(f'input_not_clear_{self.session_id}', False)
+                initial_message = cache.get(
+                    f'input_not_clear_{self.session_id}', False)
                 if not initial_message:
                     initial_message = "This is an invalid message. Tell the user Sorry and that you couldn't hear them."
                 await self.session_manager.create_user_message(message=initial_message)
@@ -463,7 +486,6 @@ class AudioConsumer(BaseWebSocketConsumer):
                 await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": assistant_message_id})
                 cache.set(f'input_not_clear_{self.session_id}', True)
                 # await self.send_audio_chunk(await self.text_to_speech("Sorry, I couldn't hear you."))
-
 
     async def process_audio(self, audio_data):
         logger.debug(f"Audio data size: {len(audio_data)} bytes")
@@ -553,20 +575,21 @@ class AudioConsumer(BaseWebSocketConsumer):
     def process_text_for_tts(self, text):
         text = re.sub(r'[,.!?;*#]', '', text)
         return text
-    
+
     async def fetch_voice_speed(self):
         cache_key = f"voice_speed_{self.session_id}"
         voice_speed = cache.get(cache_key)
 
         if voice_speed is None:
-            logger.debug(f"Fetching voice speed for session_id={self.session_id}")
+            logger.debug(
+                f"Fetching voice speed for session_id={self.session_id}")
             user_profile = await self.session_manager.get_user_profile(self.session_id)
             voice_speed = float(user_profile['voice_speed'])
             cache.set(cache_key, voice_speed, timeout=3600)
         else:
-            logger.debug(f"Using cached voice speed: {voice_speed}")      
+            logger.debug(f"Using cached voice speed: {voice_speed}")
 
-        return voice_speed    
+        return voice_speed
 
     async def text_to_speech(self, text):
         client = texttospeech.TextToSpeechClient()
