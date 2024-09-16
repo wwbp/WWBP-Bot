@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import FileUpload from "./FileUpload";
+import AvatarUpload from "./AvatarUpload"; // Import the AvatarUpload component
 
 const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   const initialTaskData = {
@@ -21,6 +22,7 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
       id: "",
       name: "",
       instructions: "",
+      avatar_url: "", // Add avatar field to task data
     },
     files: [],
   };
@@ -29,6 +31,10 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   const [personas, setPersonas] = useState([]); // To store list of personas
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    console.log("Persona Avatar:", taskData.persona.avatar_url);
+  }, [taskData.persona.avatar_url]);
 
   useEffect(() => {
     // Fetch existing personas on load
@@ -46,7 +52,12 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
       setTaskData({
         title: task.title,
         content: task.content,
-        persona: task.persona || { id: "", name: "", instructions: "" },
+        persona: task.persona || {
+          id: "",
+          name: "",
+          instructions: "",
+          avatar_url: "",
+        },
         files: task.files || [],
       });
     } else {
@@ -70,7 +81,6 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   const handlePersonaSelect = (e) => {
     const selectedPersonaId = e.target.value;
     if (selectedPersonaId) {
-      // Find selected persona and update form fields
       const selectedPersona = personas.find((p) => p.id === selectedPersonaId);
       setTaskData({
         ...taskData,
@@ -78,13 +88,13 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
           id: selectedPersona.id,
           name: selectedPersona.name,
           instructions: selectedPersona.instructions,
+          avatar_url: selectedPersona.avatar_url, // Load the avatar if it exists
         },
       });
     } else {
-      // Reset to allow new persona creation
       setTaskData({
         ...taskData,
-        persona: { id: "", name: "", instructions: "" },
+        persona: { id: "", name: "", instructions: "", avatar_url: "" },
       });
     }
   };
@@ -97,6 +107,25 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
     setTaskData({
       ...taskData,
       files: taskData.files.filter((file) => file !== filePath),
+    });
+  };
+
+  const handleAvatarUploaded = (filePath) => {
+    let fullUrl = filePath;
+    if (!filePath.startsWith("http")) {
+      const baseUrl = process.env.REACT_APP_API_URL;
+      fullUrl = `${baseUrl}${filePath}`;
+    }
+    setTaskData({
+      ...taskData,
+      persona: { ...taskData.persona, avatar_url: fullUrl },
+    });
+  };
+
+  const handleAvatarRemoved = () => {
+    setTaskData({
+      ...taskData,
+      persona: { ...taskData.persona, avatar_url: "" },
     });
   };
 
@@ -115,16 +144,16 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
 
       // Step 1: Create or Update Persona
       if (personaId) {
-        // Update existing persona
         await putData(`/personas/${personaId}/`, {
           name: taskData.persona.name,
           instructions: taskData.persona.instructions,
+          avatar_url: taskData.persona.avatar_url, // Include avatar in update
         });
       } else {
-        // Create a new persona
         const personaResponse = await postData("/personas/", {
           name: taskData.persona.name,
           instructions: taskData.persona.instructions,
+          avatar_url: taskData.persona.avatar_url, // Include avatar in create
         });
 
         if (!personaResponse || !personaResponse.id) {
@@ -138,7 +167,7 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
       // Step 2: Create or Update Task
       const taskPayload = {
         ...taskData,
-        persona_id: personaId, // Attach created or updated persona
+        persona_id: personaId,
         module: moduleId,
       };
 
@@ -191,11 +220,11 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
               }
             />
           </Grid>
+
           {/* Persona Dropdown */}
           <Grid item xs={12}>
             <FormControl fullWidth>
-              <InputLabel shrink>Select Persona</InputLabel>{" "}
-              {/* Added shrink */}
+              <InputLabel shrink>Select Persona</InputLabel>
               <Select
                 value={taskData.persona.id || ""}
                 onChange={handlePersonaSelect}
@@ -229,6 +258,7 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
               }
             />
           </Grid>
+
           <Grid item xs={12}>
             <TextField
               fullWidth
@@ -239,6 +269,15 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
               margin="normal"
               multiline
               rows={3}
+            />
+          </Grid>
+
+          {/* Avatar Upload */}
+          <Grid item xs={12}>
+            <AvatarUpload
+              existingAvatar={taskData.persona.avatar_url}
+              onAvatarUploaded={handleAvatarUploaded}
+              onAvatarRemoved={handleAvatarRemoved}
             />
           </Grid>
 

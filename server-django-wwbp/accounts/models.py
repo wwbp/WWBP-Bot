@@ -33,6 +33,7 @@ class Module(models.Model):
 class Persona(models.Model):
     name = models.CharField(max_length=100)
     instructions = models.TextField(blank=True, null=True)
+    avatar_url = models.URLField(max_length=255, blank=True, null=True)
     is_deleted = models.BooleanField(default=False)
 
     def delete(self, *args, **kwargs):

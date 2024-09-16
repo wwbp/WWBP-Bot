@@ -12,7 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
 class PersonaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Persona
-        fields = ['id', 'name', 'instructions']
+        fields = ['id', 'name', 'instructions', 'avatar_url']
 
 
 class TaskSerializer(serializers.ModelSerializer):

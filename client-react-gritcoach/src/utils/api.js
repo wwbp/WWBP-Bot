@@ -138,10 +138,7 @@ export const createWebSocket = (sessionId, isAudioMode) => {
   return new WebSocket(`${wsUrl}${endpoint}`);
 };
 
-export const postFile = async (filePath, file) => {
-  const formData = new FormData();
-  formData.append("file", file);
-
+export const postFile = async (filePath, formData) => {
   try {
     const response = await api.post(filePath, formData, {
       headers: {
@@ -165,11 +162,13 @@ export async function fetchFile(url = "") {
   }
 }
 
-export async function getPresignedUrl(fileName, fileType) {
+export async function getPresignedUrl(fileName, fileType, isAvatar = false) {
   try {
-    const response = await api.post("/generate_presigned_url/", {
+    const urlPath = isAvatar ? "/get-avatar-url/" : "/generate_presigned_url/";
+    const response = await api.post(urlPath, {
       file_name: fileName,
       file_type: fileType,
+      is_avatar: isAvatar, // Pass the flag to differentiate between avatars and other files
     });
     return response.data;
   } catch (error) {

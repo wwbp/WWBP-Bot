@@ -14,13 +14,14 @@ import MicIcon from "@mui/icons-material/Mic";
 import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import botAvatar from "../assets/bot-avatar.png";
+import defaultBotAvatar from "../assets/bot-avatar.png";
 import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
+  const botAvatar = persona?.avatar || defaultBotAvatar;
 
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
@@ -45,6 +46,11 @@ function ChatInterface({ session, clearChat, persona }) {
   const [chatState, setChatState] = useState("idle");
   const [dots, setDots] = useState("");
 
+  useEffect(() => {
+    console.log("Persona data:", persona);
+    console.log("Bot avatar URL:", botAvatar);
+  }, [persona, botAvatar]);
+
   const setupWebSocket = () => {
     if (ws.current) {
       ws.current.close();
@@ -54,6 +60,7 @@ function ChatInterface({ session, clearChat, persona }) {
 
     ws.current.onopen = () => {
       console.log("WebSocket connected");
+      
       setIsWsConnected(true);
       if (chatMode === "audio") {
         setupPeerConnection();

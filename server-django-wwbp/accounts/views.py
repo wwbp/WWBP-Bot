@@ -388,13 +388,17 @@ class GeneratePresignedURL(APIView):
         try:
             file_name = request.data.get('file_name')
             file_type = request.data.get('file_type')
+            # Flag to check if this is for avatars
+            is_avatar = request.data.get('is_avatar', False)
 
             if not file_name or not file_type:
                 return Response({"error": "File name and type are required."}, status=400)
 
             if settings.ENVIRONMENT == 'local':
+                # Different directories for avatars and other files
+                upload_dir = 'data/avatars/' if is_avatar else 'data/upload/'
                 file_path = os.path.join(
-                    settings.BASE_DIR, 'data/upload/', file_name)
+                    settings.BASE_DIR, upload_dir, file_name)
                 return Response({
                     "url": "local",
                     "file_path": file_path
@@ -402,40 +406,21 @@ class GeneratePresignedURL(APIView):
 
             s3_client = boto3.client(
                 's3', region_name=settings.AWS_S3_REGION_NAME)
+            # Correct paths for avatars and other files
+            upload_key = f"avatars/{file_name}" if is_avatar else f"data/upload/{file_name}"
+
             presigned_post = s3_client.generate_presigned_post(
                 Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-                Key=f"data/upload/{file_name}",
+                Key=upload_key,
                 Fields={"Content-Type": file_type},
-                Conditions=[
-                    {"Content-Type": file_type}
-                ],
+                Conditions=[{"Content-Type": file_type}],
                 ExpiresIn=3600
             )
             return Response(presigned_post)
+
         except Exception as e:
             logger.error(f"Error generating presigned URL: {e}")
             return Response({"error": str(e)}, status=500)
-        
-    @csrf_exempt
-    def get(self, request):
-        logger.debug(f"Request for presigned: {request.GET}")
-        file_name = request.GET.get('file_name')
-        if settings.ENVIRONMENT == 'local':
-            file_path = os.path.join(
-            settings.BASE_DIR, 'data/upload/', file_name)
-            return Response({
-                    "url": "local",
-                    "file_path": file_path
-                })
-
-        s3_client = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
-        presigned_url = s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': settings.AWS_STORAGE_BUCKET_NAME, 'Key': f"data/upload/{file_name}"},
-                ExpiresIn=3600
-            )
-        
-        return JsonResponse({'url': presigned_url})
 
 
 class LocalFileUploadView(APIView):
@@ -448,21 +433,36 @@ class LocalFileUploadView(APIView):
         return filename
 
     def post(self, request, *args, **kwargs):
+        # Debugging log to check request.FILES and request.data
+        print("FILES:", request.FILES)
+        print("DATA:", request.data)
+
         if 'file' not in request.FILES:
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         file = request.FILES['file']
-
         sanitized_filename = self.sanitize_filename(file.name)
 
+        # Check if the file is an avatar
+        is_avatar = request.data.get('is_avatar', False)
+
         try:
-            local_upload_dir = os.path.join(settings.BASE_DIR, 'data/upload/')
+            # Select the correct directory based on whether the file is an avatar or not
+            if is_avatar:
+                local_upload_dir = os.path.join(
+                    settings.BASE_DIR, 'data/avatars/')
+            else:
+                local_upload_dir = os.path.join(
+                    settings.BASE_DIR, 'data/upload/')
+
             os.makedirs(local_upload_dir, exist_ok=True)
+
             file_path = os.path.join(local_upload_dir, sanitized_filename)
             with open(file_path, 'wb') as f:
                 for chunk in file.chunks():
                     f.write(chunk)
-            file_url = file_path
+
+            file_url = file_path  # This is the local file path, which can be returned as the file URL
         except Exception as e:
             logger.error(f"Error saving the file: {e}")
             return Response({"detail": f"Error saving the file: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -473,17 +473,26 @@ class LocalFileUploadView(APIView):
         # Sanitize the filename
         filename = request.GET.get('file_name')
         logger.debug(f"Request for file: {filename}")
-        # sanitized_filename = self.sanitize_filename(filename)
         sanitized_filename = filename
-        # Use the same directory as in the post method
-        local_upload_dir = os.path.join(settings.BASE_DIR, 'data/upload/')
+
+        # Check if the file is an avatar
+        # Ensure consistent directory lookup
+        is_avatar = request.GET.get('is_avatar', False)
+
+        # Use the correct directory
+        if is_avatar:
+            local_upload_dir = os.path.join(settings.BASE_DIR, 'data/avatars/')
+        else:
+            local_upload_dir = os.path.join(settings.BASE_DIR, 'data/upload/')
+
         file_path = os.path.join(local_upload_dir, sanitized_filename)
 
         # Check if the file exists and return it, otherwise raise 404
         if os.path.exists(file_path):
-            return FileResponse(open(file_path, 'rb'), content_type='application/pdf')  # Adjust content_type as needed
+            # Adjust content_type as needed
+            return FileResponse(open(file_path, 'rb'), content_type='application/octet-stream')
         else:
-            raise Http404("File not found")    
+            raise Http404("File not found")
 
 
 class CSVCreateView(APIView):
@@ -674,3 +683,46 @@ class CSVServeView(APIView):
             except Exception as e:
                 logger.error(f"Error generating presigned URL: {e}")
                 return HttpResponse(status=500)
+
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_avatar(request):
+    try:
+        file_name = request.data.get('file_name')
+        file_type = request.data.get('file_type')
+
+        print("File Name:", file_name, "File Type:",
+              file_type)  # Add logging here
+
+        if not file_name or not file_type:
+            return Response({"error": "File name and type are required."}, status=400)
+
+        if settings.ENVIRONMENT == 'local':
+            # Correct directory for avatars
+            local_upload_dir = os.path.join(settings.BASE_DIR, 'data/avatars/')
+            os.makedirs(local_upload_dir, exist_ok=True)
+            file_path = os.path.join(local_upload_dir, file_name)
+
+            return Response({
+                "url": "local",  # Flag for frontend to know it's local
+                "file_path": file_path
+            })
+
+        # For production (using S3)
+        s3_client = boto3.client('s3', region_name=settings.AWS_S3_REGION_NAME)
+        presigned_post = s3_client.generate_presigned_post(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+            # Make sure the avatar goes to the correct folder
+            Key=f"avatars/{file_name}",
+            Fields={"Content-Type": file_type},
+            Conditions=[{"Content-Type": file_type}],
+            ExpiresIn=3600  # 1 hour expiration
+        )
+
+        return Response(presigned_post)
+
+    except Exception as e:
+        logger.error(f"Error generating presigned URL for avatar: {e}")
+        return Response({"error": str(e)}, status=500)
