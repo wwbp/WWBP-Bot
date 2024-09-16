@@ -17,7 +17,6 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   const initialTaskData = {
     title: "",
     content: "",
-    instruction_prompt: "",
     persona: {
       id: "",
       name: "",
@@ -47,7 +46,6 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
       setTaskData({
         title: task.title,
         content: task.content,
-        instruction_prompt: task.instruction_prompt,
         persona: task.persona || { id: "", name: "", instructions: "" },
         files: task.files || [],
       });
@@ -193,19 +191,6 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
               }
             />
           </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Instruction Prompt"
-              name="instruction_prompt"
-              value={taskData.instruction_prompt}
-              onChange={handleTaskChange}
-              margin="normal"
-              multiline
-              rows={5}
-            />
-          </Grid>
-
           {/* Persona Dropdown */}
           <Grid item xs={12}>
             <FormControl fullWidth>
