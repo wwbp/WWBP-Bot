@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { IconButton, Avatar, Box } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import { getPresignedUrl, postFile } from "../utils/api"; // Use the same utils
+import { getPresignedUrl, postFile, uploadToS3 } from "../utils/api"; // Use the same utils
 
 const AvatarUpload = ({ existingAvatar, onAvatarUploaded }) => {
   const [uploadedAvatar, setUploadedAvatar] = useState(existingAvatar);
