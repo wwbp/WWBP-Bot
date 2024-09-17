@@ -30,6 +30,17 @@ class Module(models.Model):
         self.save()
 
 
+class Persona(models.Model):
+    name = models.CharField(max_length=100)
+    instructions = models.TextField(blank=True, null=True)
+    avatar_url = models.URLField(max_length=255, blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)
+
+    def delete(self, *args, **kwargs):
+        self.is_deleted = True
+        self.save()
+
+
 class Task(models.Model):
     title = models.CharField(max_length=100)
     content = models.TextField()
@@ -37,6 +48,7 @@ class Task(models.Model):
         Module, on_delete=models.RESTRICT, related_name='tasks')
     instruction_prompt = models.TextField(blank=True, null=True)
     persona_prompt = models.TextField(blank=True, null=True)
+    persona = models.ForeignKey(Persona, on_delete=models.RESTRICT, related_name='tasks', null=True, blank=True)
     files = models.JSONField(default=list, blank=True, null=True)
     is_deleted = models.BooleanField(default=False)
 

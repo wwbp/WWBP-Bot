@@ -24,18 +24,22 @@ const FileUpload = ({ existingFiles = [], onFileUploaded, onFileRemoved }) => {
       try {
         const fileName = file.name;
         const fileType = file.type;
+
+        // Step 1: Get presigned URL (non-avatar files)
         const presignedData = await getPresignedUrl(fileName, fileType);
 
         if (presignedData.url === "local") {
+          const formData = new FormData();
+          formData.append("file", file);
           // Handle local upload
-          const response = await postFile("/local_upload/", file);
+          const response = await postFile("/local_upload/", formData);
           setUploadedFiles((prevFiles) => [...prevFiles, response.file_path]);
           onFileUploaded(response.file_path);
         } else {
           // Handle S3 upload
           const { url, fields } = presignedData;
           await uploadToS3(url, fields, file);
-          const fileUrl = `${url}${fields.key}`;
+          const fileUrl = `${url}/${fields.key}`;
           setUploadedFiles((prevFiles) => [...prevFiles, fileUrl]);
           onFileUploaded(fileUrl);
         }
