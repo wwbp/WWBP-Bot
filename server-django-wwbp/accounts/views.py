@@ -433,27 +433,20 @@ class LocalFileUploadView(APIView):
         return filename
 
     def post(self, request, *args, **kwargs):
-        # Debugging log to check request.FILES and request.data
-        print("FILES:", request.FILES)
-        print("DATA:", request.data)
-
         if 'file' not in request.FILES:
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
 
         file = request.FILES['file']
         sanitized_filename = self.sanitize_filename(file.name)
 
-        # Check if the file is an avatar
         is_avatar = request.data.get('is_avatar', False)
 
         try:
-            # Select the correct directory based on whether the file is an avatar or not
             if is_avatar:
                 local_upload_dir = os.path.join(
-                    settings.BASE_DIR, 'data/avatars/')
+                    settings.MEDIA_ROOT, 'avatars/')
             else:
-                local_upload_dir = os.path.join(
-                    settings.BASE_DIR, 'data/upload/')
+                local_upload_dir = os.path.join(settings.MEDIA_ROOT, 'upload/')
 
             os.makedirs(local_upload_dir, exist_ok=True)
 
@@ -462,7 +455,8 @@ class LocalFileUploadView(APIView):
                 for chunk in file.chunks():
                     f.write(chunk)
 
-            file_url = file_path  # This is the local file path, which can be returned as the file URL
+            file_url = f"{settings.MEDIA_URL}avatars/{sanitized_filename}" if is_avatar else f"{settings.MEDIA_URL}upload/{sanitized_filename}"
+
         except Exception as e:
             logger.error(f"Error saving the file: {e}")
             return Response({"detail": f"Error saving the file: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -693,21 +687,18 @@ def upload_avatar(request):
         file_name = request.data.get('file_name')
         file_type = request.data.get('file_type')
 
-        print("File Name:", file_name, "File Type:",
-              file_type)  # Add logging here
-
         if not file_name or not file_type:
             return Response({"error": "File name and type are required."}, status=400)
 
         if settings.ENVIRONMENT == 'local':
-            # Correct directory for avatars
-            local_upload_dir = os.path.join(settings.BASE_DIR, 'data/avatars/')
+            local_upload_dir = os.path.join(settings.MEDIA_ROOT, 'avatars/')
             os.makedirs(local_upload_dir, exist_ok=True)
-            file_path = os.path.join(local_upload_dir, file_name)
+            # file_path = os.path.join(local_upload_dir, file_name)
 
             return Response({
-                "url": "local",  # Flag for frontend to know it's local
-                "file_path": file_path
+                "url": "local",
+                # Return URL, not file path
+                "file_path": f"{settings.MEDIA_URL}avatars/{file_name}"
             })
 
         # For production (using S3)

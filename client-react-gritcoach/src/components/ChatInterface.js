@@ -21,7 +21,7 @@ import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
-  const botAvatar = persona?.avatar || defaultBotAvatar;
+  const botAvatar = persona?.avatar_url || defaultBotAvatar;
 
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
@@ -60,7 +60,7 @@ function ChatInterface({ session, clearChat, persona }) {
 
     ws.current.onopen = () => {
       console.log("WebSocket connected");
-      
+
       setIsWsConnected(true);
       if (chatMode === "audio") {
         setupPeerConnection();
