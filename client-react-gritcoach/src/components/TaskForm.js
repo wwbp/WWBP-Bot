@@ -9,10 +9,12 @@ import {
   Select,
   InputLabel,
   FormControl,
+  Typography,
+  Paper,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import FileUpload from "./FileUpload";
-import AvatarUpload from "./AvatarUpload"; // Import the AvatarUpload component
+import AvatarUpload from "./AvatarUpload";
 
 const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   const initialTaskData = {
@@ -22,22 +24,18 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
       id: "",
       name: "",
       instructions: "",
-      avatar_url: "", // Add avatar field to task data
+      avatar_url: "",
     },
     files: [],
   };
 
   const [taskData, setTaskData] = useState(initialTaskData);
-  const [personas, setPersonas] = useState([]); // To store list of personas
+  const [personas, setPersonas] = useState([]);
   const [submitted, setSubmitted] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
-    console.log("Persona Avatar:", taskData.persona.avatar_url);
-  }, [taskData.persona.avatar_url]);
-
-  useEffect(() => {
-    // Fetch existing personas on load
+    // Fetch existing personas and task details
     const fetchPersonas = async () => {
       try {
         const response = await fetchData("/personas/");
@@ -48,6 +46,7 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
     };
     fetchPersonas();
 
+    // If task exists, populate the fields
     if (task.id) {
       setTaskData({
         title: task.title,
@@ -88,7 +87,7 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
           id: selectedPersona.id,
           name: selectedPersona.name,
           instructions: selectedPersona.instructions,
-          avatar_url: selectedPersona.avatar_url, // Load the avatar if it exists
+          avatar_url: selectedPersona.avatar_url, // Load avatar if it exists
         },
       });
     } else {
@@ -100,13 +99,14 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
   };
 
   const handleFileUploaded = (filePath) => {
-    setTaskData({ ...taskData, files: [...taskData.files, filePath] });
+    const fileName = filePath.split("/").pop();
+    setTaskData({ ...taskData, files: [...taskData.files, fileName] });
   };
 
-  const handleFileRemoved = (filePath) => {
+  const handleFileRemoved = (fileName) => {
     setTaskData({
       ...taskData,
-      files: taskData.files.filter((file) => file !== filePath),
+      files: taskData.files.filter((file) => file !== fileName),
     });
   };
 
@@ -147,13 +147,13 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
         await putData(`/personas/${personaId}/`, {
           name: taskData.persona.name,
           instructions: taskData.persona.instructions,
-          avatar_url: taskData.persona.avatar_url, // Include avatar in update
+          avatar_url: taskData.persona.avatar_url,
         });
       } else {
         const personaResponse = await postData("/personas/", {
           name: taskData.persona.name,
           instructions: taskData.persona.instructions,
-          avatar_url: taskData.persona.avatar_url, // Include avatar in create
+          avatar_url: taskData.persona.avatar_url,
         });
 
         if (!personaResponse || !personaResponse.id) {
@@ -189,104 +189,103 @@ const TaskForm = ({ task, moduleId, onTaskCreated }) => {
     <Box py={5} display="flex" flexDirection="column" height="100%">
       <form onSubmit={handleSubmit} style={{ flex: 1 }}>
         <Grid container spacing={3}>
+          {/* Section 1: Task Details */}
           <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Title"
-              name="title"
-              value={taskData.title}
-              onChange={handleTaskChange}
-              autoComplete="off"
-              margin="normal"
-              required
-              error={submitted && !taskData.title}
-              helperText={submitted && !taskData.title && "Title is required"}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Content"
-              name="content"
-              value={taskData.content}
-              onChange={handleTaskChange}
-              margin="normal"
-              multiline
-              rows={5}
-              required
-              error={submitted && !taskData.content}
-              helperText={
-                submitted && !taskData.content && "Content is required"
-              }
-            />
+            <Typography variant="h6">Task Details</Typography>
+            <Paper variant="outlined" style={{ padding: 16 }}>
+              <TextField
+                fullWidth
+                label="Title"
+                name="title"
+                value={taskData.title}
+                onChange={handleTaskChange}
+                autoComplete="off"
+                margin="normal"
+                required
+                error={submitted && !taskData.title}
+                helperText={submitted && !taskData.title && "Title is required"}
+              />
+
+              <FileUpload
+                existingFiles={taskData.files}
+                onFileUploaded={handleFileUploaded}
+                onFileRemoved={handleFileRemoved}
+              />
+
+              <TextField
+                fullWidth
+                label="Content"
+                name="content"
+                value={taskData.content}
+                onChange={handleTaskChange}
+                margin="normal"
+                multiline
+                rows={5}
+                required
+                error={submitted && !taskData.content}
+                helperText={
+                  submitted && !taskData.content && "Content is required"
+                }
+              />
+            </Paper>
           </Grid>
 
-          {/* Persona Dropdown */}
+          {/* Section 2: Persona Details */}
           <Grid item xs={12}>
-            <FormControl fullWidth>
-              <InputLabel shrink>Select Persona</InputLabel>
-              <Select
-                value={taskData.persona.id || ""}
-                onChange={handlePersonaSelect}
-                displayEmpty
-              >
-                <MenuItem value="">
-                  <em>Create New Persona</em>
-                </MenuItem>
-                {personas.map((persona) => (
-                  <MenuItem key={persona.id} value={persona.id}>
-                    {persona.name}
+            <Typography variant="h6">Persona Details</Typography>
+            <Paper variant="outlined" style={{ padding: 16 }}>
+              {/* Persona Dropdown */}
+              <FormControl fullWidth>
+                <InputLabel shrink>Select Persona</InputLabel>
+                <Select
+                  value={taskData.persona.id || ""}
+                  onChange={handlePersonaSelect}
+                  displayEmpty
+                >
+                  <MenuItem value="">
+                    <em>Create New Persona</em>
                   </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
+                  {personas.map((persona) => (
+                    <MenuItem key={persona.id} value={persona.id}>
+                      {persona.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Persona Name"
-              name="name"
-              value={taskData.persona.name}
-              onChange={handlePersonaChange}
-              margin="normal"
-              required
-              helperText={
-                submitted &&
-                !taskData.persona.name &&
-                "Persona name is required"
-              }
-            />
-          </Grid>
+              {/* Persona Details */}
+              <TextField
+                fullWidth
+                label="Persona Name"
+                name="name"
+                value={taskData.persona.name}
+                onChange={handlePersonaChange}
+                margin="normal"
+                required
+                helperText={
+                  submitted &&
+                  !taskData.persona.name &&
+                  "Persona name is required"
+                }
+              />
+              <TextField
+                fullWidth
+                label="Persona Instructions"
+                name="instructions"
+                value={taskData.persona.instructions}
+                onChange={handlePersonaChange}
+                margin="normal"
+                multiline
+                rows={3}
+              />
 
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="Persona Instructions"
-              name="instructions"
-              value={taskData.persona.instructions}
-              onChange={handlePersonaChange}
-              margin="normal"
-              multiline
-              rows={3}
-            />
-          </Grid>
-
-          {/* Avatar Upload */}
-          <Grid item xs={12}>
-            <AvatarUpload
-              existingAvatar={taskData.persona.avatar_url}
-              onAvatarUploaded={handleAvatarUploaded}
-              onAvatarRemoved={handleAvatarRemoved}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <FileUpload
-              existingFiles={taskData.files}
-              onFileUploaded={handleFileUploaded}
-              onFileRemoved={handleFileRemoved}
-            />
+              {/* Avatar Upload */}
+              <AvatarUpload
+                existingAvatar={taskData.persona.avatar_url}
+                onAvatarUploaded={handleAvatarUploaded}
+                onAvatarRemoved={handleAvatarRemoved}
+              />
+            </Paper>
           </Grid>
         </Grid>
         <Box display="flex" justifyContent="flex-end" mt={3}>

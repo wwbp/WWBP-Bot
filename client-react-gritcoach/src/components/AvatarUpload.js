@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { IconButton, Avatar, Box } from "@mui/material";
+import { IconButton, Avatar, Box, Typography } from "@mui/material";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { getPresignedUrl, postFile, uploadToS3 } from "../utils/api"; // Use the same utils
 
-const AvatarUpload = ({ existingAvatar, onAvatarUploaded }) => {
+const AvatarUpload = ({
+  existingAvatar,
+  onAvatarUploaded,
+  onAvatarRemoved,
+}) => {
   const [uploadedAvatar, setUploadedAvatar] = useState(existingAvatar);
 
+  useEffect(() => {
+    setUploadedAvatar(existingAvatar);
+  }, [existingAvatar]);
+
   const handleFileChange = async (e) => {
-    const file = e.target.files[0]; // Single file (avatar)
+    const file = e.target.files[0];
     if (!file) return;
 
     const fileName = file.name;
@@ -30,7 +39,7 @@ const AvatarUpload = ({ existingAvatar, onAvatarUploaded }) => {
         setUploadedAvatar(fileUrl);
         onAvatarUploaded(fileUrl); // Notify parent about the new avatar URL
       } else {
-        // Handle production upload
+        // Handle production upload (e.g., S3)
         const { url, fields } = presignedData;
         await uploadToS3(url, fields, file);
         const fileUrl = `${url}${fields.key}`;
@@ -43,8 +52,31 @@ const AvatarUpload = ({ existingAvatar, onAvatarUploaded }) => {
     }
   };
 
+  const handleRemoveAvatar = () => {
+    setUploadedAvatar(null);
+    onAvatarRemoved();
+  };
+
   return (
     <Box>
+      {/* Show existing avatar if present */}
+      {uploadedAvatar ? (
+        <Box mb={2} display="flex" flexDirection="column" alignItems="center">
+          <Typography variant="subtitle1">Current Avatar</Typography>
+          <Avatar
+            src={uploadedAvatar}
+            alt="Persona Avatar"
+            sx={{ width: 100, height: 100, marginBottom: 2 }}
+          />
+          <IconButton color="secondary" onClick={handleRemoveAvatar}>
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ) : (
+        <Typography variant="subtitle1">No Avatar Uploaded</Typography>
+      )}
+
+      {/* Avatar Upload */}
       <input
         accept="image/*"
         style={{ display: "none" }}
@@ -57,8 +89,6 @@ const AvatarUpload = ({ existingAvatar, onAvatarUploaded }) => {
           <UploadFileIcon />
         </IconButton>
       </label>
-      {uploadedAvatar && <Avatar alt="Avatar" src={uploadedAvatar} />}{" "}
-      {/* Show avatar */}
     </Box>
   );
 };
