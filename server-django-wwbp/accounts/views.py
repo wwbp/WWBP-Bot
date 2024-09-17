@@ -387,6 +387,7 @@ class GeneratePresignedURL(APIView):
     def post(self, request):
         try:
             file_name = request.data.get('file_name')
+            file_name = re.sub(r'[^a-zA-Z0-9._-]', '', file_name)
             file_type = request.data.get('file_type')
 
             if not file_name or not file_type:
@@ -683,6 +684,7 @@ class CSVServeView(APIView):
 def upload_avatar(request):
     try:
         file_name = request.data.get('file_name')
+        file_name = re.sub(r'[^a-zA-Z0-9._-]', '', file_name)
         file_type = request.data.get('file_type')
 
         if not file_name or not file_type:
