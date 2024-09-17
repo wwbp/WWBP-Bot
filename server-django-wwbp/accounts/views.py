@@ -706,7 +706,7 @@ def upload_avatar(request):
         presigned_post = s3_client.generate_presigned_post(
             Bucket=settings.AWS_STORAGE_BUCKET_NAME,
             # Make sure the avatar goes to the correct folder
-            Key=f"avatars/{file_name}",
+            Key=f"data/avatars/{file_name}",
             Fields={"Content-Type": file_type},
             Conditions=[{"Content-Type": file_type}],
             ExpiresIn=3600  # 1 hour expiration

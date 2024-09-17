@@ -21,7 +21,7 @@ const AvatarUpload = ({ existingAvatar, onAvatarUploaded }) => {
         // Handle local upload
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("is_avatar", true); 
+        formData.append("is_avatar", true);
 
         // Send to local upload URL
         const response = await postFile("/local_upload/", formData);
@@ -29,6 +29,13 @@ const AvatarUpload = ({ existingAvatar, onAvatarUploaded }) => {
 
         setUploadedAvatar(fileUrl);
         onAvatarUploaded(fileUrl); // Notify parent about the new avatar URL
+      } else {
+        // Handle production upload
+        const { url, fields } = presignedData;
+        await uploadToS3(url, fields, file);
+        const fileUrl = `${url}/${fields.key}`;
+        setUploadedAvatar(fileUrl);
+        onAvatarUploaded(fileUrl);
       }
     } catch (error) {
       console.error("Error uploading avatar:", error);
