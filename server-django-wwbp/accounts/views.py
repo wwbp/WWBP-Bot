@@ -388,15 +388,13 @@ class GeneratePresignedURL(APIView):
         try:
             file_name = request.data.get('file_name')
             file_type = request.data.get('file_type')
-            # Flag to check if this is for avatars
-            is_avatar = request.data.get('is_avatar', False)
 
             if not file_name or not file_type:
                 return Response({"error": "File name and type are required."}, status=400)
 
             if settings.ENVIRONMENT == 'local':
                 # Different directories for avatars and other files
-                upload_dir = 'data/avatars/' if is_avatar else 'data/upload/'
+                upload_dir = 'data/upload/'
                 file_path = os.path.join(
                     settings.BASE_DIR, upload_dir, file_name)
                 return Response({
@@ -407,7 +405,7 @@ class GeneratePresignedURL(APIView):
             s3_client = boto3.client(
                 's3', region_name=settings.AWS_S3_REGION_NAME)
             # Correct paths for avatars and other files
-            upload_key = f"avatars/{file_name}" if is_avatar else f"data/upload/{file_name}"
+            upload_key = f"data/upload/{file_name}"
 
             presigned_post = s3_client.generate_presigned_post(
                 Bucket=settings.AWS_STORAGE_BUCKET_NAME,

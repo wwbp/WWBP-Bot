@@ -33,7 +33,7 @@ const AvatarUpload = ({ existingAvatar, onAvatarUploaded }) => {
         // Handle production upload
         const { url, fields } = presignedData;
         await uploadToS3(url, fields, file);
-        const fileUrl = `${url}/${fields.key}`;
+        const fileUrl = `${url}${fields.key}`;
         setUploadedAvatar(fileUrl);
         onAvatarUploaded(fileUrl);
       }
