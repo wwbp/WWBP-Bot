@@ -227,7 +227,7 @@ function ModuleTasks() {
             moduleId={moduleId}
             selectedTask={selectedTask}
             onCompleteTask={handleCompleteTask}
-            clearChat={true} // Clear chat on task switch
+            clearChat={true}
           />
         ) : (
           <Box

@@ -83,6 +83,7 @@ function ModuleInteraction({
             session={chatSession}
             clearChat={clearChat}
             // handleCompleteTask={handleCompleteTask}
+            persona={selectedTask.persona}
           />
         </Box>
       ) : (
