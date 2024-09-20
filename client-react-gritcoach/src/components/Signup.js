@@ -8,7 +8,7 @@ import {
   Box,
   Typography,
   MenuItem,
-  Slider
+  Slider,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 
@@ -17,8 +17,8 @@ function Signup({ setLoggedIn, setRole }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRoleState] = useState("student");
+  const [authPassword, setAuthPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [voice_speed, setVoiceSpeed] = useState(1.0);
   const [preferred_name, setPreferredName] = useState("");
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
@@ -29,7 +29,13 @@ function Signup({ setLoggedIn, setRole }) {
     event.preventDefault();
     setSubmitted(true);
 
-    if (!username || !email || !password || !role) {
+    if (
+      !username ||
+      !email ||
+      !password ||
+      !role ||
+      (["teacher", "admin"].includes(role) && !authPassword)
+    ) {
       return;
     }
 
@@ -39,21 +45,17 @@ function Signup({ setLoggedIn, setRole }) {
         email,
         password,
         role,
-        voice_speed,
-        preferred_name
+        preferred_name,
+        authPassword,
       });
       if (response.message === "User created successfully") {
         localStorage.setItem("token", response.token);
         localStorage.setItem("role", role);
         setLoggedIn(true);
         setRole(role);
-        if (from === "/") {
-          navigate(
-            role === "teacher" ? "/teacher-dashboard" : "/student-dashboard"
-          );
-        } else {
-          navigate(from, { replace: true });
-        }
+        navigate(
+          role === "teacher" ? "/teacher-dashboard" : "/student-dashboard"
+        );
         enqueueSnackbar("User created successfully!", { variant: "success" });
       } else {
         throw new Error(response.message || "Failed to register!");
@@ -78,7 +80,7 @@ function Signup({ setLoggedIn, setRole }) {
             onChange={(e) => setUsername(e.target.value)}
             required
             error={submitted && !username}
-            helperText={submitted && !username && "Username is required"}
+            helperText={submitted && !username && "Required"}
           />
           <TextField
             fullWidth
@@ -86,7 +88,7 @@ function Signup({ setLoggedIn, setRole }) {
             margin="normal"
             value={preferred_name}
             onChange={(e) => setPreferredName(e.target.value)}
-          /> 
+          />
           <TextField
             fullWidth
             label="Email"
@@ -95,7 +97,7 @@ function Signup({ setLoggedIn, setRole }) {
             onChange={(e) => setEmail(e.target.value)}
             required
             error={submitted && !email}
-            helperText={submitted && !email && "Email is required"}
+            helperText={submitted && !email && "Required"}
           />
           <TextField
             fullWidth
@@ -106,25 +108,8 @@ function Signup({ setLoggedIn, setRole }) {
             onChange={(e) => setPassword(e.target.value)}
             required
             error={submitted && !password}
-            helperText={submitted && !password && "Password is required"}
+            helperText={submitted && !password && "Required"}
           />
-            <Typography gutterBottom>
-              Voice Speed
-            </Typography>
-            <Slider
-              fullWidth
-              // name="voice_speed"
-              label="Voice Speed"
-              margin="normal"
-              value={voice_speed}
-              onChange={
-                (e)=>setVoiceSpeed(e.target.value)
-              }
-              valueLabelDisplay="auto"
-              step={0.5}
-              min={0.5}
-              max={2.0}
-            />
           <TextField
             select
             fullWidth
@@ -134,12 +119,26 @@ function Signup({ setLoggedIn, setRole }) {
             onChange={(e) => setRoleState(e.target.value)}
             required
             error={submitted && !role}
-            helperText={submitted && !role && "Role is required"}
+            helperText={submitted && !role && "Required"}
           >
             <MenuItem value="student">Student</MenuItem>
             <MenuItem value="teacher">Teacher</MenuItem>
             <MenuItem value="admin">Admin</MenuItem>
           </TextField>
+
+          {(role === "teacher" || role === "admin") && (
+            <TextField
+              fullWidth
+              label="Authentication Password"
+              margin="normal"
+              type="password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              required
+              error={submitted && !authPassword}
+              helperText={submitted && !authPassword && "Required"}
+            />
+          )}
           <Button variant="contained" color="primary" type="submit">
             Sign Up
           </Button>
