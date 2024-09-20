@@ -14,6 +14,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Define the STATIC_ROOT
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Teacher/ Admin authentication password
+AUTHENTICATION_PASSWORD = os.getenv('AUTHENTICATION_PASSWORD')
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv(
     'SECRET_KEY', 'qn11i3%iit_9^b4ma1jg%20$v=mazb5wnp0j=a$%9#aq5x2b_p')
