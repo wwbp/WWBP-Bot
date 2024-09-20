@@ -131,6 +131,7 @@ def register(request):
             email = data.get('email')
             password = data.get('password')
             role = data.get('role', 'student')
+            preferred_name = data.get('preferred_name', username)
             auth_password = data.get('authPassword')
 
             if role in ['teacher', 'admin']:
@@ -142,7 +143,7 @@ def register(request):
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             user = get_user_model().objects.create_user(
-                username=username, email=email, password=password, role=role)
+                username=username, email=email, password=password, role=role, preferred_name=preferred_name)
             user.save()
 
             user = authenticate(request, username=username, password=password)
