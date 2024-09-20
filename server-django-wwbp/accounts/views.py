@@ -127,26 +127,24 @@ def register(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            logger.debug(f"Registration data received: {data}")
-
             username = data.get('username')
             email = data.get('email')
             password = data.get('password')
-            role = data.get('role', 'student')  # Default role is 'student'
-            voice_speed = data.get('voice_speed', 1.0)
-            preferred_name = data.get('preferred_name', username)
-            logger.debug(f"preferred_name: {preferred_name}")
+            role = data.get('role', 'student')
+            auth_password = data.get('authPassword')
+
+            if role in ['teacher', 'admin']:
+                expected_auth_password = settings.AUTHENTICATION_PASSWORD
+                if auth_password != expected_auth_password:
+                    return JsonResponse({"error": "Invalid authentication password"}, status=403)
 
             if not username or not email or not password:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             user = get_user_model().objects.create_user(
-                username=username, email=email, password=password, role=role, voice_speed=voice_speed, preferred_name=preferred_name)
+                username=username, email=email, password=password, role=role)
             user.save()
 
-            logger.debug(f"User created: {user}")
-
-            # Log the user in after registration
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
@@ -154,13 +152,12 @@ def register(request):
                 return JsonResponse({
                     'message': 'User created successfully',
                     'token': token.key,
-                    'role': role  # Include role in response
+                    'role': role
                 }, status=201)
             else:
                 return JsonResponse({'error': 'Authentication failed'}, status=401)
 
         except Exception as e:
-            logger.error("Error during registration", exc_info=True)
             return JsonResponse({'error': str(e)}, status=500)
     else:
         return JsonResponse({'error': 'Invalid HTTP method'}, status=405)

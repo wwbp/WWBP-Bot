@@ -8,7 +8,7 @@ import {
   Box,
   Typography,
   MenuItem,
-  Slider
+  Slider,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 
@@ -17,6 +17,7 @@ function Signup({ setLoggedIn, setRole }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRoleState] = useState("student");
+  const [authPassword, setAuthPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [voice_speed, setVoiceSpeed] = useState(1.0);
   const [preferred_name, setPreferredName] = useState("");
@@ -29,7 +30,13 @@ function Signup({ setLoggedIn, setRole }) {
     event.preventDefault();
     setSubmitted(true);
 
-    if (!username || !email || !password || !role) {
+    if (
+      !username ||
+      !email ||
+      !password ||
+      !role ||
+      (["teacher", "admin"].includes(role) && !authPassword)
+    ) {
       return;
     }
 
@@ -40,7 +47,8 @@ function Signup({ setLoggedIn, setRole }) {
         password,
         role,
         voice_speed,
-        preferred_name
+        preferred_name,
+        authPassword,
       });
       if (response.message === "User created successfully") {
         localStorage.setItem("token", response.token);
@@ -86,7 +94,7 @@ function Signup({ setLoggedIn, setRole }) {
             margin="normal"
             value={preferred_name}
             onChange={(e) => setPreferredName(e.target.value)}
-          /> 
+          />
           <TextField
             fullWidth
             label="Email"
@@ -108,23 +116,18 @@ function Signup({ setLoggedIn, setRole }) {
             error={submitted && !password}
             helperText={submitted && !password && "Password is required"}
           />
-            <Typography gutterBottom>
-              Voice Speed
-            </Typography>
-            <Slider
-              fullWidth
-              // name="voice_speed"
-              label="Voice Speed"
-              margin="normal"
-              value={voice_speed}
-              onChange={
-                (e)=>setVoiceSpeed(e.target.value)
-              }
-              valueLabelDisplay="auto"
-              step={0.5}
-              min={0.5}
-              max={2.0}
-            />
+          <Typography gutterBottom>Voice Speed</Typography>
+          <Slider
+            fullWidth
+            label="Voice Speed"
+            margin="normal"
+            value={voice_speed}
+            onChange={(e) => setVoiceSpeed(e.target.value)}
+            valueLabelDisplay="auto"
+            step={0.5}
+            min={0.5}
+            max={2.0}
+          />
           <TextField
             select
             fullWidth
@@ -140,6 +143,23 @@ function Signup({ setLoggedIn, setRole }) {
             <MenuItem value="teacher">Teacher</MenuItem>
             <MenuItem value="admin">Admin</MenuItem>
           </TextField>
+          {(role === "teacher" || role === "admin") && (
+            <TextField
+              fullWidth
+              label="Authentication Password"
+              margin="normal"
+              type="password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              required
+              error={submitted && !authPassword}
+              helperText={
+                submitted &&
+                !authPassword &&
+                "Authentication password is required"
+              }
+            />
+          )}
           <Button variant="contained" color="primary" type="submit">
             Sign Up
           </Button>
