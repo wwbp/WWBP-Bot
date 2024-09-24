@@ -15,6 +15,7 @@ from openai import OpenAI
 
 from django.core.cache import cache
 
+from django.conf import settings
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -494,7 +495,7 @@ class AudioConsumer(BaseWebSocketConsumer):
         config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,
             sample_rate_hertz=48000,
-            language_code="en-US",
+            language_code=settings.STT_LANGUAGE_CODE,
         )
         try:
             response = client.recognize(config=config, audio=audio)

@@ -26,6 +26,7 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
+STT_LANGUAGE_CODE = os.getenv('STT_LANGUAGE_CODE', 'en-US')
 # Append Elastic Beanstalk Load Balancer Health Check requests since the source host IP address keeps changing
 try:
     token = requests.put('http://169.254.169.254/latest/api/token',
