@@ -468,7 +468,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                 logger.error("Received audio data without message_id")
                 return
 
-            transcript = await self.process_audio(bytes_data)
+            # transcript = await self.process_audio(bytes_data)
+            transcript = await self.stt_openai(bytes_data)
             await save_message_to_transcript(session_id=self.session_id, message_id=self.current_message_id,
                                              user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
             if transcript:
@@ -503,6 +504,24 @@ class AudioConsumer(BaseWebSocketConsumer):
                 logger.error("No results from speech recognition")
                 return ""
             transcript = response.results[0].alternatives[0].transcript
+            return transcript
+        except Exception as e:
+            logger.error(f"Error during speech recognition: {e}")
+            return ""
+
+    async def stt_openai(self, audio_data):
+        logger.debug(f"Audio data size: {len(audio_data)} bytes")
+
+        try:
+            client = OpenAI()
+            response = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_data,
+            )
+            if not response.text:
+                logger.error("No results from speech recognition")
+                return ""
+            transcript = response.text
             return transcript
         except Exception as e:
             logger.error(f"Error during speech recognition: {e}")
