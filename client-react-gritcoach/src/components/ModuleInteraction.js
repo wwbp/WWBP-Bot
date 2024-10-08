@@ -3,14 +3,8 @@ import { createChatSession } from "../utils/api";
 import ChatInterface from "./ChatInterface";
 import { Box, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
-import confetti from "canvas-confetti";
 
-function ModuleInteraction({
-  moduleId,
-  selectedTask,
-  onCompleteTask,
-  clearChat,
-}) {
+function ModuleInteraction({ moduleId, selectedTask, clearChat }) {
   const [error, setError] = useState(null);
   const [chatSession, setChatSession] = useState(null);
   const { enqueueSnackbar } = useSnackbar();
@@ -82,7 +76,6 @@ function ModuleInteraction({
           <ChatInterface
             session={chatSession}
             clearChat={clearChat}
-            // handleCompleteTask={handleCompleteTask}
             persona={selectedTask.persona}
           />
         </Box>

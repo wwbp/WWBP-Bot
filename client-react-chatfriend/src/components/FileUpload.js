@@ -27,15 +27,17 @@ const FileUpload = ({ existingFiles = [], onFileUploaded, onFileRemoved }) => {
         const presignedData = await getPresignedUrl(fileName, fileType);
 
         if (presignedData.url === "local") {
-          // Handle local upload
-          const response = await postFile("/local_upload/", file);
+          const formData = new FormData();
+          formData.append("file", file);
+          // Handle local upload with FormData
+          const response = await postFile("/local_upload/", formData);
           setUploadedFiles((prevFiles) => [...prevFiles, response.file_path]);
           onFileUploaded(response.file_path);
         } else {
           // Handle S3 upload
           const { url, fields } = presignedData;
           await uploadToS3(url, fields, file);
-          const fileUrl = `${url}${fields.key}`;
+          const fileUrl = `${url}/${fields.key}`;
           setUploadedFiles((prevFiles) => [...prevFiles, fileUrl]);
           onFileUploaded(fileUrl);
         }
