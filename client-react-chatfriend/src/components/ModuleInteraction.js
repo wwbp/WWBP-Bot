@@ -3,26 +3,25 @@ import { createChatSession } from "../utils/api";
 import ChatInterface from "./ChatInterface";
 import { Box, Typography } from "@mui/material";
 import { useSnackbar } from "notistack";
-import confetti from "canvas-confetti";
 
-function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
+function ModuleInteraction({ moduleId, selectedTask, clearChat }) {
   const [error, setError] = useState(null);
   const [chatSession, setChatSession] = useState(null);
-  const [clearChat, setClearChat] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     if (selectedTask) {
       startChatSession(selectedTask.id);
-      setClearChat(true);
     }
   }, [selectedTask]);
 
   const startChatSession = async (taskId) => {
     try {
+      if (clearChat) {
+        setChatSession(null);
+      }
       const session = await createChatSession(moduleId, taskId);
       setChatSession(session);
-      setClearChat(false);
     } catch (error) {
       console.error("Error creating chat session:", error.message);
       enqueueSnackbar(error.message, { variant: "error" });
@@ -78,6 +77,7 @@ function ModuleInteraction({ moduleId, selectedTask, onCompleteTask }) {
             session={chatSession}
             clearChat={clearChat}
             selectedTask={selectedTask}
+            persona={selectedTask.persona}
           />
         </Box>
       ) : (

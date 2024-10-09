@@ -45,25 +45,24 @@ function ModuleTasks() {
       });
   }, [moduleId]);
 
-  const handleTaskSelection = (task,event) => {
-
+  const handleTaskSelection = (task, event) => {
     if (event.target.type === "checkbox") {
       return;
     }
 
-    const updatedTasks = tasks.map((t)=>{
+    const updatedTasks = tasks.map((t) => {
       if (t.id === task.id) {
         t.selected = true;
       } else {
         t.selected = false;
       }
       return t;
-    })
+    });
     // if (!task.locked) {
     //   task.selected = true;
     //   setSelectedTask(task);
     // }
-    console.log('handleTaskSelection started ', task.id);
+    console.log("handleTaskSelection started ", task.id);
     setTasks(updatedTasks);
     setSelectedTask(task);
   };
@@ -97,28 +96,21 @@ function ModuleTasks() {
 
   const handleUncheckedTask = (taskId) => {
     updatingTasks(tasks, taskId, setTasks);
-  } 
-
-
-  const toggleTask = (id) => {
-    
-    tasks.map(task =>
-      {
-        if (task.id === id) {
-          if (!task.completed)
-           { 
-            handleCompleteTask(id);
-           } else {
-            handleUncheckedTask(id);
-           }
-          return task;
-          
-      }
-      return task;
-    }
-    );
   };
 
+  const toggleTask = (id) => {
+    tasks.map((task) => {
+      if (task.id === id) {
+        if (!task.completed) {
+          handleCompleteTask(id);
+        } else {
+          handleUncheckedTask(id);
+        }
+        return task;
+      }
+      return task;
+    });
+  };
 
   if (loading) {
     return (
@@ -174,26 +166,42 @@ function ModuleTasks() {
                   pointerEvents: task.locked ? "none" : "auto",
                   color: task.locked ? "grey" : "black",
                 }}
-                onClick={(event) => {handleTaskSelection(task, event)}}
+                onClick={(event) => {
+                  handleTaskSelection(task, event);
+                }}
                 key={task.id}
               >
-                <div style={{ display: 'flex', alignItems: 'center', width: '15%' }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    width: "15%",
+                  }}
+                >
                   <Checkbox
                     icon={<RadioButtonUncheckedIcon />}
                     checkedIcon={<CheckCircleIcon />}
                     checked={task.completed}
                     onChange={(event) => {
                       event.stopPropagation();
-                      toggleTask(task.id)}}
+                      toggleTask(task.id);
+                    }}
                     disabled={task.locked}
                     sx={{
-                      padding: 0, 
-                      marginRight: '10px', 
-              
+                      padding: 0,
+                      marginRight: "10px",
                     }}
                   />
-                  <div style={{ flex: 1, textAlign: 'center', alignSelf:'center' }}>{task.name}</div>
-                </div>                
+                  <div
+                    style={{
+                      flex: 1,
+                      textAlign: "center",
+                      alignSelf: "center",
+                    }}
+                  >
+                    {task.name}
+                  </div>
+                </div>
                 {task.locked && (
                   <LockIcon style={{ position: "absolute", top: 8, left: 8 }} />
                 )}
@@ -227,6 +235,7 @@ function ModuleTasks() {
             moduleId={moduleId}
             selectedTask={selectedTask}
             onCompleteTask={handleCompleteTask}
+            clearChat={true}
           />
         ) : (
           <Box
@@ -259,4 +268,3 @@ function updatingTasks(tasks, taskId, setTasks) {
   });
   setTasks(updatedTasks);
 }
-

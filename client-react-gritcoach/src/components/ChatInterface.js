@@ -7,8 +7,6 @@ import {
   Typography,
   IconButton,
   Avatar,
-  MenuItem,
-  Select,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import { useSnackbar } from "notistack";
