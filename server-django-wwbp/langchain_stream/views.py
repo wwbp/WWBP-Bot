@@ -1,4 +1,7 @@
+import subprocess
+from pydub import AudioSegment
 import asyncio
+import io
 import json
 import logging
 import os
@@ -19,6 +22,46 @@ from django.conf import settings
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+async def convert_audio_to_webm_ffmpeg(audio_data):
+    try:
+        # Create a BytesIO stream to hold the output
+        output_audio = io.BytesIO()
+
+        # Define the ffmpeg command to convert to webm
+        command = [
+            'ffmpeg', '-y',                        # Overwrite existing file
+            '-f', 'webm',                          # Specify input format
+            # Read from stdin (input audio_data)
+            '-i', 'pipe:0',
+            # Output codec (libopus for webm)
+            '-acodec', 'libopus',
+            # Set bitrate to 64k (default for webm)
+            '-b:a', '64k',
+            '-f', 'webm',                          # Output format is webm
+            # Write to stdout (output_audio)
+            'pipe:1'
+        ]
+
+        # Run the ffmpeg command, piping the input and output to BytesIO
+        process = subprocess.Popen(
+            command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        output, error = process.communicate(input=audio_data)
+
+        if process.returncode != 0:
+            raise Exception(f"ffmpeg error: {error.decode('utf-8')}")
+
+        # Write the output from ffmpeg into the BytesIO object
+        output_audio.write(output)
+        output_audio.seek(0)  # Reset buffer pointer to the start
+
+        return output_audio  # Return the BytesIO object containing the webm audio
+
+    except Exception as e:
+        print(f"Error converting audio to webm with ffmpeg: {e}")
+        return None
 
 
 def get_cached_data(key, fetch_function, timeout=300):
@@ -512,17 +555,34 @@ class AudioConsumer(BaseWebSocketConsumer):
     async def stt_openai(self, audio_data):
         logger.debug(f"Audio data size: {len(audio_data)} bytes")
 
+        # Convert the audio using ffmpeg
+        webm_audio = await convert_audio_to_webm_ffmpeg(audio_data)
+
+        if not webm_audio:
+            logger.error("Audio conversion to webm failed.")
+            return ""
+
+        # Reset the buffer pointer to the start before sending to Whisper
+        webm_audio.seek(0)
+        logger.debug(f"Type of audio_data: {type(webm_audio)}")
+
         try:
-            client = OpenAI()
+            client = OpenAI()  # Assuming you've instantiated OpenAI client earlier
+
+            # Pass the BytesIO object with explicit filename and MIME type
             response = client.audio.transcriptions.create(
                 model="whisper-1",
-                file=audio_data,
+                # Specify filename and MIME type
+                file=("audio.webm", webm_audio, "audio/webm"),
             )
+
             if not response.text:
                 logger.error("No results from speech recognition")
                 return ""
+
             transcript = response.text
             return transcript
+
         except Exception as e:
             logger.error(f"Error during speech recognition: {e}")
             return ""
