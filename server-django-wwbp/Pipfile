@@ -26,6 +26,8 @@ pika = "*"
 jupyter = "*"
 pytz = "*"
 setuptools = "*"
+pydub = "*"
+ffmpeg = "*"
 
 [dev-packages]
 

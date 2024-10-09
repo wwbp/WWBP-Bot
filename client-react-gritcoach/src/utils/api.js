@@ -168,7 +168,7 @@ export async function getPresignedUrl(fileName, fileType, isAvatar = false) {
     const response = await api.post(urlPath, {
       file_name: fileName,
       file_type: fileType,
-      is_avatar: isAvatar, // Pass the flag to differentiate between avatars and other files
+      is_avatar: isAvatar,
     });
     return response.data;
   } catch (error) {

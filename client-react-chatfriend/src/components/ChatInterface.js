@@ -7,8 +7,6 @@ import {
   Typography,
   IconButton,
   Avatar,
-  MenuItem,
-  Select,
   Stack,
 } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
@@ -21,8 +19,10 @@ import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 import UploadedFile from "./UploadedFile";
 
+function ChatInterface({ session, clearChat, selectedTask, persona }) {
+  const botName = persona?.name || "ChatFriend";
+  const botAvatar = persona?.avatar_url || chatFriendAvatar;
 
-function ChatInterface({ session, clearChat, selectedTask }) {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");
@@ -47,6 +47,10 @@ function ChatInterface({ session, clearChat, selectedTask }) {
   const [dots, setDots] = useState("");
   const textTimeout = useRef(false);
 
+  useEffect(() => {
+    console.log("Persona data:", persona);
+    console.log("Bot avatar URL:", botAvatar);
+  }, [persona, botAvatar]);
 
   const setupWebSocket = () => {
     if (ws.current) {
@@ -74,14 +78,11 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         handleAudioMessage(event);
       } else if (chatMode === "text-then-audio") {
         handleTextThenAudio(event);
-      }
-      else if (chatMode === "audio-then-text") {
+      } else if (chatMode === "audio-then-text") {
         handleAudioThenText(event);
-      }
-      else if (chatMode === "audio-only") {
+      } else if (chatMode === "audio-only") {
         handleAudioOnly(event);
-      }
-        else {
+      } else {
         handleTextMessage(event);
       }
     };
@@ -103,34 +104,31 @@ function ChatInterface({ session, clearChat, selectedTask }) {
   //   fileRef.current = selectedTask;
   // },[])
 
-  useEffect(()=>{
-    const fetchMode = async ()=>{
-      try{
-        const response = await fetchData('/profile')
-        console.log("Interaction mode is ", response)
-        setChatMode(response.interaction_mode)
-
-      }catch (err)
-      {
-        console.log("Error fetching")
-      }finally{
+  useEffect(() => {
+    const fetchMode = async () => {
+      try {
+        const response = await fetchData("/profile");
+        console.log("Interaction mode is ", response);
+        setChatMode(response.interaction_mode);
+      } catch (err) {
+        console.log("Error fetching");
+      } finally {
         setLoading(false);
       }
     };
     fetchMode();
-  },[]);
+  }, []);
 
-  useEffect(()=>{
-    if(chatState==="processing"){
-      const interval = setInterval(()=>{
-        setDots((prevDots)=>(prevDots.length<3?prevDots+".":""))
-      },100);
-      return ()=>clearInterval(interval);
-    }else
-    {
+  useEffect(() => {
+    if (chatState === "processing") {
+      const interval = setInterval(() => {
+        setDots((prevDots) => (prevDots.length < 3 ? prevDots + "." : ""));
+      }, 100);
+      return () => clearInterval(interval);
+    } else {
       setDots("");
     }
-  },[chatState]);
+  }, [chatState]);
 
   const handleTextMessage = (event) => {
     console.log("Handling text message:", event.data);
@@ -139,7 +137,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
     if (data.event === "on_parser_start") {
       setMessages((prevMessages) => [
         ...prevMessages,
-        { sender: "ChatFriend", message: "", id: data.message_id },
+        { sender: botName, message: "", id: data.message_id },
       ]);
     } else if (data.event === "on_parser_stream") {
       setMessages((prevMessages) =>
@@ -203,7 +201,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
       } else if (data.event === "on_parser_start") {
         setMessages((prevMessages) => [
           ...prevMessages,
-          { sender: "ChatFriend", message: "", id: data.message_id },
+          { sender: botName, message: "", id: data.message_id },
         ]);
       } else if (data.event === "on_parser_stream") {
         setMessages((prevMessages) =>
@@ -282,7 +280,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         textBufferRef.current = [];
         setMessages((prevMessages) => [
           ...prevMessages,
-          { sender: "ChatFriend", message: "", id: data.message_id },
+          { sender: botName, message: "", id: data.message_id },
         ]);
       } else if (data.event === "on_parser_stream") {
         // clearTimeout(textTimeout.current);
@@ -300,8 +298,10 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         textTimeout.current = null;
         setMessageId((prevId) => prevId + 1);
         setMessage(tempMessageRef.current); // Restore temporary buffer
-        if(audioBuffer.current.length > 0){
-          const audioBlob = new Blob(audioBuffer.current, { type: "audio/webm" });
+        if (audioBuffer.current.length > 0) {
+          const audioBlob = new Blob(audioBuffer.current, {
+            type: "audio/webm",
+          });
           setAudioQueue([audioBlob]);
           audioBuffer.current = [];
         }
@@ -309,7 +309,6 @@ function ChatInterface({ session, clearChat, selectedTask }) {
     }
   };
 
-  
   const handleAudioOnly = async (event) => {
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
@@ -355,14 +354,22 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         setMessage("");
       } else if (data.event === "on_parser_start") {
         textBufferRef.current = [];
-        setTextBuffer((prevBuffer)=>[...prevBuffer, { sender: "ChatFriend", message: "", id: data.message_id }]);
+        setTextBuffer((prevBuffer) => [
+          ...prevBuffer,
+          { sender: botName, message: "", id: data.message_id },
+        ]);
         // setMessages((prevMessages) => [
         //   ...prevMessages,
         //   { sender: "ChatFriend", message: "", id: data.message_id },
         // ]);
       } else if (data.event === "on_parser_stream") {
-        setTextBuffer((prevBuffer) => prevBuffer.map((msg)=>msg.id === data.message_id?
-        { ...msg, message: msg.message + data.value}:msg) );
+        setTextBuffer((prevBuffer) =>
+          prevBuffer.map((msg) =>
+            msg.id === data.message_id
+              ? { ...msg, message: msg.message + data.value }
+              : msg
+          )
+        );
         // setMessages((prevMessages) =>
         //   prevMessages.map((msg) =>
         //     msg.id === data.message_id
@@ -425,18 +432,21 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         setMessageId((prevId) => prevId + 1);
         setMessage("");
       } else if (data.event === "on_parser_start") {
-        
-        textBufferRef.current.push({ sender: "ChatFriend", message: "", id: data.message_id });
+        textBufferRef.current.push({
+          sender: botName,
+          message: "",
+          id: data.message_id,
+        });
         // setMessages((prevMessages) => [
         //   ...prevMessages,
         //   { sender: "ChatFriend", message: "", id: data.message_id },
         // ]);
       } else if (data.event === "on_parser_stream") {
         textBufferRef.current = textBufferRef.current.map((msg) =>
-        msg.id === data.message_id
-          ? { ...msg, message: msg.message + data.value }
-          : msg
-      );
+          msg.id === data.message_id
+            ? { ...msg, message: msg.message + data.value }
+            : msg
+        );
         // setMessages((prevMessages) =>
         //   prevMessages.map((msg) =>
         //     msg.id === data.message_id
@@ -445,15 +455,15 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         //   )
         // );
       } else if (data.event === "on_parser_end") {
-        console.log("On parser end textBuffer is ", textBufferRef.current)
-        console.log("On parser end messages is ", messages)
+        console.log("On parser end textBuffer is ", textBufferRef.current);
+        console.log("On parser end messages is ", messages);
         setMessageId((prevId) => prevId + 1);
         // setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
         // setTextBuffer([]);
         setMessage(""); // Restore temporary buffer
       }
     }
-  };  
+  };
 
   const setupPeerConnection = () => {
     peerConnection.current = new RTCPeerConnection();
@@ -491,7 +501,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
         peerConnection.current.close();
       }
     };
-  }, [session.id, chatMode,loading]);
+  }, [session.id, chatMode, loading]);
 
   useEffect(() => {
     if (clearChat) {
@@ -515,8 +525,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
     if (!isPlaying && audioQueue.length > 0) {
       playNextAudio();
     }
-    if(!isPlaying && !audioQueue.length)
-    { 
+    if (!isPlaying && !audioQueue.length) {
       setMessages((prevMessages) => {
         console.log("Text buffer is ", textBufferRef.current);
         const updatedMessages = [...prevMessages, ...textBufferRef.current];
@@ -525,7 +534,7 @@ function ChatInterface({ session, clearChat, selectedTask }) {
       });
       textTimeout.current = null;
       // textBufferRef.current = [];
-    }    
+    }
   }, [audioQueue, isPlaying]);
 
   useEffect(() => {
@@ -674,16 +683,16 @@ function ChatInterface({ session, clearChat, selectedTask }) {
     }
   };
 
-  const getChatStateText = () =>{
-    switch(chatState){
+  const getChatStateText = () => {
+    switch (chatState) {
       case "idle":
         return "Type a message...";
       case "processing":
         return `${dots}`;
       case "speaking":
-        return "Bot is Speaking"
+        return "Bot is Speaking";
       default:
-        return "Type a message...";       
+        return "Type a message...";
     }
   };
 
@@ -739,19 +748,19 @@ function ChatInterface({ session, clearChat, selectedTask }) {
                 key={index}
                 display="flex"
                 justifyContent={
-                  msg.sender === "ChatFriend" ? "flex-start" : "flex-end"
+                  msg.sender === botName ? "flex-start" : "flex-end"
                 }
                 mb={2}
               >
-                {msg.sender === "ChatFriend" && (
+                {msg.sender === botName && (
                   <Avatar
                     alt="ChatFriend Avatar"
-                    src={chatFriendAvatar}
+                    src={botAvatar}
                     style={{ marginRight: "8px" }}
                   />
                 )}
                 <Box
-                  bgcolor={msg.sender === "ChatFriend" ? "#f0f0f0" : "#cfe8fc"}
+                  bgcolor={msg.sender === botName ? "#f0f0f0" : "#cfe8fc"}
                   p={1}
                   borderRadius={2}
                   maxWidth="60%"
@@ -767,16 +776,19 @@ function ChatInterface({ session, clearChat, selectedTask }) {
             ))}
             <div ref={messagesEndRef} />
           </Box>
-          {selectedTask.files?.length>0?
-          <Box
-            width={ "150%" } // Adjust this value to allocate space for the UploadedFile component
-            height={ "100%" } 
-            overflow="auto"
-            p={2}
-          >
-              <UploadedFile files = {selectedTask} />
-          </Box>:<></>}
-        </Stack>  
+          {selectedTask.files?.length > 0 ? (
+            <Box
+              width={"150%"} // Adjust this value to allocate space for the UploadedFile component
+              height={"100%"}
+              overflow="auto"
+              p={2}
+            >
+              <UploadedFile files={selectedTask} />
+            </Box>
+          ) : (
+            <></>
+          )}
+        </Stack>
         {/* </Box>   */}
         <Box display="flex" alignItems="center" p={2}>
           {chatMode !== "text" ? (
