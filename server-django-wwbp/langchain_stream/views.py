@@ -601,11 +601,23 @@ class AudioConsumer(BaseWebSocketConsumer):
                 elif event.event == 'thread.message.delta':
                     chunk["event"] = "on_parser_stream"
                     chunk["value"] = event.data.delta.content[0].text.value
-                    buffer.append(chunk["value"])
+                    logger.debug(f"Received chunk: {chunk['value']}")
+                    if chunk["value"].startswith(" "):
+                        buffer.append(chunk["value"])
+                    else:
+                        if buffer:
+                            buffer[-1] = buffer[-1] + chunk["value"]
+                        else:
+                            buffer.append(chunk["value"])
                     self.bot_message_buffer.append(chunk["value"])
                     await self.send(text_data=json.dumps(chunk))
+
+                    logger.debug(f"Current buffer: {' '.join(buffer)}")
+
                     if any(p in buffer[-1] for p in ['.', '!', '?', ';', ',']):
                         batched_text = ' '.join(buffer)
+                        logger.debug(
+                            f"Buffer converted to audio: {batched_text}")
                         buffer = []
                         processed_text = self.process_text_for_tts(
                             batched_text)
@@ -618,6 +630,8 @@ class AudioConsumer(BaseWebSocketConsumer):
                 elif event.event == 'thread.run.completed':
                     if buffer:
                         batched_text = ' '.join(buffer)
+                        logger.debug(
+                            f"Final buffer converted to audio: {batched_text}")
                         processed_text = self.process_text_for_tts(
                             batched_text)
                         audio_chunk = await self.text_to_speech(processed_text)
@@ -627,6 +641,7 @@ class AudioConsumer(BaseWebSocketConsumer):
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                     complete_bot_message = ''.join(self.bot_message_buffer)
                     complete_audio = b''.join(self.bot_audio_buffer)
+                    logger.debug(f"Total bot message: {complete_bot_message}")
                     await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                                      user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
                     self.bot_message_buffer.clear()
