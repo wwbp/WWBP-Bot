@@ -570,7 +570,7 @@ class AudioConsumer(BaseWebSocketConsumer):
             client = OpenAI()  # Assuming you've instantiated OpenAI client earlier
 
             # Pass the BytesIO object with explicit filename and MIME type
-            response = client.audio.transcriptions.create(
+            response = client.audio.translations.create(
                 model="whisper-1",
                 # Specify filename and MIME type
                 file=("audio.webm", webm_audio, "audio/webm"),
