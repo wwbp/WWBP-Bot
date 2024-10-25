@@ -28,6 +28,7 @@ pytz = "*"
 setuptools = "*"
 pydub = "*"
 ffmpeg = "*"
+django-silk = "*"
 
 [dev-packages]
 
