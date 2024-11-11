@@ -1,5 +1,4 @@
 import subprocess
-from pydub import AudioSegment
 import asyncio
 import io
 import json
@@ -11,17 +10,43 @@ from collections import deque
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.apps import apps
+from django.conf import settings
 from django.core.cache import cache
 from google.cloud import speech, texttospeech
 from langchain_stream.tasks import save_message_to_transcript, get_file_streams, save_usage_stats
 from openai import OpenAI
-
-from django.core.cache import cache
-
-from django.conf import settings
+from openai._compat import model_dump
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+MODERATION_THRESHOLD = {
+    "sexual": 0.5,
+    "harassment": 0.5,
+    "hate": 0.5,
+    "illicit": 0.5,
+    "self-harm": 0.5,
+    "violence": 0.5
+}
+
+
+async def moderate_content(text, client):
+    try:
+        response = client.moderations.create(
+            model="omni-moderation-latest",
+            input=text,
+        )
+        result = response.results[0]
+        category_scores = response.results[0].category_scores or {}
+        category_score_items = model_dump(category_scores)
+        if result.flagged:
+            for category, score in category_score_items.items():
+                if category in MODERATION_THRESHOLD and score > MODERATION_THRESHOLD[category]:
+                    return True, category
+        return False, None
+    except Exception as e:
+        logger.error(f"Error during moderation: {e}")
+        return True, "moderation_error"
 
 
 async def convert_audio_to_webm_ffmpeg(audio_data):
@@ -135,10 +160,10 @@ class PromptHook:
     async def get_cumulative_setup_instructions(self, session_id):
         try:
             system_prompts = await self.get_system_prompt()
-            task_content, task_instruction = await self.get_task_prompts(session_id)
-            persona_name, persona_prompt = await self.get_persona_prompts(session_id)
-            user_profile_details = await self.get_user_profile(session_id)
-            module_content = await self.get_module_prompts(session_id)
+            task_content, task_instruction = await self.get_task_prompts(session_id=session_id)
+            persona_name, persona_prompt = await self.get_persona_prompts(session_id=session_id)
+            user_profile_details = await self.get_user_profile(session_id=session_id)
+            module_content = await self.get_module_prompts(session_id=session_id)
             return f"""
                 ### System Guidelines:
                 {system_prompts}
@@ -397,6 +422,15 @@ class ChatConsumer(BaseWebSocketConsumer):
         logger.debug(
             f"Received message: {message}, message_id={message_id}, from user in session: {self.session_id}")
 
+        # Moderation check for incoming user message
+        is_flagged, category = await moderate_content(message, self.session_manager.client)
+        if is_flagged:
+            await self.send(text_data=json.dumps({
+                "type": "moderation_alert",
+                "message": f"Your message was blocked due to inappropriate content related to {category}."
+            }))
+            return
+
         try:
             await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
                                              user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
@@ -427,8 +461,18 @@ class ChatConsumer(BaseWebSocketConsumer):
                     chunk["event"] = "on_parser_end"
                     await self.send(text_data=json.dumps(chunk))
                     complete_bot_message = ''.join(bot_message_buffer)
-                    await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
-                                                     user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
+
+                    # Moderation check for outgoing assistant message
+                    is_flagged, category = await moderate_content(complete_bot_message, self.session_manager.client)
+                    if is_flagged:
+                        await self.send(text_data=json.dumps({
+                            "type": "moderation_alert",
+                            "message": "The assistant's response was blocked due to inappropriate content."
+                        }))
+                    else:
+                        await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
+                                                         user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
+
                     bot_message_buffer.clear()
                     self.session_manager.run_active = False
 
@@ -513,6 +557,16 @@ class AudioConsumer(BaseWebSocketConsumer):
 
             # transcript = await self.process_audio(bytes_data)
             transcript = await self.stt_openai(bytes_data)
+
+            # Moderation check for incoming user transcript
+            is_flagged, category = await moderate_content(transcript, self.session_manager.client)
+            if is_flagged:
+                await self.send(text_data=json.dumps({
+                    "type": "moderation_alert",
+                    "message": f"Your audio message was blocked due to inappropriate content related to {category}."
+                }))
+                return
+
             await save_message_to_transcript(session_id=self.session_id, message_id=self.current_message_id,
                                              user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
             if transcript:
@@ -622,6 +676,16 @@ class AudioConsumer(BaseWebSocketConsumer):
                         processed_text = self.process_text_for_tts(
                             batched_text)
                         audio_chunk = await self.text_to_speech(processed_text)
+
+                        # Moderation check for outgoing assistant text before TTS
+                        is_flagged, category = await moderate_content(batched_text, self.session_manager.client)
+                        if is_flagged:
+                            await self.send(text_data=json.dumps({
+                                "type": "moderation_alert",
+                                "message": "The assistant's response was blocked due to inappropriate content."
+                            }))
+                            continue
+
                         self.bot_audio_buffer.append(audio_chunk)
                         self.audio_queue.append(audio_chunk)
                         asyncio.create_task(self.send_audio_chunk())
@@ -634,16 +698,31 @@ class AudioConsumer(BaseWebSocketConsumer):
                             f"Final buffer converted to audio: {batched_text}")
                         processed_text = self.process_text_for_tts(
                             batched_text)
-                        audio_chunk = await self.text_to_speech(processed_text)
-                        self.bot_audio_buffer.append(audio_chunk)
-                        self.audio_queue.append(audio_chunk)
-                        asyncio.create_task(self.send_audio_chunk())
+
+                        # Moderation check for outgoing assistant text before TTS
+                        is_flagged, category = await moderate_content(batched_text, self.session_manager.client)
+                        if is_flagged:
+                            await self.send(text_data=json.dumps({
+                                "type": "moderation_alert",
+                                "message": "The assistant's response was blocked due to inappropriate content."
+                            }))
+                        else:
+                            audio_chunk = await self.text_to_speech(processed_text)
+                            self.bot_audio_buffer.append(audio_chunk)
+                            self.audio_queue.append(audio_chunk)
+                            asyncio.create_task(self.send_audio_chunk())
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                     complete_bot_message = ''.join(self.bot_message_buffer)
-                    complete_audio = b''.join(self.bot_audio_buffer)
-                    logger.debug(f"Total bot message: {complete_bot_message}")
-                    await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
-                                                     user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
+
+                    # Moderation check for complete outgoing assistant message
+                    is_flagged, category = await moderate_content(complete_bot_message, self.session_manager.client)
+                    if not is_flagged:
+                        complete_audio = b''.join(self.bot_audio_buffer)
+                        logger.debug(
+                            f"Total bot message: {complete_bot_message}")
+                        await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
+                                                         user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
+
                     self.bot_message_buffer.clear()
                     self.bot_audio_buffer.clear()
                     self.session_manager.run_active = False

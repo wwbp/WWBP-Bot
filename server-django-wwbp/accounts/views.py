@@ -128,7 +128,6 @@ def register(request):
         try:
             data = json.loads(request.body)
             username = data.get('username')
-            email = data.get('email')
             password = data.get('password')
             role = data.get('role', 'student')
             preferred_name = data.get('preferred_name', username)
@@ -139,11 +138,11 @@ def register(request):
                 if auth_password != expected_auth_password:
                     return JsonResponse({"error": "Invalid authentication password"}, status=403)
 
-            if not username or not email or not password:
+            if not username or not password:
                 return JsonResponse({'error': 'Missing required fields'}, status=400)
 
             user = get_user_model().objects.create_user(
-                username=username, email=email, password=password, role=role, preferred_name=preferred_name)
+                username=username, password=password, role=role, preferred_name=preferred_name)
             user.save()
 
             user = authenticate(request, username=username, password=password)
