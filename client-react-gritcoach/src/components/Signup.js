@@ -14,7 +14,6 @@ import { useSnackbar } from "notistack";
 
 function Signup({ setLoggedIn, setRole }) {
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRoleState] = useState("student");
   const [authPassword, setAuthPassword] = useState("");
@@ -31,7 +30,6 @@ function Signup({ setLoggedIn, setRole }) {
 
     if (
       !username ||
-      !email ||
       !password ||
       !role ||
       (["teacher", "admin"].includes(role) && !authPassword)
@@ -42,7 +40,6 @@ function Signup({ setLoggedIn, setRole }) {
     try {
       const response = await postData("/register/", {
         username,
-        email,
         password,
         role,
         preferred_name,
@@ -88,16 +85,6 @@ function Signup({ setLoggedIn, setRole }) {
             margin="normal"
             value={preferred_name}
             onChange={(e) => setPreferredName(e.target.value)}
-          />
-          <TextField
-            fullWidth
-            label="Email"
-            margin="normal"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            error={submitted && !email}
-            helperText={submitted && !email && "Required"}
           />
           <TextField
             fullWidth
