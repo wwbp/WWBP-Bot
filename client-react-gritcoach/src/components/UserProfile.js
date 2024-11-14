@@ -9,7 +9,7 @@ import {
   Container,
   Slider,
 } from "@mui/material";
-import InteractionMode from './InteractionMode';
+import InteractionMode from "./InteractionMode";
 import { useSnackbar } from "notistack";
 
 function UserProfile() {
@@ -37,12 +37,12 @@ function UserProfile() {
     });
   };
 
-  const handleSliderChange = (e, value) =>{
+  const handleSliderChange = (e, value) => {
     setUser({
       ...user,
       voice_speed: value,
     });
-  }
+  };
 
   const handleModeChange = (mode) => {
     setUser({
@@ -55,7 +55,7 @@ function UserProfile() {
     e.preventDefault();
     setSubmitted(true);
 
-    if (!user.username || !user.email) {
+    if (!user.username) {
       return;
     }
 
@@ -112,7 +112,7 @@ function UserProfile() {
           value={user.preferred_name}
           onChange={handleChange}
           margin="normal"
-        /> 
+        />
         <TextField
           fullWidth
           label="Email"
@@ -120,9 +120,6 @@ function UserProfile() {
           value={user.email}
           onChange={handleChange}
           margin="normal"
-          required
-          error={submitted && !user.email}
-          helperText={submitted && !user.email && "Email is required"}
         />
         <Typography gutterBottom>Voice Speed</Typography>
         <Slider
@@ -163,7 +160,10 @@ function UserProfile() {
             />
           </>
         )}
-        <InteractionMode selectedMode={user.interaction_mode} handleModeChange={handleModeChange} />
+        <InteractionMode
+          selectedMode={user.interaction_mode}
+          handleModeChange={handleModeChange}
+        />
 
         <Box mt={3} display="flex" justifyContent="flex-end">
           <Button variant="contained" color="primary" type="submit">
