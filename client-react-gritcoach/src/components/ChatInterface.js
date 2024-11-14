@@ -144,7 +144,13 @@ function ChatInterface({ session, clearChat, persona }) {
     console.log("Handling text message:", event.data);
     const data = JSON.parse(event.data);
     setChatState("speaking");
-    if (data.event === "on_parser_start") {
+    if (data.type === "replace_user_message") {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === data.message_id ? { ...msg, message: data.message } : msg
+        )
+      );
+    } else if (data.event === "on_parser_start") {
       setMessages((prevMessages) => [
         ...prevMessages,
         { sender: botName, message: "", id: data.message_id },
@@ -165,10 +171,10 @@ function ChatInterface({ session, clearChat, persona }) {
   };
 
   const handleAudioMessage = async (event) => {
+    const data = JSON.parse(event.data);
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
-      const data = JSON.parse(event.data);
       if (data.sdp) {
         try {
           await peerConnection.current.setRemoteDescription(
@@ -228,10 +234,10 @@ function ChatInterface({ session, clearChat, persona }) {
   };
 
   const handleTextThenAudio = async (event) => {
+    const data = JSON.parse(event.data);
     if (event.data instanceof Blob) {
       audioBuffer.current.push(event.data);
     } else if (typeof event.data === "string") {
-      const data = JSON.parse(event.data);
       if (data.sdp) {
         try {
           await peerConnection.current.setRemoteDescription(
@@ -299,10 +305,10 @@ function ChatInterface({ session, clearChat, persona }) {
   };
 
   const handleAudioOnly = async (event) => {
+    const data = JSON.parse(event.data);
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
-      const data = JSON.parse(event.data);
       if (data.sdp) {
         try {
           await peerConnection.current.setRemoteDescription(
@@ -376,10 +382,10 @@ function ChatInterface({ session, clearChat, persona }) {
   };
 
   const handleAudioThenText = async (event) => {
+    const data = JSON.parse(event.data);
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
-      const data = JSON.parse(event.data);
       if (data.sdp) {
         try {
           await peerConnection.current.setRemoteDescription(

@@ -426,8 +426,9 @@ class ChatConsumer(BaseWebSocketConsumer):
         is_flagged, category = await moderate_content(message, self.session_manager.client)
         if is_flagged:
             await self.send(text_data=json.dumps({
-                "type": "moderation_alert",
-                "message": f"Your message was blocked due to inappropriate content related to {category}."
+                "type": "replace_user_message",
+                "message_id": str(int(message_id)-1),
+                "message": f"Your message was blocked due to content related to {category}."
             }))
             return
 
@@ -462,16 +463,8 @@ class ChatConsumer(BaseWebSocketConsumer):
                     await self.send(text_data=json.dumps(chunk))
                     complete_bot_message = ''.join(bot_message_buffer)
 
-                    # Moderation check for outgoing assistant message
-                    is_flagged, category = await moderate_content(complete_bot_message, self.session_manager.client)
-                    if is_flagged:
-                        await self.send(text_data=json.dumps({
-                            "type": "moderation_alert",
-                            "message": "The assistant's response was blocked due to inappropriate content."
-                        }))
-                    else:
-                        await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
-                                                         user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
+                    await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
+                                                     user_message=None, bot_message=complete_bot_message, has_audio=False, audio_bytes=None)
 
                     bot_message_buffer.clear()
                     self.session_manager.run_active = False
@@ -562,8 +555,9 @@ class AudioConsumer(BaseWebSocketConsumer):
             is_flagged, category = await moderate_content(transcript, self.session_manager.client)
             if is_flagged:
                 await self.send(text_data=json.dumps({
-                    "type": "moderation_alert",
-                    "message": f"Your audio message was blocked due to inappropriate content related to {category}."
+                    "type": "warning_message",
+                    "message_id": self.current_message_id,
+                    "transcript": f"Your audio message was blocked due to inappropriate content related to {category}."
                 }))
                 return
 
@@ -677,15 +671,6 @@ class AudioConsumer(BaseWebSocketConsumer):
                             batched_text)
                         audio_chunk = await self.text_to_speech(processed_text)
 
-                        # Moderation check for outgoing assistant text before TTS
-                        is_flagged, category = await moderate_content(batched_text, self.session_manager.client)
-                        if is_flagged:
-                            await self.send(text_data=json.dumps({
-                                "type": "moderation_alert",
-                                "message": "The assistant's response was blocked due to inappropriate content."
-                            }))
-                            continue
-
                         self.bot_audio_buffer.append(audio_chunk)
                         self.audio_queue.append(audio_chunk)
                         asyncio.create_task(self.send_audio_chunk())
@@ -699,29 +684,17 @@ class AudioConsumer(BaseWebSocketConsumer):
                         processed_text = self.process_text_for_tts(
                             batched_text)
 
-                        # Moderation check for outgoing assistant text before TTS
-                        is_flagged, category = await moderate_content(batched_text, self.session_manager.client)
-                        if is_flagged:
-                            await self.send(text_data=json.dumps({
-                                "type": "moderation_alert",
-                                "message": "The assistant's response was blocked due to inappropriate content."
-                            }))
-                        else:
-                            audio_chunk = await self.text_to_speech(processed_text)
-                            self.bot_audio_buffer.append(audio_chunk)
-                            self.audio_queue.append(audio_chunk)
-                            asyncio.create_task(self.send_audio_chunk())
+                        audio_chunk = await self.text_to_speech(processed_text)
+                        self.bot_audio_buffer.append(audio_chunk)
+                        self.audio_queue.append(audio_chunk)
+                        asyncio.create_task(self.send_audio_chunk())
                     await self.send(text_data=json.dumps({'event': 'on_parser_end'}))
                     complete_bot_message = ''.join(self.bot_message_buffer)
-
-                    # Moderation check for complete outgoing assistant message
-                    is_flagged, category = await moderate_content(complete_bot_message, self.session_manager.client)
-                    if not is_flagged:
-                        complete_audio = b''.join(self.bot_audio_buffer)
-                        logger.debug(
-                            f"Total bot message: {complete_bot_message}")
-                        await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
-                                                         user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
+                    complete_audio = b''.join(self.bot_audio_buffer)
+                    logger.debug(
+                        f"Total bot message: {complete_bot_message}")
+                    await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
+                                                     user_message=None, bot_message=complete_bot_message, has_audio=True, audio_bytes=complete_audio)
 
                     self.bot_message_buffer.clear()
                     self.bot_audio_buffer.clear()
