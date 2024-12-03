@@ -10,6 +10,7 @@ import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 import Avatar from "./Avatar";
+import MessageItem from "./MessageItem";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
@@ -715,38 +716,15 @@ function ChatInterface({ session, clearChat, persona }) {
             flexDirection: "column",
           }}
         >
-          {messages.map((msg, index) => (
-            <Box
-              key={index}
-              display="flex"
-              justifyContent={
-                msg.sender === botName ? "flex-start" : "flex-end"
-              }
-              mb={2}
-            >
-              {msg.sender === botName && (
-                <Avatar
-                  alt="bot Avatar"
-                  src={botAvatar}
-                  isBot={true}
-                  style={{ marginRight: "8px" }}
-                />
-              )}
-              <Box
-                bgcolor={msg.sender === botName ? "#f0f0f0" : "#cfe8fc"}
-                p={1}
-                borderRadius={2}
-                maxWidth="60%"
-              >
-                <Typography variant="body2" color="textSecondary">
-                  <strong>{msg.sender}:</strong>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {msg.message}
-                  </ReactMarkdown>
-                </Typography>
-              </Box>
-            </Box>
+          {messages.map((msg) => (
+            <MessageItem
+              key={msg.id}
+              message={msg}
+              botName={botName}
+              avatar={msg.sender === botName ? botAvatar : null}
+            />
           ))}
+
           <div ref={messagesEndRef} />
         </Box>
         <Box display="flex" alignItems="center" p={2}>
