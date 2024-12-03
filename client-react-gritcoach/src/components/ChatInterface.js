@@ -11,6 +11,7 @@ import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
+import PushToTalkButton from "./PushToTalkButton";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
@@ -572,7 +573,7 @@ function ChatInterface({ session, clearChat, persona }) {
     tempMessageRef.current = e.target.value; // Save user's message to temporary buffer
   };
 
-  const handleSubmit = (msg) => {
+  const handleSendMessage = (msg) => {
     if (!msg.trim()) {
       enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
       return;
@@ -601,7 +602,7 @@ function ChatInterface({ session, clearChat, persona }) {
 
   const onKeyPress = (e) => {
     if (e.keyCode === 13) {
-      handleSubmit(e);
+      handleSendMessage(e);
     }
   };
 
@@ -717,58 +718,16 @@ function ChatInterface({ session, clearChat, persona }) {
         />
         <Box display="flex" alignItems="center" p={2}>
           {chatMode !== "text" ? (
-            <Box
-              display="flex"
-              justifyContent="center"
-              flexGrow={1}
-              position="relative"
-            >
-              <IconButton
-                onMouseDown={handlePTTMouseDown}
-                onMouseUp={handlePTTMouseUp}
-                color={audioState === "recording" ? "secondary" : "default"}
-                aria-label="push-to-talk"
-                sx={{
-                  width: 80,
-                  height: 80,
-                  fontSize: "2rem",
-                  position: "relative", // Ensure the circular text is positioned correctly
-                }}
-              >
-                <MicIcon sx={{ fontSize: "4rem" }} />
-                {getAudioStateIcon()}
-                <svg
-                  width="120"
-                  height="120"
-                  viewBox="0 0 120 120"
-                  style={{ position: "absolute", top: -50, left: -20 }}
-                >
-                  <path
-                    id="circlePath"
-                    d="M 60, 60
-                       m -50, 0
-                       a 50,50 0 1,1 100,0
-                       a 50,50 0 1,1 -100,0"
-                    fill="transparent"
-                  />
-                  <text fontSize="12" fill="#000">
-                    <textPath
-                      href="#circlePath"
-                      startOffset="25%"
-                      textAnchor="middle"
-                      transform="rotate(180 60 60)"
-                    >
-                      hold to talk
-                    </textPath>
-                  </text>
-                </svg>
-              </IconButton>
-            </Box>
+            <PushToTalkButton
+              audioState={audioState}
+              handlePTTMouseDown={handlePTTMouseDown}
+              handlePTTMouseUp={handlePTTMouseUp}
+            />
           ) : (
             <MessageInput
               message={message}
               setMessage={setMessage}
-              onSendMessage={handleSubmit}
+              onSendMessage={handleSendMessage}
               chatState={chatState}
               dots={dots}
             />
