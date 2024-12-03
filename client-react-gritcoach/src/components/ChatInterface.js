@@ -10,6 +10,7 @@ import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 import MessageList from "./MessageList";
+import MessageInput from "./MessageInput";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
@@ -571,9 +572,8 @@ function ChatInterface({ session, clearChat, persona }) {
     tempMessageRef.current = e.target.value; // Save user's message to temporary buffer
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!message.trim()) {
+  const handleSubmit = (msg) => {
+    if (!msg.trim()) {
       enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
       return;
     }
@@ -581,16 +581,22 @@ function ChatInterface({ session, clearChat, persona }) {
     const userMessageId = messageId;
     const userMessage = {
       sender: "You",
-      message: message,
+      message: msg,
       id: userMessageId.toString(),
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    ws.current.send(
-      JSON.stringify({ message: message, message_id: userMessageId + 1 })
-    );
+
+    // Send message via WebSocket
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(
+        JSON.stringify({ message: msg, message_id: userMessageId + 1 })
+      );
+    } else {
+      enqueueSnackbar("WebSocket is not open", { variant: "error" });
+      console.error("WebSocket is not open");
+    }
+
     setMessageId((prevId) => prevId + 1);
-    setMessage("");
-    tempMessageRef.current = ""; // Clear temporary buffer
   };
 
   const onKeyPress = (e) => {
@@ -759,33 +765,14 @@ function ChatInterface({ session, clearChat, persona }) {
               </IconButton>
             </Box>
           ) : (
-            <>
-              <TextField
-                fullWidth
-                value={message}
-                onChange={handleInputChange}
-                placeholder={getChatStateText()}
-                onKeyDown={onKeyPress}
-                autoComplete="off"
-              />
-              <Button
-                onClick={handleSubmit}
-                color="primary"
-                variant="contained"
-                style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
-              >
-                Send
-              </Button>
-            </>
+            <MessageInput
+              message={message}
+              setMessage={setMessage}
+              onSendMessage={handleSubmit}
+              chatState={chatState}
+              dots={dots}
+            />
           )}
-          {/* <Button
-            onClick={handleCompleteTask}
-            color="primary"
-            variant="contained"
-            style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
-          >
-            Complete
-          </Button> */}
         </Box>
       </Box>
     </Box>
