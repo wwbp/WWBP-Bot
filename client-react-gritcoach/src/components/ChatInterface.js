@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createWebSocket, fetchData } from "../utils/api";
-import { Box, TextField, Button, Typography, IconButton } from "@mui/material";
-import MicIcon from "@mui/icons-material/Mic";
+import { Box } from "@mui/material";
 import { useSnackbar } from "notistack";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import defaultBotAvatar from "../assets/bot-avatar.png";
-import EarIcon from "@mui/icons-material/Hearing";
-import BrainIcon from "@mui/icons-material/Memory";
-import MouthIcon from "@mui/icons-material/RecordVoiceOver";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import PushToTalkButton from "./PushToTalkButton";
@@ -40,14 +34,13 @@ function ChatInterface({ session, clearChat, persona }) {
   const [messageId, setMessageId] = useState(1);
   const [audioQueue, setAudioQueue] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isWsConnected, setIsWsConnected] = useState(false);
   const ws = useRef(null);
   const peerConnection = useRef(null);
   const localStream = useRef(null);
   const remoteStream = useRef(new MediaStream());
   const mediaRecorderRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const tempMessageRef = useRef(""); // Temporary buffer for user's message
+  const tempMessageRef = useRef("");
   const { enqueueSnackbar } = useSnackbar();
   const audioBuffer = useRef([]);
   const [textBuffer, setTextBuffer] = useState([]);
@@ -70,8 +63,6 @@ function ChatInterface({ session, clearChat, persona }) {
 
     ws.current.onopen = () => {
       console.log("WebSocket connected");
-
-      setIsWsConnected(true);
       if (chatMode === "audio") {
         setupPeerConnection();
       }
@@ -99,14 +90,12 @@ function ChatInterface({ session, clearChat, persona }) {
 
     ws.current.onerror = (event) => {
       console.error("WebSocket error:", event);
-      // enqueueSnackbar("WebSocket error observed", { variant: "error" });
-      setIsWsConnected(false);
+      enqueueSnackbar("WebSocket error observed", { variant: "error" });
     };
 
     ws.current.onclose = (event) => {
       console.log("WebSocket closed:", event);
-      // enqueueSnackbar("WebSocket connection closed", { variant: "info" });
-      setIsWsConnected(false);
+      enqueueSnackbar("WebSocket connection closed", { variant: "info" });
     };
   };
 
@@ -161,7 +150,7 @@ function ChatInterface({ session, clearChat, persona }) {
       );
     } else if (data.event === "on_parser_end") {
       setMessageId((prevId) => prevId + 1);
-      setMessage(tempMessageRef.current); // Restore temporary buffer
+      setMessage(tempMessageRef.current);
       setChatState("idle");
     }
   };
@@ -224,7 +213,7 @@ function ChatInterface({ session, clearChat, persona }) {
         );
       } else if (data.event === "on_parser_end") {
         setMessageId((prevId) => prevId + 1);
-        setMessage(tempMessageRef.current); // Restore temporary buffer
+        setMessage(tempMessageRef.current);
       }
     }
   };
@@ -288,7 +277,7 @@ function ChatInterface({ session, clearChat, persona }) {
         );
       } else if (data.event === "on_parser_end") {
         setMessageId((prevId) => prevId + 1);
-        setMessage(tempMessageRef.current); // Restore temporary buffer
+        setMessage(tempMessageRef.current);
         if (audioBuffer.current.length > 0) {
           const audioBlob = new Blob(audioBuffer.current, {
             type: "audio/webm",
@@ -337,10 +326,6 @@ function ChatInterface({ session, clearChat, persona }) {
           console.error("Error adding received ICE candidate", error);
         }
       } else if (data.transcript) {
-        // setMessages((prevMessages) => [
-        //   ...prevMessages,
-        //   { sender: "You", message: data.transcript, id: data.message_id },
-        // ]);
         setMessageId((prevId) => prevId + 1);
         setMessage("");
       } else if (data.event === "on_parser_start") {
@@ -349,10 +334,6 @@ function ChatInterface({ session, clearChat, persona }) {
           ...prevBuffer,
           { sender: botName, message: "", id: data.message_id },
         ]);
-        // setMessages((prevMessages) => [
-        //   ...prevMessages,
-        //   { sender: "GritCoach", message: "", id: data.message_id },
-        // ]);
       } else if (data.event === "on_parser_stream") {
         setTextBuffer((prevBuffer) =>
           prevBuffer.map((msg) =>
@@ -361,18 +342,11 @@ function ChatInterface({ session, clearChat, persona }) {
               : msg
           )
         );
-        // setMessages((prevMessages) =>
-        //   prevMessages.map((msg) =>
-        //     msg.id === data.message_id
-        //       ? { ...msg, message: msg.message + data.value }
-        //       : msg
-        //   )
-        // );
       } else if (data.event === "on_parser_end") {
         setMessageId((prevId) => prevId + 1);
         setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
         setTextBuffer([]);
-        setMessage(""); // Restore temporary buffer
+        setMessage("");
       }
     }
   };
@@ -427,30 +401,17 @@ function ChatInterface({ session, clearChat, persona }) {
           message: "",
           id: data.message_id,
         });
-        // setMessages((prevMessages) => [
-        //   ...prevMessages,
-        //   { sender: "GritCoach", message: "", id: data.message_id },
-        // ]);
       } else if (data.event === "on_parser_stream") {
         textBufferRef.current = textBufferRef.current.map((msg) =>
           msg.id === data.message_id
             ? { ...msg, message: msg.message + data.value }
             : msg
         );
-        // setMessages((prevMessages) =>
-        //   prevMessages.map((msg) =>
-        //     msg.id === data.message_id
-        //       ? { ...msg, message: msg.message + data.value }
-        //       : msg
-        //   )
-        // );
       } else if (data.event === "on_parser_end") {
         console.log("On parser end textBuffer is ", textBufferRef.current);
         console.log("On parser end messages is ", messages);
         setMessageId((prevId) => prevId + 1);
-        // setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
-        // setTextBuffer([]);
-        setMessage(""); // Restore temporary buffer
+        setMessage("");
       }
     }
   };
@@ -519,7 +480,7 @@ function ChatInterface({ session, clearChat, persona }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code === "Space" && chatMode === "audio" && audioState === "idle") {
-        e.preventDefault(); // Prevent default space behavior (like scrolling)
+        e.preventDefault();
         handlePTTMouseDown();
       }
     };
@@ -530,7 +491,7 @@ function ChatInterface({ session, clearChat, persona }) {
         chatMode === "audio" &&
         audioState === "recording"
       ) {
-        e.preventDefault(); // Prevent default space behavior
+        e.preventDefault();
         handlePTTMouseUp();
       }
     };
@@ -568,11 +529,6 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   };
 
-  const handleInputChange = (e) => {
-    setMessage(e.target.value);
-    tempMessageRef.current = e.target.value; // Save user's message to temporary buffer
-  };
-
   const handleSendMessage = (msg) => {
     if (!msg.trim()) {
       enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
@@ -587,7 +543,6 @@ function ChatInterface({ session, clearChat, persona }) {
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
 
-    // Send message via WebSocket
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(
         JSON.stringify({ message: msg, message_id: userMessageId + 1 })
@@ -598,12 +553,6 @@ function ChatInterface({ session, clearChat, persona }) {
     }
 
     setMessageId((prevId) => prevId + 1);
-  };
-
-  const onKeyPress = (e) => {
-    if (e.keyCode === 13) {
-      handleSendMessage(e);
-    }
   };
 
   const handlePTTMouseDown = () => {
@@ -650,36 +599,6 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   };
 
-  const handleModeChange = (event) => {
-    setChatMode(event.target.value);
-  };
-
-  const getAudioStateIcon = () => {
-    switch (audioState) {
-      case "recording":
-        return <EarIcon style={{ position: "absolute", top: "-30px" }} />;
-      case "processing":
-        return <BrainIcon style={{ position: "absolute", top: "-30px" }} />;
-      case "speaking":
-        return <MouthIcon style={{ position: "absolute", top: "-30px" }} />;
-      default:
-        return null;
-    }
-  };
-
-  const getChatStateText = () => {
-    switch (chatState) {
-      case "idle":
-        return "Type a message...";
-      case "processing":
-        return `${dots}`;
-      case "speaking":
-        return `${botName} is typing...`;
-      default:
-        return "Type a message...";
-    }
-  };
-
   return (
     <Box
       display="flex"
@@ -694,23 +613,6 @@ function ChatInterface({ session, clearChat, persona }) {
         width="100%"
         maxWidth="800px"
       >
-        {/* <Box display="flex" justifyContent="flex-end" p={2}>
-          <Select
-            value={chatMode}
-            onChange={handleModeChange}
-            variant="outlined"
-            sx={{
-              borderRadius: "50px",
-              boxShadow: 3,
-            }}
-          >
-            <MenuItem value="text">Text Mode</MenuItem>
-            <MenuItem value="audio">Audio Mode</MenuItem>
-            <MenuItem value="text-then-audio">Text then Audio Mode</MenuItem>
-            <MenuItem value="audio-then-text">Audio Then Text Mode</MenuItem>
-            <MenuItem value="audio-only">Audio Only</MenuItem>            
-          </Select>
-        </Box> */}
         <MessageList
           messages={messages}
           botName={botName}
