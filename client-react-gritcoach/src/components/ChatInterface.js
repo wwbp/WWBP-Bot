@@ -9,8 +9,7 @@ import defaultBotAvatar from "../assets/bot-avatar.png";
 import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
-import Avatar from "./Avatar";
-import MessageItem from "./MessageItem";
+import MessageList from "./MessageList";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
@@ -705,28 +704,11 @@ function ChatInterface({ session, clearChat, persona }) {
             <MenuItem value="audio-only">Audio Only</MenuItem>            
           </Select>
         </Box> */}
-        <Box
-          flexGrow={1}
-          overflow="auto"
-          p={2}
-          sx={{
-            width: "100%",
-            height: "500px",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {messages.map((msg) => (
-            <MessageItem
-              key={msg.id}
-              message={msg}
-              botName={botName}
-              avatar={msg.sender === botName ? botAvatar : null}
-            />
-          ))}
-
-          <div ref={messagesEndRef} />
-        </Box>
+        <MessageList
+          messages={messages}
+          botName={botName}
+          botAvatar={botAvatar}
+        />
         <Box display="flex" alignItems="center" p={2}>
           {chatMode !== "text" ? (
             <Box
