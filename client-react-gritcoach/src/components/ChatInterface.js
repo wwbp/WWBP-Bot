@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createWebSocket, fetchData } from "../utils/api";
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  IconButton,
-  Avatar,
-} from "@mui/material";
+import { Box, TextField, Button, Typography, IconButton } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import { useSnackbar } from "notistack";
 import ReactMarkdown from "react-markdown";
@@ -16,6 +9,7 @@ import defaultBotAvatar from "../assets/bot-avatar.png";
 import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
+import Avatar from "./Avatar";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
@@ -734,6 +728,7 @@ function ChatInterface({ session, clearChat, persona }) {
                 <Avatar
                   alt="bot Avatar"
                   src={botAvatar}
+                  isBot={true}
                   style={{ marginRight: "8px" }}
                 />
               )}
