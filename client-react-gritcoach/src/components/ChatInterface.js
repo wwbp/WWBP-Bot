@@ -40,7 +40,6 @@ function ChatInterface({ session, clearChat, persona }) {
   const remoteStream = useRef(new MediaStream());
   const mediaRecorderRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const tempMessageRef = useRef("");
   const { enqueueSnackbar } = useSnackbar();
   const audioBuffer = useRef([]);
   const [textBuffer, setTextBuffer] = useState([]);
