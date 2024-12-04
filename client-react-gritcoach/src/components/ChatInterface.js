@@ -9,24 +9,7 @@ import PushToTalkButton from "./PushToTalkButton";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
-  const convertAvatarUrl = (inputUrl) => {
-    const s3Pattern = /^https:\/\/.*\.s3\.amazonaws\.com/;
-
-    if (s3Pattern.test(inputUrl)) {
-      const relativePath = inputUrl.replace(s3Pattern, "");
-      return `${process.env.REACT_APP_API_URL.replace(
-        "/api/v1",
-        ""
-      )}${relativePath}`;
-    }
-
-    return inputUrl;
-  };
-
-  const botAvatar = persona?.avatar_url
-    ? convertAvatarUrl(persona.avatar_url)
-    : defaultBotAvatar;
-
+  const botAvatar = persona?.avatar_url;
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");

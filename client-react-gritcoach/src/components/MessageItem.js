@@ -3,7 +3,6 @@ import { Box, Typography } from "@mui/material";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Avatar from "./Avatar";
-import defaultUserPlaceholder from "../assets/user-placeholder.png";
 
 const MessageItem = ({ message, botName, avatar }) => {
   const isBot = message.sender === botName;
@@ -15,18 +14,16 @@ const MessageItem = ({ message, botName, avatar }) => {
       mb={2}
     >
       {isBot ? (
-        avatar && (
-          <Avatar
-            alt={`${botName} Avatar`}
-            src={avatar}
-            isBot={true}
-            style={{ marginRight: "8px" }}
-          />
-        )
+        <Avatar
+          alt={`${botName} Avatar`}
+          src={avatar}
+          isBot={true}
+          style={{ marginRight: "8px" }}
+        />
       ) : (
         <Avatar
           alt="User Avatar"
-          src={defaultUserPlaceholder} // Use the placeholder for user messages
+          src={null}
           isBot={false}
           style={{ marginLeft: "8px" }}
         />

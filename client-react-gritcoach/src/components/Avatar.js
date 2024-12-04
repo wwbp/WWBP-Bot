@@ -1,7 +1,7 @@
 import React from "react";
 import MuiAvatar from "@mui/material/Avatar";
 import defaultBotAvatar from "../assets/bot-avatar.png";
-import defaultUserPlaceholder from "../assets/user-placeholder.png"; // Add a placeholder image
+import defaultUserPlaceholder from "../assets/user-placeholder.png";
 
 const Avatar = ({ src, alt, isBot }) => {
   const convertAvatarUrl = (inputUrl) => {
@@ -18,12 +18,11 @@ const Avatar = ({ src, alt, isBot }) => {
     return inputUrl;
   };
 
-  let avatarSrc;
-  if (isBot) {
-    avatarSrc = src ? convertAvatarUrl(src) : defaultBotAvatar;
-  } else {
-    avatarSrc = src ? convertAvatarUrl(src) : defaultUserPlaceholder;
-  }
+  const avatarSrc = src
+    ? convertAvatarUrl(src)
+    : isBot
+    ? defaultBotAvatar
+    : defaultUserPlaceholder;
 
   return <MuiAvatar alt={alt} src={avatarSrc} />;
 };
