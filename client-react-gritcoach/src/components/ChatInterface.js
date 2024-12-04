@@ -1,21 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createWebSocket, fetchData } from "../utils/api";
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-  IconButton,
-  Avatar,
-} from "@mui/material";
-import MicIcon from "@mui/icons-material/Mic";
+import { Box } from "@mui/material";
 import { useSnackbar } from "notistack";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import defaultBotAvatar from "../assets/bot-avatar.png";
-import EarIcon from "@mui/icons-material/Hearing";
-import BrainIcon from "@mui/icons-material/Memory";
-import MouthIcon from "@mui/icons-material/RecordVoiceOver";
+import MessageList from "./MessageList";
+import MessageInput from "./MessageInput";
+import PushToTalkButton from "./PushToTalkButton";
 
 function ChatInterface({ session, clearChat, persona }) {
   const botName = persona?.name || "GritCoach";
@@ -44,14 +34,13 @@ function ChatInterface({ session, clearChat, persona }) {
   const [messageId, setMessageId] = useState(1);
   const [audioQueue, setAudioQueue] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isWsConnected, setIsWsConnected] = useState(false);
   const ws = useRef(null);
   const peerConnection = useRef(null);
   const localStream = useRef(null);
   const remoteStream = useRef(new MediaStream());
   const mediaRecorderRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const tempMessageRef = useRef(""); // Temporary buffer for user's message
+  const tempMessageRef = useRef("");
   const { enqueueSnackbar } = useSnackbar();
   const audioBuffer = useRef([]);
   const [textBuffer, setTextBuffer] = useState([]);
@@ -74,8 +63,6 @@ function ChatInterface({ session, clearChat, persona }) {
 
     ws.current.onopen = () => {
       console.log("WebSocket connected");
-
-      setIsWsConnected(true);
       if (chatMode === "audio") {
         setupPeerConnection();
       }
@@ -103,14 +90,12 @@ function ChatInterface({ session, clearChat, persona }) {
 
     ws.current.onerror = (event) => {
       console.error("WebSocket error:", event);
-      // enqueueSnackbar("WebSocket error observed", { variant: "error" });
-      setIsWsConnected(false);
+      enqueueSnackbar("WebSocket error observed", { variant: "error" });
     };
 
     ws.current.onclose = (event) => {
       console.log("WebSocket closed:", event);
-      // enqueueSnackbar("WebSocket connection closed", { variant: "info" });
-      setIsWsConnected(false);
+      enqueueSnackbar("WebSocket connection closed", { variant: "info" });
     };
   };
 
@@ -140,321 +125,226 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   }, [chatState]);
 
+  // Utility function to handle SDP
+  const handleSDP = async (data) => {
+    try {
+      await peerConnection.current.setRemoteDescription(
+        new RTCSessionDescription(data.sdp)
+      );
+      if (data.sdp.type === "offer") {
+        const answer = await peerConnection.current.createAnswer();
+        await peerConnection.current.setLocalDescription(answer);
+        ws.current.send(
+          JSON.stringify({ sdp: peerConnection.current.localDescription })
+        );
+      }
+    } catch (error) {
+      enqueueSnackbar("Failed to set remote description", { variant: "error" });
+      console.error("Failed to set remote description:", error);
+    }
+  };
+
+  // Utility function to handle ICE candidates
+  const handleICECandidate = async (data) => {
+    try {
+      await peerConnection.current.addIceCandidate(
+        new RTCIceCandidate(data.candidate)
+      );
+    } catch (error) {
+      enqueueSnackbar("Error adding received ICE candidate", {
+        variant: "error",
+      });
+      console.error("Error adding received ICE candidate:", error);
+    }
+  };
+
+  // Utility function to handle transcripts
+  const handleTranscript = (data) => {
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { sender: "You", message: data.transcript, id: data.message_id },
+    ]);
+    setMessageId((prevId) => prevId + 1);
+    setMessage("");
+  };
+
+  // Utility function to handle parser events
+  const handleParserEvent = (data) => {
+    switch (data.event) {
+      case "on_parser_start":
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: botName, message: "", id: data.message_id },
+        ]);
+        break;
+      case "on_parser_stream":
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === data.message_id
+              ? { ...msg, message: msg.message + data.value }
+              : msg
+          )
+        );
+        break;
+      case "on_parser_end":
+        setMessageId((prevId) => prevId + 1);
+        setMessage(tempMessageRef.current);
+        setChatState("idle");
+        break;
+      default:
+        break;
+    }
+  };
+
   const handleTextMessage = (event) => {
     console.log("Handling text message:", event.data);
-    const data = JSON.parse(event.data);
+
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     setChatState("speaking");
+
     if (data.type === "replace_user_message") {
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg.id === data.message_id ? { ...msg, message: data.message } : msg
         )
       );
-    } else if (data.event === "on_parser_start") {
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { sender: botName, message: "", id: data.message_id },
-      ]);
-    } else if (data.event === "on_parser_stream") {
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg.id === data.message_id
-            ? { ...msg, message: msg.message + data.value }
-            : msg
-        )
-      );
-    } else if (data.event === "on_parser_end") {
-      setMessageId((prevId) => prevId + 1);
-      setMessage(tempMessageRef.current); // Restore temporary buffer
-      setChatState("idle");
+    } else {
+      handleParserEvent(data);
     }
   };
 
   const handleAudioMessage = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
       if (data.sdp) {
-        try {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-          );
-          if (data.sdp.type === "offer") {
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            ws.current.send(
-              JSON.stringify({
-                sdp: peerConnection.current.localDescription,
-              })
-            );
-          }
-        } catch (error) {
-          enqueueSnackbar("Failed to set remote description", {
-            variant: "error",
-          });
-          console.error("Failed to set remote description:", error);
-        }
+        await handleSDP(data);
       } else if (data.candidate) {
-        try {
-          await peerConnection.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          enqueueSnackbar("Error adding received ICE candidate", {
-            variant: "error",
-          });
-          console.error("Error adding received ICE candidate", error);
-        }
+        await handleICECandidate(data);
       } else if (data.transcript) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
-        ]);
-        setMessageId((prevId) => prevId + 1);
-        setMessage("");
-      } else if (data.event === "on_parser_start") {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: botName, message: "", id: data.message_id },
-        ]);
-      } else if (data.event === "on_parser_stream") {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === data.message_id
-              ? { ...msg, message: msg.message + data.value }
-              : msg
-          )
-        );
-      } else if (data.event === "on_parser_end") {
-        setMessageId((prevId) => prevId + 1);
-        setMessage(tempMessageRef.current); // Restore temporary buffer
+        handleTranscript(data);
+      } else if (data.event) {
+        handleParserEvent(data);
       }
     }
   };
 
   const handleTextThenAudio = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     if (event.data instanceof Blob) {
       audioBuffer.current.push(event.data);
     } else if (typeof event.data === "string") {
       if (data.sdp) {
-        try {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-          );
-          if (data.sdp.type === "offer") {
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            ws.current.send(
-              JSON.stringify({
-                sdp: peerConnection.current.localDescription,
-              })
-            );
-          }
-        } catch (error) {
-          enqueueSnackbar("Failed to set remote description", {
-            variant: "error",
-          });
-          console.error("Failed to set remote description:", error);
-        }
+        await handleSDP(data);
       } else if (data.candidate) {
-        try {
-          await peerConnection.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          enqueueSnackbar("Error adding received ICE candidate", {
-            variant: "error",
-          });
-          console.error("Error adding received ICE candidate", error);
-        }
+        await handleICECandidate(data);
       } else if (data.transcript) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
-        ]);
-        setMessageId((prevId) => prevId + 1);
-        setMessage("");
-      } else if (data.event === "on_parser_start") {
-        textBufferRef.current = [];
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: botName, message: "", id: data.message_id },
-        ]);
-      } else if (data.event === "on_parser_stream") {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === data.message_id
-              ? { ...msg, message: msg.message + data.value }
-              : msg
-          )
-        );
-      } else if (data.event === "on_parser_end") {
-        setMessageId((prevId) => prevId + 1);
-        setMessage(tempMessageRef.current); // Restore temporary buffer
-        if (audioBuffer.current.length > 0) {
+        handleTranscript(data);
+      } else if (data.event) {
+        if (data.event === "on_parser_end" && audioBuffer.current.length > 0) {
           const audioBlob = new Blob(audioBuffer.current, {
             type: "audio/webm",
           });
           setAudioQueue([audioBlob]);
           audioBuffer.current = [];
         }
+        handleParserEvent(data);
       }
     }
   };
 
   const handleAudioOnly = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
       if (data.sdp) {
-        try {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-          );
-          if (data.sdp.type === "offer") {
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            ws.current.send(
-              JSON.stringify({
-                sdp: peerConnection.current.localDescription,
-              })
-            );
-          }
-        } catch (error) {
-          enqueueSnackbar("Failed to set remote description", {
-            variant: "error",
-          });
-          console.error("Failed to set remote description:", error);
-        }
+        await handleSDP(data);
       } else if (data.candidate) {
-        try {
-          await peerConnection.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          enqueueSnackbar("Error adding received ICE candidate", {
-            variant: "error",
-          });
-          console.error("Error adding received ICE candidate", error);
-        }
+        await handleICECandidate(data);
       } else if (data.transcript) {
-        // setMessages((prevMessages) => [
-        //   ...prevMessages,
-        //   { sender: "You", message: data.transcript, id: data.message_id },
-        // ]);
         setMessageId((prevId) => prevId + 1);
         setMessage("");
-      } else if (data.event === "on_parser_start") {
-        textBufferRef.current = [];
-        setTextBuffer((prevBuffer) => [
-          ...prevBuffer,
-          { sender: botName, message: "", id: data.message_id },
-        ]);
-        // setMessages((prevMessages) => [
-        //   ...prevMessages,
-        //   { sender: "GritCoach", message: "", id: data.message_id },
-        // ]);
-      } else if (data.event === "on_parser_stream") {
-        setTextBuffer((prevBuffer) =>
-          prevBuffer.map((msg) =>
-            msg.id === data.message_id
-              ? { ...msg, message: msg.message + data.value }
-              : msg
-          )
-        );
-        // setMessages((prevMessages) =>
-        //   prevMessages.map((msg) =>
-        //     msg.id === data.message_id
-        //       ? { ...msg, message: msg.message + data.value }
-        //       : msg
-        //   )
-        // );
-      } else if (data.event === "on_parser_end") {
-        setMessageId((prevId) => prevId + 1);
-        setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
-        setTextBuffer([]);
-        setMessage(""); // Restore temporary buffer
+      } else if (data.event) {
+        switch (data.event) {
+          case "on_parser_start":
+            textBufferRef.current = [];
+            setTextBuffer((prevBuffer) => [
+              ...prevBuffer,
+              { sender: botName, message: "", id: data.message_id },
+            ]);
+            break;
+          case "on_parser_stream":
+            setTextBuffer((prevBuffer) =>
+              prevBuffer.map((msg) =>
+                msg.id === data.message_id
+                  ? { ...msg, message: msg.message + data.value }
+                  : msg
+              )
+            );
+            break;
+          case "on_parser_end":
+            setMessageId((prevId) => prevId + 1);
+            setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
+            setTextBuffer([]);
+            setMessage("");
+            break;
+          default:
+            break;
+        }
       }
     }
   };
 
   const handleAudioThenText = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
       if (data.sdp) {
-        try {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-          );
-          if (data.sdp.type === "offer") {
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            ws.current.send(
-              JSON.stringify({
-                sdp: peerConnection.current.localDescription,
-              })
-            );
-          }
-        } catch (error) {
-          enqueueSnackbar("Failed to set remote description", {
-            variant: "error",
-          });
-          console.error("Failed to set remote description:", error);
-        }
+        await handleSDP(data);
       } else if (data.candidate) {
-        try {
-          await peerConnection.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          enqueueSnackbar("Error adding received ICE candidate", {
-            variant: "error",
-          });
-          console.error("Error adding received ICE candidate", error);
-        }
+        await handleICECandidate(data);
       } else if (data.transcript) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
-        ]);
-        setMessageId((prevId) => prevId + 1);
-        setMessage("");
-      } else if (data.event === "on_parser_start") {
-        textBufferRef.current = [];
-        textBufferRef.current.push({
-          sender: botName,
-          message: "",
-          id: data.message_id,
-        });
-        // setMessages((prevMessages) => [
-        //   ...prevMessages,
-        //   { sender: "GritCoach", message: "", id: data.message_id },
-        // ]);
-      } else if (data.event === "on_parser_stream") {
-        textBufferRef.current = textBufferRef.current.map((msg) =>
-          msg.id === data.message_id
-            ? { ...msg, message: msg.message + data.value }
-            : msg
-        );
-        // setMessages((prevMessages) =>
-        //   prevMessages.map((msg) =>
-        //     msg.id === data.message_id
-        //       ? { ...msg, message: msg.message + data.value }
-        //       : msg
-        //   )
-        // );
-      } else if (data.event === "on_parser_end") {
-        console.log("On parser end textBuffer is ", textBufferRef.current);
-        console.log("On parser end messages is ", messages);
-        setMessageId((prevId) => prevId + 1);
-        // setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
-        // setTextBuffer([]);
-        setMessage(""); // Restore temporary buffer
+        handleTranscript(data);
+      } else if (data.event) {
+        handleParserEvent(data);
       }
     }
   };
@@ -523,7 +413,7 @@ function ChatInterface({ session, clearChat, persona }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code === "Space" && chatMode === "audio" && audioState === "idle") {
-        e.preventDefault(); // Prevent default space behavior (like scrolling)
+        e.preventDefault();
         handlePTTMouseDown();
       }
     };
@@ -534,7 +424,7 @@ function ChatInterface({ session, clearChat, persona }) {
         chatMode === "audio" &&
         audioState === "recording"
       ) {
-        e.preventDefault(); // Prevent default space behavior
+        e.preventDefault();
         handlePTTMouseUp();
       }
     };
@@ -572,14 +462,8 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   };
 
-  const handleInputChange = (e) => {
-    setMessage(e.target.value);
-    tempMessageRef.current = e.target.value; // Save user's message to temporary buffer
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!message.trim()) {
+  const handleSendMessage = (msg) => {
+    if (!msg.trim()) {
       enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
       return;
     }
@@ -587,22 +471,21 @@ function ChatInterface({ session, clearChat, persona }) {
     const userMessageId = messageId;
     const userMessage = {
       sender: "You",
-      message: message,
+      message: msg,
       id: userMessageId.toString(),
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    ws.current.send(
-      JSON.stringify({ message: message, message_id: userMessageId + 1 })
-    );
-    setMessageId((prevId) => prevId + 1);
-    setMessage("");
-    tempMessageRef.current = ""; // Clear temporary buffer
-  };
 
-  const onKeyPress = (e) => {
-    if (e.keyCode === 13) {
-      handleSubmit(e);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(
+        JSON.stringify({ message: msg, message_id: userMessageId + 1 })
+      );
+    } else {
+      enqueueSnackbar("WebSocket is not open", { variant: "error" });
+      console.error("WebSocket is not open");
     }
+
+    setMessageId((prevId) => prevId + 1);
   };
 
   const handlePTTMouseDown = () => {
@@ -649,36 +532,6 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   };
 
-  const handleModeChange = (event) => {
-    setChatMode(event.target.value);
-  };
-
-  const getAudioStateIcon = () => {
-    switch (audioState) {
-      case "recording":
-        return <EarIcon style={{ position: "absolute", top: "-30px" }} />;
-      case "processing":
-        return <BrainIcon style={{ position: "absolute", top: "-30px" }} />;
-      case "speaking":
-        return <MouthIcon style={{ position: "absolute", top: "-30px" }} />;
-      default:
-        return null;
-    }
-  };
-
-  const getChatStateText = () => {
-    switch (chatState) {
-      case "idle":
-        return "Type a message...";
-      case "processing":
-        return `${dots}`;
-      case "speaking":
-        return `${botName} is typing...`;
-      default:
-        return "Type a message...";
-    }
-  };
-
   return (
     <Box
       display="flex"
@@ -693,144 +546,27 @@ function ChatInterface({ session, clearChat, persona }) {
         width="100%"
         maxWidth="800px"
       >
-        {/* <Box display="flex" justifyContent="flex-end" p={2}>
-          <Select
-            value={chatMode}
-            onChange={handleModeChange}
-            variant="outlined"
-            sx={{
-              borderRadius: "50px",
-              boxShadow: 3,
-            }}
-          >
-            <MenuItem value="text">Text Mode</MenuItem>
-            <MenuItem value="audio">Audio Mode</MenuItem>
-            <MenuItem value="text-then-audio">Text then Audio Mode</MenuItem>
-            <MenuItem value="audio-then-text">Audio Then Text Mode</MenuItem>
-            <MenuItem value="audio-only">Audio Only</MenuItem>            
-          </Select>
-        </Box> */}
-        <Box
-          flexGrow={1}
-          overflow="auto"
-          p={2}
-          sx={{
-            width: "100%",
-            height: "500px",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {messages.map((msg, index) => (
-            <Box
-              key={index}
-              display="flex"
-              justifyContent={
-                msg.sender === botName ? "flex-start" : "flex-end"
-              }
-              mb={2}
-            >
-              {msg.sender === botName && (
-                <Avatar
-                  alt="bot Avatar"
-                  src={botAvatar}
-                  style={{ marginRight: "8px" }}
-                />
-              )}
-              <Box
-                bgcolor={msg.sender === botName ? "#f0f0f0" : "#cfe8fc"}
-                p={1}
-                borderRadius={2}
-                maxWidth="60%"
-              >
-                <Typography variant="body2" color="textSecondary">
-                  <strong>{msg.sender}:</strong>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {msg.message}
-                  </ReactMarkdown>
-                </Typography>
-              </Box>
-            </Box>
-          ))}
-          <div ref={messagesEndRef} />
-        </Box>
+        <MessageList
+          messages={messages}
+          botName={botName}
+          botAvatar={botAvatar}
+        />
         <Box display="flex" alignItems="center" p={2}>
           {chatMode !== "text" ? (
-            <Box
-              display="flex"
-              justifyContent="center"
-              flexGrow={1}
-              position="relative"
-            >
-              <IconButton
-                onMouseDown={handlePTTMouseDown}
-                onMouseUp={handlePTTMouseUp}
-                color={audioState === "recording" ? "secondary" : "default"}
-                aria-label="push-to-talk"
-                sx={{
-                  width: 80,
-                  height: 80,
-                  fontSize: "2rem",
-                  position: "relative", // Ensure the circular text is positioned correctly
-                }}
-              >
-                <MicIcon sx={{ fontSize: "4rem" }} />
-                {getAudioStateIcon()}
-                <svg
-                  width="120"
-                  height="120"
-                  viewBox="0 0 120 120"
-                  style={{ position: "absolute", top: -50, left: -20 }}
-                >
-                  <path
-                    id="circlePath"
-                    d="M 60, 60
-                       m -50, 0
-                       a 50,50 0 1,1 100,0
-                       a 50,50 0 1,1 -100,0"
-                    fill="transparent"
-                  />
-                  <text fontSize="12" fill="#000">
-                    <textPath
-                      href="#circlePath"
-                      startOffset="25%"
-                      textAnchor="middle"
-                      transform="rotate(180 60 60)"
-                    >
-                      hold to talk
-                    </textPath>
-                  </text>
-                </svg>
-              </IconButton>
-            </Box>
+            <PushToTalkButton
+              audioState={audioState}
+              handlePTTMouseDown={handlePTTMouseDown}
+              handlePTTMouseUp={handlePTTMouseUp}
+            />
           ) : (
-            <>
-              <TextField
-                fullWidth
-                value={message}
-                onChange={handleInputChange}
-                placeholder={getChatStateText()}
-                onKeyDown={onKeyPress}
-                autoComplete="off"
-              />
-              <Button
-                onClick={handleSubmit}
-                color="primary"
-                variant="contained"
-                style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
-              >
-                Send
-              </Button>
-            </>
+            <MessageInput
+              message={message}
+              setMessage={setMessage}
+              onSendMessage={handleSendMessage}
+              chatState={chatState}
+              dots={dots}
+            />
           )}
-          {/* <Button
-            onClick={handleCompleteTask}
-            color="primary"
-            variant="contained"
-            style={{ marginLeft: "8px", height: "48px" }} // Ensure the buttons have the same height
-          >
-            Complete
-          </Button> */}
         </Box>
       </Box>
     </Box>
