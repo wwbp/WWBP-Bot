@@ -38,7 +38,6 @@ function ChatInterface({ session, clearChat, persona }) {
   const peerConnection = useRef(null);
   const localStream = useRef(null);
   const remoteStream = useRef(new MediaStream());
-  const mediaRecorderRef = useRef(null);
   const messagesEndRef = useRef(null);
   const { enqueueSnackbar } = useSnackbar();
   const audioBuffer = useRef([]);
