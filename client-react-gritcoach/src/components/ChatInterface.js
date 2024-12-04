@@ -344,34 +344,6 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   }, [audioQueue, isPlaying]);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.code === "Space" && chatMode === "audio" && audioState === "idle") {
-        e.preventDefault();
-        handlePTTMouseDown();
-      }
-    };
-
-    const handleKeyUp = (e) => {
-      if (
-        e.code === "Space" &&
-        chatMode === "audio" &&
-        audioState === "recording"
-      ) {
-        e.preventDefault();
-        handlePTTMouseUp();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [chatMode, audioState]);
-
   const playNextAudio = () => {
     if (audioQueue.length > 0) {
       setIsPlaying(true);
@@ -422,50 +394,6 @@ function ChatInterface({ session, clearChat, persona }) {
     setMessageId((prevId) => prevId + 1);
   };
 
-  const handlePTTMouseDown = () => {
-    navigator.mediaDevices
-      .getUserMedia({ audio: { sampleRate: 48000, channelCount: 1 } })
-      .then((stream) => {
-        localStream.current = stream;
-        mediaRecorderRef.current = new MediaRecorder(stream, {
-          mimeType: "audio/webm;codecs=opus",
-        });
-        mediaRecorderRef.current.start();
-
-        mediaRecorderRef.current.ondataavailable = (event) => {
-          if (ws.current.readyState === WebSocket.OPEN) {
-            const currentMessageId = messageId;
-            ws.current.send(JSON.stringify({ message_id: currentMessageId }));
-            ws.current.send(event.data);
-          } else {
-            enqueueSnackbar("WebSocket is not open", { variant: "error" });
-            console.error("WebSocket is not open");
-          }
-        };
-
-        mediaRecorderRef.current.onstop = () => {
-          stream.getTracks().forEach((track) => track.stop());
-          setAudioState("idle");
-        };
-
-        setAudioState("recording");
-      })
-      .catch((error) => {
-        enqueueSnackbar("Error accessing media devices.", { variant: "error" });
-        console.error("Error accessing media devices.", error);
-      });
-  };
-
-  const handlePTTMouseUp = () => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state !== "inactive"
-    ) {
-      mediaRecorderRef.current.stop();
-      setAudioState("processing");
-    }
-  };
-
   return (
     <Box
       display="flex"
@@ -489,8 +417,11 @@ function ChatInterface({ session, clearChat, persona }) {
           {chatMode !== "text" ? (
             <PushToTalkButton
               audioState={audioState}
-              handlePTTMouseDown={handlePTTMouseDown}
-              handlePTTMouseUp={handlePTTMouseUp}
+              setAudioState={setAudioState}
+              ws={ws}
+              chatMode={chatMode}
+              messageId={messageId}
+              setMessageId={setMessageId}
             />
           ) : (
             <MessageInput
