@@ -9,10 +9,8 @@ import { useSnackbar } from "notistack";
 function PushToTalkButton({
   audioState,
   setAudioState,
-  ws,
+  sendMessage,
   chatMode,
-  messageId,
-  setMessageId,
 }) {
   const localStream = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -29,12 +27,7 @@ function PushToTalkButton({
         mediaRecorderRef.current.start();
 
         mediaRecorderRef.current.ondataavailable = (event) => {
-          if (ws.current?.readyState === WebSocket.OPEN) {
-            ws.current.send(JSON.stringify({ message_id: messageId }));
-            ws.current.send(event.data);
-          } else {
-            enqueueSnackbar("WebSocket is not open", { variant: "error" });
-          }
+          sendMessage(event);
         };
 
         mediaRecorderRef.current.onstop = () => {

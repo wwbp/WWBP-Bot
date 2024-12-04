@@ -354,7 +354,16 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   };
 
-  const handleSendMessage = (msg) => {
+  const sendAudioMessage = (msg) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ message_id: messageId }));
+      ws.current.send(msg.data);
+    } else {
+      enqueueSnackbar("WebSocket is not open", { variant: "error" });
+    }
+  };
+
+  const sendTextMessage = (msg) => {
     setChatState("processing");
     const userMessageId = messageId;
     const userMessage = {
@@ -401,16 +410,14 @@ function ChatInterface({ session, clearChat, persona }) {
             <PushToTalkButton
               audioState={audioState}
               setAudioState={setAudioState}
-              ws={ws}
+              sendMessage={sendAudioMessage}
               chatMode={chatMode}
-              messageId={messageId}
-              setMessageId={setMessageId}
             />
           ) : (
             <MessageInput
               message={message}
               setMessage={setMessage}
-              onSendMessage={handleSendMessage}
+              sendMessage={sendTextMessage}
               chatState={chatState}
             />
           )}

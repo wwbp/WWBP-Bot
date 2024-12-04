@@ -2,7 +2,7 @@ import React from "react";
 import { TextField, Button } from "@mui/material";
 import { useSnackbar } from "notistack";
 
-function MessageInput({ message, setMessage, onSendMessage, chatState }) {
+function MessageInput({ message, setMessage, sendMessage, chatState }) {
   const { enqueueSnackbar } = useSnackbar();
 
   // Handle input field changes
@@ -17,7 +17,7 @@ function MessageInput({ message, setMessage, onSendMessage, chatState }) {
       enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
       return;
     }
-    onSendMessage(message);
+    sendMessage(message);
     setMessage("");
   };
 
