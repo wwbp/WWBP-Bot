@@ -69,22 +69,53 @@ function ChatInterface({ session, clearChat, persona }) {
     };
 
     ws.current.onmessage = (event) => {
-      if (event.data === '{"type":"ping"}') {
+      if (event.data instanceof Blob) {
+        // Handle audio blob directly
+        setAudioQueue((prevQueue) => [...prevQueue, event.data]);
         return;
       }
 
-      console.log("WebSocket message received:", event.data);
+      if (typeof event.data === "string") {
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch (error) {
+          console.error("Invalid JSON data:", error);
+          return;
+        }
 
-      if (chatMode === "audio") {
-        handleAudioMessage(event);
-      } else if (chatMode === "text-then-audio") {
-        handleTextThenAudio(event);
-      } else if (chatMode === "audio-then-text") {
-        handleAudioThenText(event);
-      } else if (chatMode === "audio-only") {
-        handleAudioOnly(event);
+        // Handle different chat modes
+        switch (chatMode) {
+          case "audio":
+            if (data.sdp) {
+              handleSDP(data);
+            } else if (data.candidate) {
+              handleICECandidate(data);
+            } else if (data.transcript) {
+              handleTranscript(data);
+            } else if (data.event) {
+              handleParserEvent(data);
+            }
+            break;
+
+          case "text-then-audio":
+            handleTextThenAudio(event);
+            break;
+
+          case "audio-then-text":
+            handleAudioThenText(event);
+            break;
+
+          case "audio-only":
+            handleAudioOnly(event);
+            break;
+
+          default:
+            handleTextMessage(event);
+            break;
+        }
       } else {
-        handleTextMessage(event);
+        console.error("Unhandled WebSocket data type:", event.data);
       }
     };
 
@@ -217,30 +248,6 @@ function ChatInterface({ session, clearChat, persona }) {
       );
     } else {
       handleParserEvent(data);
-    }
-  };
-
-  const handleAudioMessage = async (event) => {
-    let data;
-    try {
-      data = JSON.parse(event.data);
-    } catch (error) {
-      console.error("Invalid JSON data:", error);
-      return;
-    }
-
-    if (event.data instanceof Blob) {
-      setAudioQueue((prevQueue) => [...prevQueue, event.data]);
-    } else if (typeof event.data === "string") {
-      if (data.sdp) {
-        await handleSDP(data);
-      } else if (data.candidate) {
-        await handleICECandidate(data);
-      } else if (data.transcript) {
-        handleTranscript(data);
-      } else if (data.event) {
-        handleParserEvent(data);
-      }
     }
   };
 
