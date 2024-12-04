@@ -1,13 +1,13 @@
 import React, { useEffect, useRef } from "react";
-import { Box } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import MessageItem from "./MessageItem";
 
-function MessageList({ messages, botName, botAvatar }) {
+function MessageList({ messages, botName, botAvatar, chatState }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, chatState]);
 
   return (
     <Box
@@ -29,6 +29,13 @@ function MessageList({ messages, botName, botAvatar }) {
           avatar={msg.sender === botName ? botAvatar : null}
         />
       ))}
+      {chatState === "processing" && (
+        <Typography
+          sx={{ color: "gray", fontStyle: "italic", textAlign: "left", mt: 1 }}
+        >
+          {botName} is typing...
+        </Typography>
+      )}
       <div ref={messagesEndRef} />
     </Box>
   );

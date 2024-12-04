@@ -2,13 +2,7 @@ import React from "react";
 import { TextField, Button } from "@mui/material";
 import { useSnackbar } from "notistack";
 
-function MessageInput({
-  message,
-  setMessage,
-  onSendMessage,
-  chatState,
-  dots,
-}) {
+function MessageInput({ message, setMessage, onSendMessage, chatState }) {
   const { enqueueSnackbar } = useSnackbar();
 
   // Function to determine placeholder text based on chat state
@@ -16,10 +10,8 @@ function MessageInput({
     switch (chatState) {
       case "idle":
         return "Type a message...";
-      case "processing":
-        return `${dots}`;
       case "speaking":
-        return "GritCoach is typing...";
+        return "Bot is responding...";
       default:
         return "Type a message...";
     }

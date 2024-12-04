@@ -45,7 +45,6 @@ function ChatInterface({ session, clearChat, persona }) {
   const textBufferRef = useRef([]);
   const [loading, setLoading] = useState(true);
   const [chatState, setChatState] = useState("idle");
-  const [dots, setDots] = useState("");
 
   useEffect(() => {
     console.log("Persona data:", persona);
@@ -143,17 +142,6 @@ function ChatInterface({ session, clearChat, persona }) {
     fetchMode();
   }, []);
 
-  useEffect(() => {
-    if (chatState === "processing") {
-      const interval = setInterval(() => {
-        setDots((prevDots) => (prevDots.length < 3 ? prevDots + "." : ""));
-      }, 100);
-      return () => clearInterval(interval);
-    } else {
-      setDots("");
-    }
-  }, [chatState]);
-
   const handleSDP = async (data) => {
     try {
       await peerConnection.current.setRemoteDescription(
@@ -199,6 +187,7 @@ function ChatInterface({ session, clearChat, persona }) {
 
     switch (data.event) {
       case "on_parser_start":
+        setChatState("speaking");
         setMessages((prev) => [
           ...prev,
           { sender: botName, message: "", id: data.message_id },
@@ -228,8 +217,6 @@ function ChatInterface({ session, clearChat, persona }) {
       console.error("Invalid JSON data:", error);
       return;
     }
-
-    setChatState("speaking");
 
     if (data.type === "replace_user_message") {
       setMessages((prevMessages) =>
@@ -368,11 +355,7 @@ function ChatInterface({ session, clearChat, persona }) {
   };
 
   const handleSendMessage = (msg) => {
-    if (!msg.trim()) {
-      enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
-      return;
-    }
-
+    setChatState("processing");
     const userMessageId = messageId;
     const userMessage = {
       sender: "You",
@@ -411,6 +394,7 @@ function ChatInterface({ session, clearChat, persona }) {
           messages={messages}
           botName={botName}
           botAvatar={botAvatar}
+          chatState={chatState}
         />
         <Box display="flex" alignItems="center" p={2}>
           {chatMode !== "text" ? (
@@ -428,7 +412,6 @@ function ChatInterface({ session, clearChat, persona }) {
               setMessage={setMessage}
               onSendMessage={handleSendMessage}
               chatState={chatState}
-              dots={dots}
             />
           )}
         </Box>
