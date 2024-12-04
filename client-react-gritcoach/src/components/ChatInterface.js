@@ -125,293 +125,226 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   }, [chatState]);
 
+  // Utility function to handle SDP
+  const handleSDP = async (data) => {
+    try {
+      await peerConnection.current.setRemoteDescription(
+        new RTCSessionDescription(data.sdp)
+      );
+      if (data.sdp.type === "offer") {
+        const answer = await peerConnection.current.createAnswer();
+        await peerConnection.current.setLocalDescription(answer);
+        ws.current.send(
+          JSON.stringify({ sdp: peerConnection.current.localDescription })
+        );
+      }
+    } catch (error) {
+      enqueueSnackbar("Failed to set remote description", { variant: "error" });
+      console.error("Failed to set remote description:", error);
+    }
+  };
+
+  // Utility function to handle ICE candidates
+  const handleICECandidate = async (data) => {
+    try {
+      await peerConnection.current.addIceCandidate(
+        new RTCIceCandidate(data.candidate)
+      );
+    } catch (error) {
+      enqueueSnackbar("Error adding received ICE candidate", {
+        variant: "error",
+      });
+      console.error("Error adding received ICE candidate:", error);
+    }
+  };
+
+  // Utility function to handle transcripts
+  const handleTranscript = (data) => {
+    setMessages((prevMessages) => [
+      ...prevMessages,
+      { sender: "You", message: data.transcript, id: data.message_id },
+    ]);
+    setMessageId((prevId) => prevId + 1);
+    setMessage("");
+  };
+
+  // Utility function to handle parser events
+  const handleParserEvent = (data) => {
+    switch (data.event) {
+      case "on_parser_start":
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { sender: botName, message: "", id: data.message_id },
+        ]);
+        break;
+      case "on_parser_stream":
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === data.message_id
+              ? { ...msg, message: msg.message + data.value }
+              : msg
+          )
+        );
+        break;
+      case "on_parser_end":
+        setMessageId((prevId) => prevId + 1);
+        setMessage(tempMessageRef.current);
+        setChatState("idle");
+        break;
+      default:
+        break;
+    }
+  };
+
   const handleTextMessage = (event) => {
     console.log("Handling text message:", event.data);
-    const data = JSON.parse(event.data);
+
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     setChatState("speaking");
+
     if (data.type === "replace_user_message") {
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg.id === data.message_id ? { ...msg, message: data.message } : msg
         )
       );
-    } else if (data.event === "on_parser_start") {
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { sender: botName, message: "", id: data.message_id },
-      ]);
-    } else if (data.event === "on_parser_stream") {
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg.id === data.message_id
-            ? { ...msg, message: msg.message + data.value }
-            : msg
-        )
-      );
-    } else if (data.event === "on_parser_end") {
-      setMessageId((prevId) => prevId + 1);
-      setMessage(tempMessageRef.current);
-      setChatState("idle");
+    } else {
+      handleParserEvent(data);
     }
   };
 
   const handleAudioMessage = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
       if (data.sdp) {
-        try {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-          );
-          if (data.sdp.type === "offer") {
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            ws.current.send(
-              JSON.stringify({
-                sdp: peerConnection.current.localDescription,
-              })
-            );
-          }
-        } catch (error) {
-          enqueueSnackbar("Failed to set remote description", {
-            variant: "error",
-          });
-          console.error("Failed to set remote description:", error);
-        }
+        await handleSDP(data);
       } else if (data.candidate) {
-        try {
-          await peerConnection.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          enqueueSnackbar("Error adding received ICE candidate", {
-            variant: "error",
-          });
-          console.error("Error adding received ICE candidate", error);
-        }
+        await handleICECandidate(data);
       } else if (data.transcript) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
-        ]);
-        setMessageId((prevId) => prevId + 1);
-        setMessage("");
-      } else if (data.event === "on_parser_start") {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: botName, message: "", id: data.message_id },
-        ]);
-      } else if (data.event === "on_parser_stream") {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === data.message_id
-              ? { ...msg, message: msg.message + data.value }
-              : msg
-          )
-        );
-      } else if (data.event === "on_parser_end") {
-        setMessageId((prevId) => prevId + 1);
-        setMessage(tempMessageRef.current);
+        handleTranscript(data);
+      } else if (data.event) {
+        handleParserEvent(data);
       }
     }
   };
 
   const handleTextThenAudio = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     if (event.data instanceof Blob) {
       audioBuffer.current.push(event.data);
     } else if (typeof event.data === "string") {
       if (data.sdp) {
-        try {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-          );
-          if (data.sdp.type === "offer") {
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            ws.current.send(
-              JSON.stringify({
-                sdp: peerConnection.current.localDescription,
-              })
-            );
-          }
-        } catch (error) {
-          enqueueSnackbar("Failed to set remote description", {
-            variant: "error",
-          });
-          console.error("Failed to set remote description:", error);
-        }
+        await handleSDP(data);
       } else if (data.candidate) {
-        try {
-          await peerConnection.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          enqueueSnackbar("Error adding received ICE candidate", {
-            variant: "error",
-          });
-          console.error("Error adding received ICE candidate", error);
-        }
+        await handleICECandidate(data);
       } else if (data.transcript) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
-        ]);
-        setMessageId((prevId) => prevId + 1);
-        setMessage("");
-      } else if (data.event === "on_parser_start") {
-        textBufferRef.current = [];
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: botName, message: "", id: data.message_id },
-        ]);
-      } else if (data.event === "on_parser_stream") {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === data.message_id
-              ? { ...msg, message: msg.message + data.value }
-              : msg
-          )
-        );
-      } else if (data.event === "on_parser_end") {
-        setMessageId((prevId) => prevId + 1);
-        setMessage(tempMessageRef.current);
-        if (audioBuffer.current.length > 0) {
+        handleTranscript(data);
+      } else if (data.event) {
+        if (data.event === "on_parser_end" && audioBuffer.current.length > 0) {
           const audioBlob = new Blob(audioBuffer.current, {
             type: "audio/webm",
           });
           setAudioQueue([audioBlob]);
           audioBuffer.current = [];
         }
+        handleParserEvent(data);
       }
     }
   };
 
   const handleAudioOnly = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
       if (data.sdp) {
-        try {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-          );
-          if (data.sdp.type === "offer") {
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            ws.current.send(
-              JSON.stringify({
-                sdp: peerConnection.current.localDescription,
-              })
-            );
-          }
-        } catch (error) {
-          enqueueSnackbar("Failed to set remote description", {
-            variant: "error",
-          });
-          console.error("Failed to set remote description:", error);
-        }
+        await handleSDP(data);
       } else if (data.candidate) {
-        try {
-          await peerConnection.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          enqueueSnackbar("Error adding received ICE candidate", {
-            variant: "error",
-          });
-          console.error("Error adding received ICE candidate", error);
-        }
+        await handleICECandidate(data);
       } else if (data.transcript) {
         setMessageId((prevId) => prevId + 1);
         setMessage("");
-      } else if (data.event === "on_parser_start") {
-        textBufferRef.current = [];
-        setTextBuffer((prevBuffer) => [
-          ...prevBuffer,
-          { sender: botName, message: "", id: data.message_id },
-        ]);
-      } else if (data.event === "on_parser_stream") {
-        setTextBuffer((prevBuffer) =>
-          prevBuffer.map((msg) =>
-            msg.id === data.message_id
-              ? { ...msg, message: msg.message + data.value }
-              : msg
-          )
-        );
-      } else if (data.event === "on_parser_end") {
-        setMessageId((prevId) => prevId + 1);
-        setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
-        setTextBuffer([]);
-        setMessage("");
+      } else if (data.event) {
+        switch (data.event) {
+          case "on_parser_start":
+            textBufferRef.current = [];
+            setTextBuffer((prevBuffer) => [
+              ...prevBuffer,
+              { sender: botName, message: "", id: data.message_id },
+            ]);
+            break;
+          case "on_parser_stream":
+            setTextBuffer((prevBuffer) =>
+              prevBuffer.map((msg) =>
+                msg.id === data.message_id
+                  ? { ...msg, message: msg.message + data.value }
+                  : msg
+              )
+            );
+            break;
+          case "on_parser_end":
+            setMessageId((prevId) => prevId + 1);
+            setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
+            setTextBuffer([]);
+            setMessage("");
+            break;
+          default:
+            break;
+        }
       }
     }
   };
 
   const handleAudioThenText = async (event) => {
-    const data = JSON.parse(event.data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
     if (event.data instanceof Blob) {
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
       if (data.sdp) {
-        try {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(data.sdp)
-          );
-          if (data.sdp.type === "offer") {
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            ws.current.send(
-              JSON.stringify({
-                sdp: peerConnection.current.localDescription,
-              })
-            );
-          }
-        } catch (error) {
-          enqueueSnackbar("Failed to set remote description", {
-            variant: "error",
-          });
-          console.error("Failed to set remote description:", error);
-        }
+        await handleSDP(data);
       } else if (data.candidate) {
-        try {
-          await peerConnection.current.addIceCandidate(
-            new RTCIceCandidate(data.candidate)
-          );
-        } catch (error) {
-          enqueueSnackbar("Error adding received ICE candidate", {
-            variant: "error",
-          });
-          console.error("Error adding received ICE candidate", error);
-        }
+        await handleICECandidate(data);
       } else if (data.transcript) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
-        ]);
-        setMessageId((prevId) => prevId + 1);
-        setMessage("");
-      } else if (data.event === "on_parser_start") {
-        textBufferRef.current = [];
-        textBufferRef.current.push({
-          sender: botName,
-          message: "",
-          id: data.message_id,
-        });
-      } else if (data.event === "on_parser_stream") {
-        textBufferRef.current = textBufferRef.current.map((msg) =>
-          msg.id === data.message_id
-            ? { ...msg, message: msg.message + data.value }
-            : msg
-        );
-      } else if (data.event === "on_parser_end") {
-        console.log("On parser end textBuffer is ", textBufferRef.current);
-        console.log("On parser end messages is ", messages);
-        setMessageId((prevId) => prevId + 1);
-        setMessage("");
+        handleTranscript(data);
+      } else if (data.event) {
+        handleParserEvent(data);
       }
     }
   };
