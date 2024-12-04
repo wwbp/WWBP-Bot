@@ -156,7 +156,6 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   }, [chatState]);
 
-  // Utility function to handle SDP
   const handleSDP = async (data) => {
     try {
       await peerConnection.current.setRemoteDescription(
@@ -170,60 +169,54 @@ function ChatInterface({ session, clearChat, persona }) {
         );
       }
     } catch (error) {
-      enqueueSnackbar("Failed to set remote description", { variant: "error" });
-      console.error("Failed to set remote description:", error);
+      enqueueSnackbar("Failed to handle SDP", { variant: "error" });
+      console.error("SDP Error:", error);
     }
   };
 
-  // Utility function to handle ICE candidates
   const handleICECandidate = async (data) => {
     try {
       await peerConnection.current.addIceCandidate(
         new RTCIceCandidate(data.candidate)
       );
     } catch (error) {
-      enqueueSnackbar("Error adding received ICE candidate", {
-        variant: "error",
-      });
-      console.error("Error adding received ICE candidate:", error);
+      enqueueSnackbar("Error adding ICE candidate", { variant: "error" });
+      console.error("ICE Candidate Error:", error);
     }
   };
 
-  // Utility function to handle transcripts
   const handleTranscript = (data) => {
-    setMessages((prevMessages) => [
-      ...prevMessages,
+    setMessages((prev) => [
+      ...prev,
       { sender: "You", message: data.transcript, id: data.message_id },
     ]);
     setMessageId((prevId) => prevId + 1);
-    setMessage("");
   };
 
-  // Utility function to handle parser events
   const handleParserEvent = (data) => {
+    const updateMessage = (id, updateFn) =>
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === id ? updateFn(msg) : msg))
+      );
+
     switch (data.event) {
       case "on_parser_start":
-        setMessages((prevMessages) => [
-          ...prevMessages,
+        setMessages((prev) => [
+          ...prev,
           { sender: botName, message: "", id: data.message_id },
         ]);
         break;
       case "on_parser_stream":
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === data.message_id
-              ? { ...msg, message: msg.message + data.value }
-              : msg
-          )
-        );
+        updateMessage(data.message_id, (msg) => ({
+          ...msg,
+          message: msg.message + data.value,
+        }));
         break;
       case "on_parser_end":
-        setMessageId((prevId) => prevId + 1);
-        setMessage(tempMessageRef.current);
         setChatState("idle");
         break;
       default:
-        break;
+        console.warn("Unknown parser event:", data.event);
     }
   };
 
@@ -251,109 +244,44 @@ function ChatInterface({ session, clearChat, persona }) {
     }
   };
 
-  const handleTextThenAudio = async (event) => {
-    let data;
-    try {
-      data = JSON.parse(event.data);
-    } catch (error) {
-      console.error("Invalid JSON data:", error);
-      return;
+  const handleTextThenAudio = (data) => {
+    if (data.event === "on_parser_end" && audioBuffer.current.length > 0) {
+      const audioBlob = new Blob(audioBuffer.current, { type: "audio/webm" });
+      setAudioQueue([audioBlob]);
+      audioBuffer.current = [];
     }
+    handleParserEvent(data);
+  };
 
-    if (event.data instanceof Blob) {
-      audioBuffer.current.push(event.data);
-    } else if (typeof event.data === "string") {
-      if (data.sdp) {
-        await handleSDP(data);
-      } else if (data.candidate) {
-        await handleICECandidate(data);
-      } else if (data.transcript) {
-        handleTranscript(data);
-      } else if (data.event) {
-        if (data.event === "on_parser_end" && audioBuffer.current.length > 0) {
-          const audioBlob = new Blob(audioBuffer.current, {
-            type: "audio/webm",
-          });
-          setAudioQueue([audioBlob]);
-          audioBuffer.current = [];
-        }
+  const handleAudioOnly = (data) => {
+    switch (data.event) {
+      case "on_parser_start":
+        textBufferRef.current = [];
+        setTextBuffer((prevBuffer) => [
+          ...prevBuffer,
+          { sender: botName, message: "", id: data.message_id },
+        ]);
+        break;
+      case "on_parser_stream":
+        setTextBuffer((prevBuffer) =>
+          prevBuffer.map((msg) =>
+            msg.id === data.message_id
+              ? { ...msg, message: msg.message + data.value }
+              : msg
+          )
+        );
+        break;
+      case "on_parser_end":
+        setMessages((prev) => [...prev, ...textBuffer]);
+        setTextBuffer([]);
+        break;
+      default:
         handleParserEvent(data);
-      }
     }
   };
 
-  const handleAudioOnly = async (event) => {
-    let data;
-    try {
-      data = JSON.parse(event.data);
-    } catch (error) {
-      console.error("Invalid JSON data:", error);
-      return;
-    }
-
-    if (event.data instanceof Blob) {
-      setAudioQueue((prevQueue) => [...prevQueue, event.data]);
-    } else if (typeof event.data === "string") {
-      if (data.sdp) {
-        await handleSDP(data);
-      } else if (data.candidate) {
-        await handleICECandidate(data);
-      } else if (data.transcript) {
-        setMessageId((prevId) => prevId + 1);
-        setMessage("");
-      } else if (data.event) {
-        switch (data.event) {
-          case "on_parser_start":
-            textBufferRef.current = [];
-            setTextBuffer((prevBuffer) => [
-              ...prevBuffer,
-              { sender: botName, message: "", id: data.message_id },
-            ]);
-            break;
-          case "on_parser_stream":
-            setTextBuffer((prevBuffer) =>
-              prevBuffer.map((msg) =>
-                msg.id === data.message_id
-                  ? { ...msg, message: msg.message + data.value }
-                  : msg
-              )
-            );
-            break;
-          case "on_parser_end":
-            setMessageId((prevId) => prevId + 1);
-            setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
-            setTextBuffer([]);
-            setMessage("");
-            break;
-          default:
-            break;
-        }
-      }
-    }
-  };
-
-  const handleAudioThenText = async (event) => {
-    let data;
-    try {
-      data = JSON.parse(event.data);
-    } catch (error) {
-      console.error("Invalid JSON data:", error);
-      return;
-    }
-
-    if (event.data instanceof Blob) {
-      setAudioQueue((prevQueue) => [...prevQueue, event.data]);
-    } else if (typeof event.data === "string") {
-      if (data.sdp) {
-        await handleSDP(data);
-      } else if (data.candidate) {
-        await handleICECandidate(data);
-      } else if (data.transcript) {
-        handleTranscript(data);
-      } else if (data.event) {
-        handleParserEvent(data);
-      }
-    }
+  const handleAudioThenText = (data) => {
+    handleParserEvent(data);
   };
 
   const setupPeerConnection = () => {
