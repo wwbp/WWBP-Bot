@@ -5,18 +5,6 @@ import { useSnackbar } from "notistack";
 function MessageInput({ message, setMessage, onSendMessage, chatState }) {
   const { enqueueSnackbar } = useSnackbar();
 
-  // Function to determine placeholder text based on chat state
-  const getChatStateText = () => {
-    switch (chatState) {
-      case "idle":
-        return "Type a message...";
-      case "speaking":
-        return "Bot is responding...";
-      default:
-        return "Type a message...";
-    }
-  };
-
   // Handle input field changes
   const handleInputChange = (e) => {
     setMessage(e.target.value);
@@ -46,7 +34,6 @@ function MessageInput({ message, setMessage, onSendMessage, chatState }) {
         fullWidth
         value={message}
         onChange={handleInputChange}
-        placeholder={getChatStateText()}
         onKeyDown={onKeyPress}
         autoComplete="off"
         disabled={chatState === "processing"}
