@@ -2,28 +2,8 @@ import React from "react";
 import { TextField, Button } from "@mui/material";
 import { useSnackbar } from "notistack";
 
-function MessageInput({
-  message,
-  setMessage,
-  onSendMessage,
-  chatState,
-  dots,
-}) {
+function MessageInput({ message, setMessage, sendMessage, chatState }) {
   const { enqueueSnackbar } = useSnackbar();
-
-  // Function to determine placeholder text based on chat state
-  const getChatStateText = () => {
-    switch (chatState) {
-      case "idle":
-        return "Type a message...";
-      case "processing":
-        return `${dots}`;
-      case "speaking":
-        return "GritCoach is typing...";
-      default:
-        return "Type a message...";
-    }
-  };
 
   // Handle input field changes
   const handleInputChange = (e) => {
@@ -37,7 +17,7 @@ function MessageInput({
       enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
       return;
     }
-    onSendMessage(message);
+    sendMessage(message);
     setMessage("");
   };
 
@@ -54,7 +34,6 @@ function MessageInput({
         fullWidth
         value={message}
         onChange={handleInputChange}
-        placeholder={getChatStateText()}
         onKeyDown={onKeyPress}
         autoComplete="off"
         disabled={chatState === "processing"}

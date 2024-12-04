@@ -1,15 +1,83 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Box, IconButton } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
 import EarIcon from "@mui/icons-material/Hearing";
 import BrainIcon from "@mui/icons-material/Memory";
 import MouthIcon from "@mui/icons-material/RecordVoiceOver";
+import { useSnackbar } from "notistack";
 
 function PushToTalkButton({
   audioState,
-  handlePTTMouseDown,
-  handlePTTMouseUp,
+  setAudioState,
+  sendMessage,
+  chatMode,
 }) {
+  const localStream = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const { enqueueSnackbar } = useSnackbar();
+
+  const handlePTTMouseDown = () => {
+    navigator.mediaDevices
+      .getUserMedia({ audio: { sampleRate: 48000, channelCount: 1 } })
+      .then((stream) => {
+        localStream.current = stream;
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+          mimeType: "audio/webm;codecs=opus",
+        });
+        mediaRecorderRef.current.start();
+
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          sendMessage(event);
+        };
+
+        mediaRecorderRef.current.onstop = () => {
+          stream.getTracks().forEach((track) => track.stop());
+          setAudioState("idle");
+        };
+
+        setAudioState("recording");
+      })
+      .catch((error) => {
+        enqueueSnackbar("Error accessing media devices.", { variant: "error" });
+        console.error("Error accessing media devices:", error);
+      });
+  };
+
+  const handlePTTMouseUp = () => {
+    if (mediaRecorderRef.current?.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      setAudioState("processing");
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === "Space" && chatMode === "audio" && audioState === "idle") {
+        e.preventDefault();
+        handlePTTMouseDown();
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (
+        e.code === "Space" &&
+        chatMode === "audio" &&
+        audioState === "recording"
+      ) {
+        e.preventDefault();
+        handlePTTMouseUp();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [chatMode, audioState]);
+
   // Function to determine which icon to display based on audioState
   const getAudioStateIcon = () => {
     switch (audioState) {
@@ -40,7 +108,7 @@ function PushToTalkButton({
           width: 80,
           height: 80,
           fontSize: "2rem",
-          position: "relative", // Ensure the circular text is positioned correctly
+          position: "relative",
         }}
       >
         <MicIcon sx={{ fontSize: "4rem" }} />
