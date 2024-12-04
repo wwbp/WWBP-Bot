@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { createWebSocket, fetchData } from "../utils/api";
 import { Box } from "@mui/material";
 import { useSnackbar } from "notistack";
-import defaultBotAvatar from "../assets/bot-avatar.png";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 import PushToTalkButton from "./PushToTalkButton";
