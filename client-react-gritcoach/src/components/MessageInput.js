@@ -1,9 +1,17 @@
-import React from "react";
+// client-react-gritcoach/src/components/MessageInput.js
+import React, { useEffect, useRef } from "react";
 import { TextField, Button } from "@mui/material";
 import { useSnackbar } from "notistack";
 
 function MessageInput({ message, setMessage, sendMessage, chatState }) {
   const { enqueueSnackbar } = useSnackbar();
+  const inputRef = useRef(null); 
+  
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [chatState]);
 
   // Handle input field changes
   const handleInputChange = (e) => {
@@ -19,6 +27,9 @@ function MessageInput({ message, setMessage, sendMessage, chatState }) {
     }
     sendMessage(message);
     setMessage("");
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   };
 
   // Handle Enter key press
@@ -29,7 +40,7 @@ function MessageInput({ message, setMessage, sendMessage, chatState }) {
   };
 
   return (
-    <>
+    <form onSubmit={handleSubmit} style={{ display: "flex", width: "100%" }}>
       <TextField
         fullWidth
         value={message}
@@ -38,16 +49,17 @@ function MessageInput({ message, setMessage, sendMessage, chatState }) {
         autoComplete="off"
         disabled={chatState === "processing"}
         multiline={false}
+        inputRef={inputRef}
       />
       <Button
-        onClick={handleSubmit}
+        type="submit"
         color="primary"
         variant="contained"
-        style={{ marginLeft: "8px", height: "48px" }} // Ensure the button has the same height
+        style={{ marginLeft: "8px", height: "48px" }}
       >
         Send
       </Button>
-    </>
+    </form>
   );
 }
 
