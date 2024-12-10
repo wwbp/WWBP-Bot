@@ -43,7 +43,6 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");
   const [audioState, setAudioState] = useState("idle");
-  const [messageId, setMessageId] = useState(1);
   const [audioQueue, setAudioQueue] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
@@ -170,7 +169,6 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
         )
       );
     } else if (data.event === "on_parser_end") {
-      setMessageId((prevId) => prevId + 1);
       setMessage(tempMessageRef.current); // Restore temporary buffer
       setChatState("idle");
     }
@@ -216,9 +214,8 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
         capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
+          { sender: "You", message: data.transcript, id: "temp-" + Date.now() },
         ]);
-        setMessageId((prevId) => prevId + 1);
         setMessage("");
       } else if (data.event === "on_parser_start") {
         setMessages((prevMessages) => [
@@ -234,7 +231,6 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
           )
         );
       } else if (data.event === "on_parser_end") {
-        setMessageId((prevId) => prevId + 1);
         setMessage(tempMessageRef.current); // Restore temporary buffer
       }
     }
@@ -294,9 +290,8 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
         capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
+          { sender: "You", message: data.transcript, id: "temp-" + Date.now() },
         ]);
-        setMessageId((prevId) => prevId + 1);
         setMessage("");
       } else if (data.event === "on_parser_start") {
         textBufferRef.current = [];
@@ -318,7 +313,6 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
       } else if (data.event === "on_parser_end") {
         clearTimeout(textTimeout.current);
         textTimeout.current = null;
-        setMessageId((prevId) => prevId + 1);
         setMessage(tempMessageRef.current); // Restore temporary buffer
         if (audioBuffer.current.length > 0) {
           const audioBlob = new Blob(audioBuffer.current, {
@@ -372,7 +366,6 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
         //   ...prevMessages,
         //   { sender: "You", message: data.transcript, id: data.message_id },
         // ]);
-        setMessageId((prevId) => prevId + 1);
         setMessage("");
       } else if (data.event === "on_parser_start") {
         textBufferRef.current = [];
@@ -400,7 +393,6 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
         //   )
         // );
       } else if (data.event === "on_parser_end") {
-        setMessageId((prevId) => prevId + 1);
         setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
         setTextBuffer([]);
         setMessage(""); // Restore temporary buffer
@@ -449,9 +441,8 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
         capitalizeTranscript(data);
         setMessages((prevMessages) => [
           ...prevMessages,
-          { sender: "You", message: data.transcript, id: data.message_id },
+          { sender: "You", message: data.transcript, id: "temp-" + Date.now() },
         ]);
-        setMessageId((prevId) => prevId + 1);
         setMessage("");
       } else if (data.event === "on_parser_start") {
         textBufferRef.current.push({
@@ -479,7 +470,6 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
       } else if (data.event === "on_parser_end") {
         console.log("On parser end textBuffer is ", textBufferRef.current);
         console.log("On parser end messages is ", messages);
-        setMessageId((prevId) => prevId + 1);
         // setMessages((prevMessages) => [...prevMessages, ...textBuffer]);
         // setTextBuffer([]);
         setMessage(""); // Restore temporary buffer
@@ -623,17 +613,13 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
       return;
     }
 
-    const userMessageId = messageId;
     const userMessage = {
       sender: "You",
       message: message,
-      id: userMessageId.toString(),
+      id: "temp-" + Date.now(),
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    ws.current.send(
-      JSON.stringify({ message: message, message_id: userMessageId + 1 })
-    );
-    setMessageId((prevId) => prevId + 1);
+    ws.current.send(JSON.stringify({ message: message }));
     setMessage("");
     tempMessageRef.current = ""; // Clear temporary buffer
   };
@@ -656,8 +642,6 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
 
         mediaRecorderRef.current.ondataavailable = (event) => {
           if (ws.current.readyState === WebSocket.OPEN) {
-            const currentMessageId = messageId;
-            ws.current.send(JSON.stringify({ message_id: currentMessageId }));
             ws.current.send(event.data);
           } else {
             enqueueSnackbar("WebSocket is not open", { variant: "error" });

@@ -74,7 +74,8 @@ def save_message_to_transcript(session_id, message_id, user_message, bot_message
             bot_message=bot_message,
         )
 
-        audio_file_name = f"audio_{session_id}_{message_id}.webm"
+        role = 'bot' if bot_message else 'user'
+        audio_file_name = f"audio_{session_id}_{message_id}_{role}.webm"
         if has_audio and audio_bytes:
             if settings.ENVIRONMENT == 'local':
                 local_audio_dir = os.path.join(settings.BASE_DIR, 'data/audio')
