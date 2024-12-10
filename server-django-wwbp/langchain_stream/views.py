@@ -480,7 +480,7 @@ class ChatConsumer(BaseWebSocketConsumer):
                     chunk["event"] = "on_parser_stream"
                     chunk["value"] = value
                     await self.send(text_data=json.dumps(chunk))
-                    bot_message_buffer.append(chunk["value"])
+                    bot_message_buffer.append(value)
                 elif event.event == 'thread.run.completed':
                     chunk["event"] = "on_parser_end"
                     await self.send(text_data=json.dumps(chunk))
@@ -509,7 +509,6 @@ class ChatConsumer(BaseWebSocketConsumer):
 
 
 class AudioConsumer(BaseWebSocketConsumer):
-    current_message_id = None
     audio_queue = deque()
     bot_audio_buffer = []
     bot_message_buffer = []
@@ -532,9 +531,10 @@ class AudioConsumer(BaseWebSocketConsumer):
             asyncio.create_task(self.ping())
 
             if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                message_id = await self.session_manager.get_next_message_id(self.session_id)
                 initial_message = "Begin the conversation."
                 await self.session_manager.create_user_message(message=initial_message)
-                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": 1})
+                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": message_id})
                 cache.set(f'initial_message_sent_{self.session_id}', True)
 
         except Exception as e:
@@ -553,23 +553,10 @@ class AudioConsumer(BaseWebSocketConsumer):
         logger.debug(
             f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
 
-    async def receive(self, bytes_data=None, text_data=None):
-        if text_data:
-            logger.debug(f"JSON message received: {text_data}")
-            try:
-                json_data = json.loads(text_data)
-                if 'message_id' in json_data:
-                    self.current_message_id = json_data['message_id']
-                    logger.debug(
-                        f"Current Message ID: {self.current_message_id}")
-            except Exception as e:
-                logger.error(f"Error parsing text data: {e}")
-
+    async def receive(self, bytes_data=None):
         if bytes_data:
             logger.debug(f"Audio data received: {type(bytes_data)}")
-            if self.current_message_id is None:
-                logger.error("Received audio data without message_id")
-                return
+            message_id = await self.session_manager.get_next_message_id(self.session_id)
 
             # transcript = await self.process_audio(bytes_data)
             transcript = await self.stt_openai(bytes_data)
@@ -577,31 +564,35 @@ class AudioConsumer(BaseWebSocketConsumer):
             # Moderation check for incoming user transcript
             is_flagged, category = await moderate_content(transcript, self.session_manager.client)
             if is_flagged:
-                await self.send(text_data=json.dumps({
-                    "type": "warning_message",
-                    "message_id": self.current_message_id,
-                    "transcript": f"Your audio message was blocked due to inappropriate content related to {category}."
-                }))
+                moderation_message = f"Your audio message was blocked due to content related to {category}."
+                audio_chunk = await self.text_to_speech(self.process_text_for_tts(moderation_message))
+                self.audio_queue.append(audio_chunk)
+                asyncio.create_task(self.send_audio_chunk())
+                await self.send(text_data=json.dumps({"event": "on_parser_start", "message_id": message_id}))
+                await self.send(text_data=json.dumps({"event": "on_parser_stream", "message_id": message_id, "value": moderation_message}))
+                await self.send(text_data=json.dumps({"event": "on_parser_end", "message_id": message_id}))
+                await save_message_to_transcript(
+                    session_id=self.session_id,
+                    message_id=str(message_id),
+                    user_message=transcript,
+                    bot_message=moderation_message,
+                    has_audio=True,
+                    audio_bytes=audio_chunk
+                )
                 return
 
-            await save_message_to_transcript(session_id=self.session_id, message_id=self.current_message_id,
+            await save_message_to_transcript(session_id=self.session_id, message_id=message_id,
                                              user_message=transcript, bot_message=None, has_audio=True, audio_bytes=bytes_data)
             if transcript:
                 await self.session_manager.create_user_message(message=transcript)
-                await self.send(text_data=json.dumps({"transcript": transcript, "message_id": self.current_message_id}))
-                assistant_message_id = str(int(self.current_message_id) + 1)
-                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": assistant_message_id})
+                await self.send(text_data=json.dumps({"transcript": transcript, "message_id": message_id}))
+                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": message_id})
 
             else:
-                initial_message = cache.get(
-                    f'input_not_clear_{self.session_id}', False)
-                if not initial_message:
-                    initial_message = "This is an invalid message. Tell the user Sorry and that you couldn't hear them."
-                await self.session_manager.create_user_message(message=initial_message)
-                assistant_message_id = str(int(self.current_message_id) + 1)
-                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_audio_response", "message_id": assistant_message_id})
-                cache.set(f'input_not_clear_{self.session_id}', True)
-                # await self.send_audio_chunk(await self.text_to_speech("Sorry, I couldn't hear you."))
+                moderation_message = "Sorry, I was unable to hear that."
+                audio_chunk = await self.text_to_speech(self.process_text_for_tts(moderation_message))
+                self.audio_queue.append(audio_chunk)
+                asyncio.create_task(self.send_audio_chunk())
 
     async def process_audio(self, audio_data):
         logger.debug(f"Audio data size: {len(audio_data)} bytes")
@@ -676,14 +667,14 @@ class AudioConsumer(BaseWebSocketConsumer):
                     chunk["event"] = "on_parser_stream"
                     chunk["value"] = value
                     logger.debug(f"Received chunk: {chunk['value']}")
-                    if chunk["value"].startswith(" "):
-                        buffer.append(chunk["value"])
+                    if value.startswith(" "):
+                        buffer.append(value)
                     else:
                         if buffer:
-                            buffer[-1] = buffer[-1] + chunk["value"]
+                            buffer[-1] = buffer[-1] + value
                         else:
-                            buffer.append(chunk["value"])
-                    self.bot_message_buffer.append(chunk["value"])
+                            buffer.append(value)
+                    self.bot_message_buffer.append(value)
                     await self.send(text_data=json.dumps(chunk))
 
                     logger.debug(f"Current buffer: {' '.join(buffer)}")

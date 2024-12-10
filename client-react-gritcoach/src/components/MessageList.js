@@ -33,7 +33,7 @@ function MessageList({ messages, botName, botAvatar, chatState }) {
         <Typography
           sx={{ color: "gray", fontStyle: "italic", textAlign: "left", mt: 1 }}
         >
-          {botName} is typing...
+          {botName} is thinking...
         </Typography>
       )}
       <div ref={messagesEndRef} />

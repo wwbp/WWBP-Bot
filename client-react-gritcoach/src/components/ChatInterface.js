@@ -13,7 +13,6 @@ function ChatInterface({ session, clearChat, persona }) {
   const [message, setMessage] = useState("");
   const [chatMode, setChatMode] = useState("text");
   const [audioState, setAudioState] = useState("idle");
-  const [messageId, setMessageId] = useState(1);
   const [audioQueue, setAudioQueue] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const ws = useRef(null);
@@ -156,9 +155,8 @@ function ChatInterface({ session, clearChat, persona }) {
   const handleTranscript = (data) => {
     setMessages((prev) => [
       ...prev,
-      { sender: "You", message: data.transcript, id: data.message_id },
+      { sender: "You", message: data.transcript, id: "temp-" + Date.now() },
     ]);
-    setMessageId((prevId) => prevId + 1);
   };
 
   const handleParserEvent = (data) => {
@@ -338,7 +336,6 @@ function ChatInterface({ session, clearChat, persona }) {
 
   const sendAudioMessage = (msg) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ message_id: messageId }));
       ws.current.send(msg.data);
     } else {
       enqueueSnackbar("WebSocket is not open", { variant: "error" });
