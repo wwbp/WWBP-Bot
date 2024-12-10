@@ -188,6 +188,8 @@ class PromptHook:
 
 
 class AssistantSessionManager(PromptHook):
+    session_counters = {}
+
     def __init__(self):
         super().__init__()
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
@@ -195,6 +197,13 @@ class AssistantSessionManager(PromptHook):
         self.assistant = None
         self.vector_store = None
         self.run_active = False
+
+    async def get_next_message_id(self, session_id):
+        if session_id not in self.session_counters:
+            self.session_counters[session_id] = 1
+        else:
+            self.session_counters[session_id] += 1
+        return self.session_counters[session_id]
 
     async def setup(self, session_id):
         logger.debug(f"Setting up session for session_id={session_id}")
@@ -393,9 +402,10 @@ class ChatConsumer(BaseWebSocketConsumer):
             asyncio.create_task(self.ping())
 
             if not cache.get(f'initial_message_sent_{self.session_id}', False):
+                message_id = await self.session_manager.get_next_message_id(self.session_id)
                 initial_message = "Begin the conversation."
                 await self.session_manager.create_user_message(message=initial_message)
-                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_text_response", "message_id": 1})
+                await self.channel_layer.group_send(self.room_group_name, {"type": "stream_text_response", "message_id": message_id})
                 cache.set(f'initial_message_sent_{self.session_id}', True)
 
         except Exception as e:
@@ -417,23 +427,33 @@ class ChatConsumer(BaseWebSocketConsumer):
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         message = text_data_json["message"]
-        message_id = text_data_json["message_id"]
+        message_id = await self.session_manager.get_next_message_id(self.session_id)
 
         logger.debug(
-            f"Received message: {message}, message_id={message_id}, from user in session: {self.session_id}")
+            f"Received message: {message}, from user in session: {self.session_id}")
 
         # Moderation check for incoming user message
         is_flagged, category = await moderate_content(message, self.session_manager.client)
         if is_flagged:
-            await self.send(text_data=json.dumps({
-                "type": "replace_user_message",
-                "message_id": str(int(message_id)-1),
-                "message": f"Your message was blocked due to content related to {category}."
-            }))
+            # Save user message and respond as blocked
+            moderation_response = f"Your message was blocked due to content related to {category}."
+            await save_message_to_transcript(
+                session_id=self.session_id,
+                message_id=str(message_id),
+                user_message=message,
+                bot_message=moderation_response,
+                has_audio=False,
+                audio_bytes=None
+            )
+
+            # Send events to mimic normal assistant reply
+            await self.send(text_data=json.dumps({"event": "on_parser_start", "message_id": message_id}))
+            await self.send(text_data=json.dumps({"event": "on_parser_stream", "message_id": message_id, "value": moderation_response}))
+            await self.send(text_data=json.dumps({"event": "on_parser_end", "message_id": message_id}))
             return
 
         try:
-            await save_message_to_transcript(session_id=self.session_id, message_id=str(int(message_id)-1),
+            await save_message_to_transcript(session_id=self.session_id, message_id=str(message_id),
                                              user_message=message, bot_message=None, has_audio=False, audio_bytes=None)
             await self.session_manager.create_user_message(message=message)
             await self.channel_layer.group_send(self.room_group_name, {"type": "stream_text_response", "message_id": message_id})
@@ -454,8 +474,11 @@ class ChatConsumer(BaseWebSocketConsumer):
                     chunk["event"] = "on_parser_start"
                     await self.send(text_data=json.dumps(chunk))
                 elif event.event == 'thread.message.delta':
+                    value = event.data.delta.content[0].text.value
+                    if isinstance(value, bytes):
+                        value = value.decode('utf-8', errors='replace')
                     chunk["event"] = "on_parser_stream"
-                    chunk["value"] = event.data.delta.content[0].text.value
+                    chunk["value"] = value
                     await self.send(text_data=json.dumps(chunk))
                     bot_message_buffer.append(chunk["value"])
                 elif event.event == 'thread.run.completed':
@@ -647,8 +670,11 @@ class AudioConsumer(BaseWebSocketConsumer):
                     chunk["event"] = "on_parser_start"
                     await self.send(text_data=json.dumps(chunk))
                 elif event.event == 'thread.message.delta':
+                    value = event.data.delta.content[0].text.value
+                    if isinstance(value, bytes):
+                        value = value.decode('utf-8', errors='replace')
                     chunk["event"] = "on_parser_stream"
-                    chunk["value"] = event.data.delta.content[0].text.value
+                    chunk["value"] = value
                     logger.debug(f"Received chunk: {chunk['value']}")
                     if chunk["value"].startswith(" "):
                         buffer.append(chunk["value"])

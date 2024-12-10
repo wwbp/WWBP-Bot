@@ -347,24 +347,20 @@ function ChatInterface({ session, clearChat, persona }) {
 
   const sendTextMessage = (msg) => {
     setChatState("processing");
-    const userMessageId = messageId;
+
     const userMessage = {
       sender: "You",
       message: msg,
-      id: userMessageId.toString(),
+      id: "temp-" + Date.now(),
     };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
 
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(
-        JSON.stringify({ message: msg, message_id: userMessageId + 1 })
-      );
+      ws.current.send(JSON.stringify({ message: msg }));
     } else {
       enqueueSnackbar("WebSocket is not open", { variant: "error" });
       console.error("WebSocket is not open");
     }
-
-    setMessageId((prevId) => prevId + 1);
   };
 
   return (
