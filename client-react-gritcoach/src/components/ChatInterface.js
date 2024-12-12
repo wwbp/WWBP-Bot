@@ -105,15 +105,11 @@ function ChatInterface({ session, clearChat, persona }) {
     };
 
     ws.current.onclose = (event) => {
-      enqueueSnackbar("WebSocket connection closed", { variant: "info" });
+      enqueueSnackbar("WebSocket connection closed, reconnecting...", {
+        variant: "info",
+      });
       if (reconnectAttempts < maxReconnectAttempts) {
         reconnectAttempts++;
-        enqueueSnackbar(
-          `WebSocket disconnected. Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`,
-          {
-            variant: "info",
-          }
-        );
         setTimeout(() => {
           setupWebSocket();
         }, reconnectDelay);
