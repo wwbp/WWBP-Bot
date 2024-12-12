@@ -38,6 +38,7 @@ function ChatInterface({ session, clearChat, persona }) {
     ws.current = createWebSocket(session.id, chatMode !== "text");
 
     ws.current.onopen = () => {
+      reconnectAttempts = 0;
       if (chatMode === "audio") {
         setupPeerConnection();
       }
@@ -114,7 +115,7 @@ function ChatInterface({ session, clearChat, persona }) {
           }
         );
         setTimeout(() => {
-          connect();
+          setupWebSocket();
         }, reconnectDelay);
       } else {
         enqueueSnackbar(
