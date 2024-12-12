@@ -426,6 +426,10 @@ class ChatConsumer(BaseWebSocketConsumer):
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
+        if text_data_json.get("type") == "pong":
+            logger.debug(f"Received pong from client: {self.scope['client']}")
+            return
+
         message = text_data_json["message"]
         message_id = await self.session_manager.get_next_message_id(self.session_id)
 
@@ -553,7 +557,7 @@ class AudioConsumer(BaseWebSocketConsumer):
         logger.debug(
             f"WebSocket disconnected: session_id={self.session_id}, close_code={close_code}")
 
-    async def receive(self, bytes_data=None):
+    async def receive(self, bytes_data=None, text_data=None):
         if bytes_data:
             logger.debug(f"Audio data received: {type(bytes_data)}")
             message_id = await self.session_manager.get_next_message_id(self.session_id)
@@ -593,6 +597,12 @@ class AudioConsumer(BaseWebSocketConsumer):
                 audio_chunk = await self.text_to_speech(self.process_text_for_tts(moderation_message))
                 self.audio_queue.append(audio_chunk)
                 asyncio.create_task(self.send_audio_chunk())
+        else:
+            text_data_json = json.loads(text_data)
+            if text_data_json.get("type") == "pong":
+                logger.debug(
+                    f"Received pong from client: {self.scope['client']}")
+                return
 
     async def process_audio(self, audio_data):
         logger.debug(f"Audio data size: {len(audio_data)} bytes")
