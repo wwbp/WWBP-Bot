@@ -105,12 +105,12 @@ function ChatInterface({ session, clearChat, persona }) {
     };
 
     ws.current.onclose = (event) => {
-      enqueueSnackbar("WebSocket connection closed, reconnecting...", {
-        variant: "info",
-      });
       if (reconnectAttempts < maxReconnectAttempts) {
         reconnectAttempts++;
         setTimeout(() => {
+          enqueueSnackbar("WebSocket closed, reconnecting...", {
+            variant: "info",
+          });
           setupWebSocket();
         }, reconnectDelay);
       } else {
@@ -211,15 +211,20 @@ function ChatInterface({ session, clearChat, persona }) {
       return;
     }
 
-    if (data.type === "replace_user_message") {
+    if (
+      data.event === "on_parser_stream" &&
+      data.value &&
+      data.value.includes("Your message was blocked")
+    ) {
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
-          msg.id === data.message_id ? { ...msg, message: data.message } : msg
+          msg.id === data.message_id && msg.sender === "You"
+            ? { ...msg, message: "blocked message" }
+            : msg
         )
       );
-    } else {
-      handleParserEvent(data);
     }
+    handleParserEvent(data);
   };
 
   const handleTextThenAudio = (data) => {
