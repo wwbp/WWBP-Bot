@@ -28,6 +28,9 @@ function ChatInterface({ session, clearChat, persona }) {
   const [chatState, setChatState] = useState("idle");
 
   const setupWebSocket = () => {
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    const reconnectDelay = 2000;
     if (ws.current) {
       ws.current.close();
     }
@@ -97,12 +100,30 @@ function ChatInterface({ session, clearChat, persona }) {
     };
 
     ws.current.onerror = (event) => {
-      console.error("WebSocket error:", event);
       enqueueSnackbar("WebSocket error observed", { variant: "error" });
     };
 
     ws.current.onclose = (event) => {
       enqueueSnackbar("WebSocket connection closed", { variant: "info" });
+      if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        enqueueSnackbar(
+          `WebSocket disconnected. Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`,
+          {
+            variant: "info",
+          }
+        );
+        setTimeout(() => {
+          connect();
+        }, reconnectDelay);
+      } else {
+        enqueueSnackbar(
+          "WebSocket connection failed. Please refresh the page.",
+          {
+            variant: "error",
+          }
+        );
+      }
     };
   };
 
