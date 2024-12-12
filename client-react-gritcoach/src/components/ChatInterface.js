@@ -27,11 +27,6 @@ function ChatInterface({ session, clearChat, persona }) {
   const [loading, setLoading] = useState(true);
   const [chatState, setChatState] = useState("idle");
 
-  useEffect(() => {
-    console.log("Persona data:", persona);
-    console.log("Bot avatar URL:", botAvatar);
-  }, [persona, botAvatar]);
-
   const setupWebSocket = () => {
     if (ws.current) {
       ws.current.close();
@@ -40,7 +35,6 @@ function ChatInterface({ session, clearChat, persona }) {
     ws.current = createWebSocket(session.id, chatMode !== "text");
 
     ws.current.onopen = () => {
-      console.log("WebSocket connected");
       if (chatMode === "audio") {
         setupPeerConnection();
       }
@@ -59,6 +53,11 @@ function ChatInterface({ session, clearChat, persona }) {
           data = JSON.parse(event.data);
         } catch (error) {
           console.error("Invalid JSON data:", error);
+          return;
+        }
+
+        if (data.type === "ping") {
+          ws.current.send(JSON.stringify({ type: "pong" }));
           return;
         }
 
@@ -103,7 +102,6 @@ function ChatInterface({ session, clearChat, persona }) {
     };
 
     ws.current.onclose = (event) => {
-      console.log("WebSocket closed:", event);
       enqueueSnackbar("WebSocket connection closed", { variant: "info" });
     };
   };
@@ -112,7 +110,6 @@ function ChatInterface({ session, clearChat, persona }) {
     const fetchMode = async () => {
       try {
         const response = await fetchData("/profile");
-        console.log("Interaction mode is ", response);
         setChatMode(response.interaction_mode);
       } catch (err) {
         console.log("Error fetching");
@@ -188,8 +185,6 @@ function ChatInterface({ session, clearChat, persona }) {
   };
 
   const handleTextMessage = (event) => {
-    console.log("Handling text message:", event.data);
-
     let data;
     try {
       data = JSON.parse(event.data);
@@ -304,7 +299,6 @@ function ChatInterface({ session, clearChat, persona }) {
     if (!isPlaying && !audioQueue.length) {
       setMessages((prevMessages) => {
         const updatedMessages = [...prevMessages, ...textBufferRef.current];
-        console.log("Updated messages:", updatedMessages);
         return updatedMessages;
       });
     }
