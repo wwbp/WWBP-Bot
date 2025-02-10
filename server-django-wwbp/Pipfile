@@ -29,6 +29,7 @@ setuptools = "*"
 pydub = "*"
 ffmpeg = "*"
 django-silk = "*"
+uvicorn = "*"
 
 [dev-packages]
 
