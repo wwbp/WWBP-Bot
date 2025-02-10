@@ -25,7 +25,8 @@ RUN pipenv install --system --deploy --ignore-pipfile
 COPY . /app
 
 # Make the entrypoint script executable
-RUN chmod +x /app/entrypoint.sh
+RUN chmod 755 /app/entrypoint.sh && \
+    chown root:root /app/entrypoint.sh
 
 # Run the script to fetch Google credentials
 RUN python fetch_google_credentials.py
