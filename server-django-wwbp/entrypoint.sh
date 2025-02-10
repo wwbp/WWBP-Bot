@@ -6,5 +6,9 @@ python manage.py migrate
 # Collect static files
 python manage.py collectstatic --noinput
 
-# Start Daphne server
-daphne -b 0.0.0.0 -p 8000 config.asgi:application
+# Start Gunicorn with Uvicorn workers
+gunicorn config.asgi:application \
+  -k uvicorn.workers.UvicornWorker \
+  --workers=4 \
+  --bind 0.0.0.0:8000 \
+  --timeout 120
