@@ -9,13 +9,13 @@ WORKDIR /app
 
 # Install system and build dependencies
 RUN apt-get update && \
-    apt-get install -y libmariadb-dev-compat gcc pkg-config default-libmysqlclient-dev ffmpeg && \
+    apt-get install -y libmariadb-dev-compat gcc pkg-config default-libmysqlclient-dev ffmpeg supervisor && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy the Pipfile and Pipfile.lock into the container
 COPY ./Pipfile ./Pipfile.lock /app/
-
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # Install Python dependencies
 RUN pip install pipenv 
 
@@ -37,4 +37,4 @@ RUN python manage.py collectstatic --noinput
 # Use the entrypoint script to run the container
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-EXPOSE 8000
+EXPOSE 8000 8001 8002 8003
