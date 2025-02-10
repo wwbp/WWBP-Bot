@@ -83,7 +83,7 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
     };
 
     ws.current.onmessage = (event) => {
-      data = JSON.parse(event.data);
+      let data = JSON.parse(event.data);
       if (data.type === "ping") {
         ws.current.send(JSON.stringify({ type: "pong" }));
         return;

@@ -38,4 +38,4 @@ RUN python manage.py collectstatic --noinput
 # Use the entrypoint script to run the container
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-EXPOSE 8000 8001 8002 8003
+EXPOSE 8000 8001 8002 8003 8004
