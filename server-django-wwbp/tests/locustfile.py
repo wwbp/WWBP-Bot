@@ -14,6 +14,7 @@ class ChatBehavior(TaskSet):
     token = None
     chat_session_id = None
     ws = None
+    ws_audio = None
     username = None
     password = None
 
@@ -48,7 +49,7 @@ class ChatBehavior(TaskSet):
                 return
 
         # STEP 2: Register a new user with random credentials.
-        self.username = "locust_" + str(uuid.uuid4())[:8]
+        self.username = "locust_test_" + str(uuid.uuid4())[:8]
         self.password = "password123"
         register_payload = {
             "username": self.username,
@@ -146,6 +147,7 @@ class ChatBehavior(TaskSet):
 
         # STEP 6: Open a WebSocket connection.
         ws_url = f"wss://chatfriend.in/ws/chat/{self.chat_session_id}/"
+        ws_url_audio = f"wss://chatfriend.in/ws/audio/{self.chat_session_id}/"
         try:
             self.ws = create_connection(
                 ws_url,
@@ -159,6 +161,14 @@ class ChatBehavior(TaskSet):
                 },
                 sslopt={"cert_reqs": ssl.CERT_NONE}
             )
+
+            self.ws_audio = create_connection(ws_url_audio, header={
+                "Origin": "https://chatfriend.in",
+                "Authorization": f"Token {self.token}",
+                "User-Agent": "Mozilla/5.0",
+                "Sec-WebSocket-Key": key,
+                "Sec-WebSocket-Version": "13",
+            }, sslopt={"cert_reqs": ssl.CERT_NONE})
 
         except Exception as e:
             print(
@@ -185,10 +195,36 @@ class ChatBehavior(TaskSet):
         except Exception as e:
             print(f"[{self.username}] Error during chat: {e}")
 
+    @task
+    def send_audio_message(self):
+        if not self.ws_audio:
+            return
+        try:
+            # Simulate sending audio data
+            fake_audio_data = b"\x00\x01\x02" * 100  # Example binary audio data
+            # opcode 2 for binary frame
+            self.ws_audio.send(fake_audio_data, opcode=2)
+            print("Audio message sent.")
+
+            # Wait for a response (simulate transcription or acknowledgment)
+            try:
+                response = self.ws_audio.recv()
+                print(f"Audio WebSocket response: {response}")
+            except WebSocketConnectionClosedException:
+                print("Audio WebSocket connection closed unexpectedly.")
+
+        except Exception as e:
+            print(f"Error during audio message handling: {e}")
+
     def on_stop(self):
         if self.ws:
             try:
                 self.ws.close()
+            except Exception:
+                pass
+        if self.ws_audio:
+            try:
+                self.ws_audio.close()
             except Exception:
                 pass
 
