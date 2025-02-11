@@ -39,11 +39,13 @@ from .serializers import PersonaSerializer, UserSerializer, TaskSerializer, Modu
 logger = logging.getLogger(__name__)
 
 
+@api_view(['GET'])
 def csrf(request):
     csrf_token = get_token(request)
     return JsonResponse({'csrfToken': csrf_token})
 
 
+@api_view(['GET'])
 def current_time(request):
     now = datetime.now().isoformat()
     return JsonResponse({'current_time': now})
@@ -56,6 +58,7 @@ def custom_exception_handler(exc, context):
     return response
 
 
+@api_view(['POST'])
 def login_view(request):
     if request.method == 'POST':
         data = json.loads(request.body)
