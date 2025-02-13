@@ -28,9 +28,9 @@ function ChatInterface({ session, clearChat, persona }) {
   const [chatState, setChatState] = useState("idle");
 
   const setupWebSocket = () => {
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-    const reconnectDelay = 2000;
+    // let reconnectAttempts = 0;
+    // const maxReconnectAttempts = 5;
+    // const reconnectDelay = 2000;
     if (ws.current) {
       ws.current.close();
     }
@@ -38,7 +38,7 @@ function ChatInterface({ session, clearChat, persona }) {
     ws.current = createWebSocket(session.id, chatMode !== "text");
 
     ws.current.onopen = () => {
-      reconnectAttempts = 0;
+      // reconnectAttempts = 0;
       if (chatMode === "audio") {
         setupPeerConnection();
       }
@@ -105,22 +105,23 @@ function ChatInterface({ session, clearChat, persona }) {
     };
 
     ws.current.onclose = (event) => {
-      if (reconnectAttempts < maxReconnectAttempts) {
-        reconnectAttempts++;
-        setTimeout(() => {
-          enqueueSnackbar("WebSocket closed, reconnecting...", {
-            variant: "info",
-          });
-          setupWebSocket();
-        }, reconnectDelay);
-      } else {
-        enqueueSnackbar(
-          "WebSocket connection failed. Please refresh the page.",
-          {
-            variant: "error",
-          }
-        );
-      }
+      // if (reconnectAttempts < maxReconnectAttempts) {
+      //   reconnectAttempts++;
+      //   setTimeout(() => {
+      //     enqueueSnackbar("WebSocket closed, reconnecting...", {
+      //       variant: "info",
+      //     });
+      //     setupWebSocket();
+      //   }, reconnectDelay);
+      // } else {
+      //   enqueueSnackbar(
+      //     "WebSocket connection failed. Please refresh the page.",
+      //     {
+      //       variant: "error",
+      //     }
+      //   );
+      // }
+      enqueueSnackbar("WebSocket connection closed", { variant: "warning" });
     };
   };
 
