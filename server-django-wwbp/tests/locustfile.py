@@ -7,6 +7,7 @@ import random
 import uuid
 import base64
 
+# Generate a key for the WebSocket handshake
 key = base64.b64encode(uuid.uuid4().bytes).decode("utf-8").strip()
 
 
@@ -67,7 +68,8 @@ class ChatBehavior(TaskSet):
 
         # STEP 3: Login using the correct API URL
         login_payload = {"username": self.username, "password": self.password}
-        with self.client.post("https://chatfriend.in/api/v1/login/", json=login_payload, catch_response=True) as login_resp:
+        # Disable redirects so that you get the raw response.
+        with self.client.post("https://chatfriend.in/api/v1/login/", json=login_payload, catch_response=True, allow_redirects=False) as login_resp:
             if login_resp.status_code != 200:
                 login_resp.failure(f"Login failed: {login_resp.text}")
                 return
@@ -84,7 +86,7 @@ class ChatBehavior(TaskSet):
                 return
             login_resp.success()
 
-        # Set Authorization header for subsequent requests
+        # Set Authorization header for subsequent requests and WebSocket connections.
         self.client.headers.update({"Authorization": f"Token {self.token}"})
 
         # STEP 4: Get modules (make sure the API endpoint uses the proper prefix)
@@ -145,15 +147,17 @@ class ChatBehavior(TaskSet):
                     "Chat session creation failed: " + chat_resp.text)
                 return
 
-        # STEP 6: Open a WebSocket connection.
+        # STEP 6: Open WebSocket connections.
         ws_url = f"wss://chatfriend.in/ws/chat/{self.chat_session_id}/"
         ws_url_audio = f"wss://chatfriend.in/ws/audio/{self.chat_session_id}/"
         try:
+            # Add the Authorization header to both connections
             self.ws = create_connection(
                 ws_url,
                 header={
                     "Origin": "https://chatfriend.in",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                    "Authorization": f"Token {self.token}",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                     "Connection": "Upgrade",
                     "Upgrade": "websocket",
                     "Sec-WebSocket-Key": key,
@@ -162,18 +166,22 @@ class ChatBehavior(TaskSet):
                 sslopt={"cert_reqs": ssl.CERT_NONE}
             )
 
-            self.ws_audio = create_connection(ws_url_audio, header={
-                "Origin": "https://chatfriend.in",
-                "Authorization": f"Token {self.token}",
-                "User-Agent": "Mozilla/5.0",
-                "Sec-WebSocket-Key": key,
-                "Sec-WebSocket-Version": "13",
-            }, sslopt={"cert_reqs": ssl.CERT_NONE})
-
+            self.ws_audio = create_connection(
+                ws_url_audio,
+                header={
+                    "Origin": "https://chatfriend.in",
+                    "Authorization": f"Token {self.token}",
+                    "User-Agent": "Mozilla/5.0",
+                    "Sec-WebSocket-Key": key,
+                    "Sec-WebSocket-Version": "13",
+                },
+                sslopt={"cert_reqs": ssl.CERT_NONE}
+            )
         except Exception as e:
             print(
                 f"[{self.username}] Error connecting to WebSocket with session id {self.chat_session_id} : {e}")
             self.ws = None
+            self.ws_audio = None
 
     @task
     def chat(self):
@@ -200,21 +208,41 @@ class ChatBehavior(TaskSet):
         if not self.ws_audio:
             return
         try:
-            # Simulate sending audio data
-            fake_audio_data = b"\x00\x01\x02" * 100  # Example binary audio data
-            # opcode 2 for binary frame
+            # Use a smaller payload for testing purposes.
+            fake_audio_data = b"\x00\x01\x02" * 10  # Adjust as needed
+            # Send as binary frame (opcode=2)
             self.ws_audio.send(fake_audio_data, opcode=2)
             print("Audio message sent.")
 
-            # Wait for a response (simulate transcription or acknowledgment)
+            # Optionally wait a short time before receiving a response
+            time.sleep(0.5)
             try:
                 response = self.ws_audio.recv()
                 print(f"Audio WebSocket response: {response}")
             except WebSocketConnectionClosedException:
                 print("Audio WebSocket connection closed unexpectedly.")
-
         except Exception as e:
             print(f"Error during audio message handling: {e}")
+            # Attempt to reconnect the audio WebSocket on error
+            self.reconnect_ws_audio()
+
+    def reconnect_ws_audio(self):
+        ws_url_audio = f"wss://chatfriend.in/ws/audio/{self.chat_session_id}/"
+        try:
+            self.ws_audio = create_connection(
+                ws_url_audio,
+                header={
+                    "Origin": "https://chatfriend.in",
+                    "Authorization": f"Token {self.token}",
+                    "User-Agent": "Mozilla/5.0",
+                    "Sec-WebSocket-Key": key,
+                    "Sec-WebSocket-Version": "13",
+                },
+                sslopt={"cert_reqs": ssl.CERT_NONE}
+            )
+            print("Reconnected audio WebSocket.")
+        except Exception as e:
+            print(f"Failed to reconnect audio WebSocket: {e}")
 
     def on_stop(self):
         if self.ws:
