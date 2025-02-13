@@ -34,6 +34,7 @@ ENV GOOGLE_APPLICATION_CREDENTIALS ./google_credentials.json
 
 # Run Django collectstatic, using your production settings
 RUN python manage.py collectstatic --noinput
+RUN mkdir -p /var/log && chown -R root:root /var/log
 
 # Use the entrypoint script to run the container
 ENTRYPOINT ["/app/entrypoint.sh"]
