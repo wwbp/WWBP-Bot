@@ -83,6 +83,11 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
     };
 
     ws.current.onmessage = (event) => {
+      if (event.data instanceof Blob) {
+        // Handle audio blob directly
+        setAudioQueue((prevQueue) => [...prevQueue, event.data]);
+        return;
+      }
       let data = JSON.parse(event.data);
       if (data.type === "ping") {
         ws.current.send(JSON.stringify({ type: "pong" }));
@@ -178,6 +183,7 @@ function ChatInterface({ session, clearChat, selectedTask, persona }) {
 
   const handleAudioMessage = async (event) => {
     if (event.data instanceof Blob) {
+      console.log("Received audio blob:", event.data);
       setAudioQueue((prevQueue) => [...prevQueue, event.data]);
     } else if (typeof event.data === "string") {
       const data = JSON.parse(event.data);
