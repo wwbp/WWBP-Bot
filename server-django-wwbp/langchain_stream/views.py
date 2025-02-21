@@ -173,7 +173,6 @@ class PromptHook:
 
                 ### Task Details:
                 - **Content**: {task_content}
-                - **Instructions**: {task_instruction}
 
                 ### Persona Information:
                 - **Name**: {persona_name}
