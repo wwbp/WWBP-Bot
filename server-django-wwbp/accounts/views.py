@@ -1,4 +1,5 @@
 import re
+import uuid
 from django.db import transaction
 from django.core.paginator import Paginator
 from django.utils.decorators import method_decorator
@@ -17,7 +18,6 @@ from django.conf import settings
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponseNotAllowed, JsonResponse, HttpResponse, FileResponse, HttpResponseRedirect
 from django.apps import apps
 
@@ -29,7 +29,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.views import exception_handler
-import openai
 import pytz
 
 from .models import Persona, User, Task, Module, ChatSession, SystemPrompt, UserCSVDownload
@@ -37,6 +36,39 @@ from .serializers import PersonaSerializer, UserSerializer, TaskSerializer, Modu
 
 
 logger = logging.getLogger(__name__)
+
+
+@csrf_exempt
+@api_view(['POST'])
+def auto_login_view(request):
+    # Generate random guest credentials
+    random_username = "guest_" + str(uuid.uuid4())[:8]
+    random_password = str(uuid.uuid4())
+    User = get_user_model()
+    try:
+        user = User.objects.create_user(
+            username=random_username,
+            password=random_password,
+            role="student",
+            preferred_name=random_username
+        )
+        user.save()
+    except Exception as e:
+        return JsonResponse({"message": "Error creating guest account", "error": str(e)}, status=500)
+
+    user = authenticate(request, username=random_username,
+                        password=random_password)
+    if user is not None:
+        login(request, user)
+        token, _ = Token.objects.get_or_create(user=user)
+        return JsonResponse({
+            "token": token.key,
+            "message": "Auto login successful",
+            "user_id": user.id,
+            "role": user.role
+        }, status=200)
+    else:
+        return JsonResponse({"message": "Auto login failed"}, status=500)
 
 
 @api_view(['GET'])
@@ -84,7 +116,8 @@ def logout_view(request):
     return JsonResponse({"message": "Logged out"}, status=200)
 
 
-@login_required
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
 def user_profile(request):
     if request.method == 'GET':
         user_data = {

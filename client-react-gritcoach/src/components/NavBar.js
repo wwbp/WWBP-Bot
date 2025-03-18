@@ -156,8 +156,8 @@ function NavBar({
                 onClose={handleClose}
                 sx={{
                   "& .MuiPaper-root": {
-                    width: "200px", // Adjust the width as needed
-                    marginTop: "10px", // Ensure the menu appears just below the navbar
+                    width: "200px",
+                    marginTop: "10px",
                   },
                 }}
               >
@@ -170,7 +170,7 @@ function NavBar({
           </>
         ) : (
           <Button color="inherit" component={Link} to="/login">
-            Login
+            Teacher Login
           </Button>
         )}
       </Toolbar>
