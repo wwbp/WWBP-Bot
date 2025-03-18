@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { postData } from "../utils/api";
 import { Container, TextField, Button, Box, Typography } from "@mui/material";
@@ -12,6 +12,14 @@ function Login({ setLoggedIn, setRole }) {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
+
+  useEffect(() => {
+    const storedRole = localStorage.getItem("role");
+    if (storedRole === "student") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+    }
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

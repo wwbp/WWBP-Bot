@@ -44,7 +44,6 @@ function App() {
     let userRole = localStorage.getItem("role");
 
     if (!token) {
-      // Auto-login for students if no token exists
       fetch(process.env.REACT_APP_API_URL + "/auto_login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
