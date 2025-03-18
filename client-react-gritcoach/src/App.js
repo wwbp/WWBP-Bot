@@ -61,7 +61,7 @@ function App() {
         })
         .catch((error) => {
           console.error("Auto login failed:", error);
-          setAuthLoaded(false);
+          setAuthLoaded(true);
         });
     } else {
       setIsLoggedIn(true);

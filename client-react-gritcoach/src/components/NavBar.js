@@ -32,7 +32,11 @@ function NavBar({
   const onLogout = () => {
     handleLogout();
     enqueueSnackbar("Logged out successfully", { variant: "info" });
-    navigate("/login");
+    if (role === "student") {
+      window.location.reload();
+    } else {
+      navigate("/login");
+    }
   };
 
   const toggleView = async () => {
