@@ -32,7 +32,7 @@ function NavBar({
   const onLogout = () => {
     handleLogout();
     enqueueSnackbar("Logged out successfully", { variant: "info" });
-    navigate("/login");
+    window.location.reload();
   };
 
   const toggleView = async () => {
