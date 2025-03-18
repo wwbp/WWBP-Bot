@@ -26,7 +26,7 @@ function RequireAuth({ children }) {
   const token = localStorage.getItem("token");
 
   if (!token) {
-    // For teacher routes only; auto login should cover students.
+    // For teacher routes only; auto login covers students
     return <Navigate to="/login" state={{ from: location }} />;
   }
 

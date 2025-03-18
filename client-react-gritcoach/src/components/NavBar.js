@@ -32,11 +32,7 @@ function NavBar({
   const onLogout = () => {
     handleLogout();
     enqueueSnackbar("Logged out successfully", { variant: "info" });
-    if (role === "student") {
-      window.location.reload();
-    } else {
-      navigate("/login");
-    }
+    navigate("/login");
   };
 
   const toggleView = async () => {
@@ -168,7 +164,9 @@ function NavBar({
                 <MenuItem component={Link} to="/profile" onClick={handleClose}>
                   Profile
                 </MenuItem>
-                <MenuItem onClick={onLogout}>Logout</MenuItem>
+                {role === "teacher" && (
+                  <MenuItem onClick={onLogout}>Logout</MenuItem>
+                )}
               </Menu>
             </Box>
           </>
