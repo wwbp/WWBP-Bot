@@ -26,6 +26,7 @@ function RequireAuth({ children }) {
   const token = localStorage.getItem("token");
 
   if (!token) {
+    // For teacher routes only; auto login should cover students.
     return <Navigate to="/login" state={{ from: location }} />;
   }
 
@@ -36,12 +37,37 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [role, setRole] = useState("");
   const [isStudentView, setIsStudentView] = useState(false);
+  const [authLoaded, setAuthLoaded] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userRole = localStorage.getItem("role");
-    setIsLoggedIn(!!token);
-    setRole(userRole);
+    let token = localStorage.getItem("token");
+    let userRole = localStorage.getItem("role");
+
+    if (!token) {
+      // Auto-login for students if no token exists
+      fetch(process.env.REACT_APP_API_URL + "/auto_login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.token) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("role", data.role);
+            setIsLoggedIn(true);
+            setRole(data.role);
+          }
+          setAuthLoaded(true);
+        })
+        .catch((error) => {
+          console.error("Auto login failed:", error);
+          setAuthLoaded(true);
+        });
+    } else {
+      setIsLoggedIn(true);
+      setRole(userRole);
+      setAuthLoaded(true);
+    }
 
     if (userRole === "teacher") {
       const fetchViewMode = async () => {
@@ -57,6 +83,10 @@ function App() {
       }
     }
   }, []);
+
+  if (!authLoaded) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -76,7 +106,9 @@ function App() {
             }}
           />
           <Routes>
-            <Route path="/" element={<Navigate to="/login" />} />
+            {/* Default route goes to student dashboard */}
+            <Route path="/" element={<StudentDashboard />} />
+            {/* Teacher login remains at /login */}
             <Route
               path="/login"
               element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}

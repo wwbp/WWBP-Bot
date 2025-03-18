@@ -1,0 +1,3934 @@
+# Directory Structure:
+# ├── App.css
+# ├── App.js
+# ├── App.test.js
+# ├── GlobalStyles.js
+# ├── components
+# │   ├── Avatar.js
+# │   ├── AvatarUpload.js
+# │   ├── ChatInterface.js
+# │   ├── CurrentTime.js
+# │   ├── FileUpload.js
+# │   ├── HomePage.js
+# │   ├── InteractionMode.js
+# │   ├── Login.js
+# │   ├── MessageInput.js
+# │   ├── MessageItem.js
+# │   ├── MessageList.js
+# │   ├── ModuleForm.js
+# │   ├── ModuleInteraction.js
+# │   ├── ModuleList.js
+# │   ├── ModuleTasks.js
+# │   ├── NavBar.js
+# │   ├── PushToTalkButton.js
+# │   ├── Signup.js
+# │   ├── StudentDashboard.js
+# │   ├── SystemPromptForm.js
+# │   ├── SystemPromptPage.js
+# │   ├── TaskForm.js
+# │   ├── TeacherDashboard.js
+# │   ├── TranscriptDownloadPage.js
+# │   └── UserProfile.js
+# ├── index.css
+# ├── index.js
+# ├── reportWebVitals.js
+# ├── setupTests.js
+# ├── theme.js
+# └── utils
+#     └── api.js
+
+
+# File: App.css
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-Demi.ttf') format('truetype');
+  font-weight: 600; /* Adjust the weight if necessary */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-Light.ttf') format('truetype');
+  font-weight: 300; /* Adjust the weight if necessary */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-TF.ttf') format('truetype');
+  font-weight: 400; /* Adjust the weight if necessary */
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-BoldItalic.otf') format('opentype');
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-Book.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-BookItalic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Apply the font to your body or other elements as needed */
+body {
+  font-family: 'NeutraText';
+  font-size: 18px; /* Increased base font size */
+}
+
+/* Existing CSS */
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #000000;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(12px + 2vmin); /* Adjusted for better readability */
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+  font-size: 1.1rem; /* Increased font size for links */
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+# File: App.js
+import React, { useState, useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import { SnackbarProvider } from "notistack";
+import { ThemeProvider } from "@mui/material/styles";
+import GlobalStyles from "./GlobalStyles";
+import theme from "./theme";
+import "./App.css";
+import { fetchData } from "./utils/api";
+import Login from "./components/Login";
+import UserProfile from "./components/UserProfile";
+import NavBar from "./components/NavBar";
+import Signup from "./components/Signup";
+import TeacherDashboard from "./components/TeacherDashboard";
+import StudentDashboard from "./components/StudentDashboard";
+import SystemPromptPage from "./components/SystemPromptPage";
+import TranscriptDownloadPage from "./components/TranscriptDownloadPage";
+
+function RequireAuth({ children }) {
+  const location = useLocation();
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} />;
+  }
+
+  return children;
+}
+
+function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [role, setRole] = useState("");
+  const [isStudentView, setIsStudentView] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userRole = localStorage.getItem("role");
+    setIsLoggedIn(!!token);
+    setRole(userRole);
+
+    if (userRole === "teacher") {
+      const fetchViewMode = async () => {
+        try {
+          const response = await fetchData("/get_view_mode/");
+          setIsStudentView(response.student_view);
+        } catch (error) {
+          console.error("Error fetching view mode", error);
+        }
+      };
+      if (token) {
+        fetchViewMode();
+      }
+    }
+  }, []);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <GlobalStyles />
+      <SnackbarProvider maxSnack={3}>
+        <Router>
+          <NavBar
+            isLoggedIn={isLoggedIn}
+            role={role}
+            isStudentView={isStudentView}
+            setIsStudentView={setIsStudentView}
+            handleLogout={() => {
+              localStorage.removeItem("token");
+              localStorage.removeItem("role");
+              setIsLoggedIn(false);
+              setRole("");
+            }}
+          />
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" />} />
+            <Route
+              path="/login"
+              element={<Login setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+            />
+            <Route path="/profile" element={<UserProfile />} />
+            <Route
+              path="/signup"
+              element={<Signup setLoggedIn={setIsLoggedIn} setRole={setRole} />}
+            />
+            <Route
+              path="/teacher-dashboard/*"
+              element={
+                <RequireAuth>
+                  <TeacherDashboard />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/student-dashboard/*"
+              element={
+                <RequireAuth>
+                  <StudentDashboard />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/system-prompt"
+              element={
+                <RequireAuth>
+                  <SystemPromptPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/transcript-download"
+              element={
+                <RequireAuth>
+                  <TranscriptDownloadPage />
+                </RequireAuth>
+              }
+            />
+          </Routes>
+        </Router>
+      </SnackbarProvider>
+    </ThemeProvider>
+  );
+}
+
+export default App;
+
+
+# File: App.test.js
+import { render, screen } from '@testing-library/react';
+import App from './App';
+
+test('renders learn react link', () => {
+  render(<App />);
+  const linkElement = screen.getByText(/learn react/i);
+  expect(linkElement).toBeInTheDocument();
+});
+
+
+# File: GlobalStyles.js
+import { GlobalStyles as MUIGlobalStyles } from "@mui/system";
+
+const GlobalStyles = () => (
+  <MUIGlobalStyles
+    styles={{
+      "@font-face": [
+        {
+          fontFamily: "NeutraText",
+          src: 'url(assets/fonts/Neutra-Text-Demi.ttf) format("truetype")',
+          fontWeight: 600,
+          fontStyle: "normal",
+        },
+        {
+          fontFamily: "NeutraText",
+          src: 'url(assets/fonts/Neutra-Text-Light.ttf) format("truetype")',
+          fontWeight: 300,
+          fontStyle: "normal",
+        },
+        {
+          fontFamily: "NeutraText",
+          src: 'url(assets/fonts/Neutra-Text-TF.ttf) format("truetype")',
+          fontWeight: 400,
+          fontStyle: "normal",
+        },
+        {
+          fontFamily: "NeutraText",
+          src: 'url(assets/fonts/NeutraText-Bold.otf) format("opentype")',
+          fontWeight: "bold",
+          fontStyle: "normal",
+        },
+        {
+          fontFamily: "NeutraText",
+          src: 'url(assets/fonts/NeutraText-BoldItalic.otf) format("opentype")',
+          fontWeight: "bold",
+          fontStyle: "italic",
+        },
+        {
+          fontFamily: "NeutraText",
+          src: 'url(assets/fonts/NeutraText-Book.otf) format("opentype")',
+          fontWeight: 400,
+          fontStyle: "normal",
+        },
+        {
+          fontFamily: "NeutraText",
+          src: 'url(assets/fonts/NeutraText-BookItalic.otf) format("opentype")',
+          fontWeight: 400,
+          fontStyle: "italic",
+        },
+      ],
+      body: {
+        fontFamily: "NeutraText",
+      },
+      "*": {
+        margin: 0,
+        padding: 0,
+        boxSizing: "border-box",
+      },
+    }}
+  />
+);
+
+export default GlobalStyles;
+
+
+# File: components/Avatar.js
+import React from "react";
+import MuiAvatar from "@mui/material/Avatar";
+import defaultBotAvatar from "../assets/bot-avatar.png";
+import defaultUserPlaceholder from "../assets/user-placeholder.png";
+
+const Avatar = ({ src, alt, isBot }) => {
+  const convertAvatarUrl = (inputUrl) => {
+    const s3Pattern = /^https:\/\/.*\.s3\.amazonaws\.com/;
+
+    if (s3Pattern.test(inputUrl)) {
+      const relativePath = inputUrl.replace(s3Pattern, "");
+      return `${process.env.REACT_APP_API_URL.replace(
+        "/api/v1",
+        ""
+      )}${relativePath}`;
+    }
+
+    return inputUrl;
+  };
+
+  const avatarSrc = src
+    ? convertAvatarUrl(src)
+    : isBot
+    ? defaultBotAvatar
+    : defaultUserPlaceholder;
+
+  return <MuiAvatar alt={alt} src={avatarSrc} />;
+};
+
+export default Avatar;
+
+
+# File: components/AvatarUpload.js
+import React, { useState, useEffect } from "react";
+import { IconButton, Avatar, Box, Typography } from "@mui/material";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { getPresignedUrl, postFile, uploadToS3 } from "../utils/api"; 
+
+const AvatarUpload = ({
+  existingAvatar,
+  onAvatarUploaded,
+  onAvatarRemoved,
+}) => {
+  const [uploadedAvatar, setUploadedAvatar] = useState(existingAvatar);
+
+  useEffect(() => {
+    setUploadedAvatar(existingAvatar);
+  }, [existingAvatar]);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileName = file.name;
+    const fileType = file.type;
+
+    try {
+      // Step 1: Get presigned URL (avatar-specific)
+      const presignedData = await getPresignedUrl(fileName, fileType, true); // Ensure it's avatar-specific
+
+      if (presignedData.url === "local") {
+        // Handle local upload
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("is_avatar", true);
+
+        // Send to local upload URL
+        const response = await postFile("/local_upload/", formData);
+        const fileUrl = response.file_path; // Assuming the file path is returned
+
+        setUploadedAvatar(fileUrl);
+        onAvatarUploaded(fileUrl); // Notify parent about the new avatar URL
+      } else {
+        // Handle production upload (e.g., S3)
+        const { url, fields } = presignedData;
+        await uploadToS3(url, fields, file);
+        const fileUrl = `${url}${fields.key}`;
+        setUploadedAvatar(fileUrl);
+        onAvatarUploaded(fileUrl);
+      }
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      alert("Failed to upload avatar.");
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setUploadedAvatar(null);
+    onAvatarRemoved();
+  };
+
+  return (
+    <Box>
+      {/* Show existing avatar if present */}
+      {uploadedAvatar ? (
+        <Box mb={2} display="flex" flexDirection="column" alignItems="center">
+          <Typography variant="subtitle1">Current Avatar</Typography>
+          <Avatar
+            src={uploadedAvatar}
+            alt="Persona Avatar"
+            sx={{ width: 100, height: 100, marginBottom: 2 }}
+          />
+          <IconButton color="secondary" onClick={handleRemoveAvatar}>
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ) : (
+        <Typography variant="subtitle1">No Avatar Uploaded</Typography>
+      )}
+
+      {/* Avatar Upload */}
+      <input
+        accept="image/*"
+        style={{ display: "none" }}
+        id="avatar-upload"
+        type="file"
+        onChange={handleFileChange}
+      />
+      <label htmlFor="avatar-upload">
+        <IconButton component="span">
+          <UploadFileIcon />
+        </IconButton>
+      </label>
+    </Box>
+  );
+};
+
+export default AvatarUpload;
+
+
+# File: components/ChatInterface.js
+import React, { useState, useEffect, useRef } from "react";
+import { createWebSocket, fetchData } from "../utils/api";
+import { Box } from "@mui/material";
+import { useSnackbar } from "notistack";
+import MessageList from "./MessageList";
+import MessageInput from "./MessageInput";
+import PushToTalkButton from "./PushToTalkButton";
+
+function ChatInterface({ session, clearChat, persona }) {
+  const botName = persona?.name || "GritCoach";
+  const botAvatar = persona?.avatar_url;
+  const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState("");
+  const [chatMode, setChatMode] = useState("text");
+  const [audioState, setAudioState] = useState("idle");
+  const [audioQueue, setAudioQueue] = useState([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const ws = useRef(null);
+  const peerConnection = useRef(null);
+  const localStream = useRef(null);
+  const remoteStream = useRef(new MediaStream());
+  const messagesEndRef = useRef(null);
+  const { enqueueSnackbar } = useSnackbar();
+  const audioBuffer = useRef([]);
+  const [textBuffer, setTextBuffer] = useState([]);
+  const textBufferRef = useRef([]);
+  const [loading, setLoading] = useState(true);
+  const [chatState, setChatState] = useState("idle");
+
+  const setupWebSocket = () => {
+    // let reconnectAttempts = 0;
+    // const maxReconnectAttempts = 5;
+    // const reconnectDelay = 2000;
+    if (ws.current) {
+      ws.current.close();
+    }
+
+    ws.current = createWebSocket(session.id, chatMode !== "text");
+
+    ws.current.onopen = () => {
+      // reconnectAttempts = 0;
+      if (chatMode === "audio") {
+        setupPeerConnection();
+      }
+    };
+
+    ws.current.onmessage = (event) => {
+      if (event.data instanceof Blob) {
+        // Handle audio blob directly
+        setAudioQueue((prevQueue) => [...prevQueue, event.data]);
+        return;
+      }
+
+      if (typeof event.data === "string") {
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch (error) {
+          console.error("Invalid JSON data:", error);
+          return;
+        }
+
+        if (data.type === "ping") {
+          ws.current.send(JSON.stringify({ type: "pong" }));
+          return;
+        }
+
+        // Handle different chat modes
+        switch (chatMode) {
+          case "audio":
+            if (data.sdp) {
+              handleSDP(data);
+            } else if (data.candidate) {
+              handleICECandidate(data);
+            } else if (data.transcript) {
+              handleTranscript(data);
+            } else if (data.event) {
+              handleParserEvent(data);
+            }
+            break;
+
+          case "text-then-audio":
+            handleTextThenAudio(event);
+            break;
+
+          case "audio-then-text":
+            handleAudioThenText(event);
+            break;
+
+          case "audio-only":
+            handleAudioOnly(event);
+            break;
+
+          default:
+            handleTextMessage(event);
+            break;
+        }
+      } else {
+        console.error("Unhandled WebSocket data type:", event.data);
+      }
+    };
+
+    ws.current.onerror = (event) => {
+      enqueueSnackbar("WebSocket error observed", { variant: "error" });
+    };
+
+    ws.current.onclose = (event) => {
+      // if (reconnectAttempts < maxReconnectAttempts) {
+      //   reconnectAttempts++;
+      //   setTimeout(() => {
+      //     enqueueSnackbar("WebSocket closed, reconnecting...", {
+      //       variant: "info",
+      //     });
+      //     setupWebSocket();
+      //   }, reconnectDelay);
+      // } else {
+      //   enqueueSnackbar(
+      //     "WebSocket connection failed. Please refresh the page.",
+      //     {
+      //       variant: "error",
+      //     }
+      //   );
+      // }
+      // enqueueSnackbar("WebSocket connection closed", { variant: "warning" });
+    };
+  };
+
+  useEffect(() => {
+    const fetchMode = async () => {
+      try {
+        const response = await fetchData("/profile");
+        setChatMode(response.interaction_mode);
+      } catch (err) {
+        console.log("Error fetching");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMode();
+  }, []);
+
+  const handleSDP = async (data) => {
+    try {
+      await peerConnection.current.setRemoteDescription(
+        new RTCSessionDescription(data.sdp)
+      );
+      if (data.sdp.type === "offer") {
+        const answer = await peerConnection.current.createAnswer();
+        await peerConnection.current.setLocalDescription(answer);
+        ws.current.send(
+          JSON.stringify({ sdp: peerConnection.current.localDescription })
+        );
+      }
+    } catch (error) {
+      enqueueSnackbar("Failed to handle SDP", { variant: "error" });
+      console.error("SDP Error:", error);
+    }
+  };
+
+  const handleICECandidate = async (data) => {
+    try {
+      await peerConnection.current.addIceCandidate(
+        new RTCIceCandidate(data.candidate)
+      );
+    } catch (error) {
+      enqueueSnackbar("Error adding ICE candidate", { variant: "error" });
+      console.error("ICE Candidate Error:", error);
+    }
+  };
+
+  const handleTranscript = (data) => {
+    setMessages((prev) => [
+      ...prev,
+      { sender: "You", message: data.transcript, id: "temp-" + Date.now() },
+    ]);
+  };
+
+  const handleParserEvent = (data) => {
+    const updateMessage = (id, updateFn) =>
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === id ? updateFn(msg) : msg))
+      );
+
+    switch (data.event) {
+      case "on_parser_start":
+        setChatState("speaking");
+        setMessages((prev) => [
+          ...prev,
+          { sender: botName, message: "", id: data.message_id },
+        ]);
+        break;
+      case "on_parser_stream":
+        updateMessage(data.message_id, (msg) => ({
+          ...msg,
+          message: msg.message + data.value,
+        }));
+        break;
+      case "on_parser_end":
+        setChatState("idle");
+        break;
+      default:
+        console.warn("Unknown parser event:", data.event);
+    }
+  };
+
+  const handleTextMessage = (event) => {
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      console.error("Invalid JSON data:", error);
+      return;
+    }
+
+    if (
+      data.event === "on_parser_stream" &&
+      data.value &&
+      data.value.includes("Your message was blocked")
+    ) {
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.id === data.message_id && msg.sender === "You"
+            ? { ...msg, message: "blocked message" }
+            : msg
+        )
+      );
+    }
+    handleParserEvent(data);
+  };
+
+  const handleTextThenAudio = (data) => {
+    if (data.event === "on_parser_end" && audioBuffer.current.length > 0) {
+      const audioBlob = new Blob(audioBuffer.current, { type: "audio/webm" });
+      setAudioQueue([audioBlob]);
+      audioBuffer.current = [];
+    }
+    handleParserEvent(data);
+  };
+
+  const handleAudioOnly = (data) => {
+    switch (data.event) {
+      case "on_parser_start":
+        textBufferRef.current = [];
+        setTextBuffer((prevBuffer) => [
+          ...prevBuffer,
+          { sender: botName, message: "", id: data.message_id },
+        ]);
+        break;
+      case "on_parser_stream":
+        setTextBuffer((prevBuffer) =>
+          prevBuffer.map((msg) =>
+            msg.id === data.message_id
+              ? { ...msg, message: msg.message + data.value }
+              : msg
+          )
+        );
+        break;
+      case "on_parser_end":
+        setMessages((prev) => [...prev, ...textBuffer]);
+        setTextBuffer([]);
+        break;
+      default:
+        handleParserEvent(data);
+    }
+  };
+
+  const handleAudioThenText = (data) => {
+    handleParserEvent(data);
+  };
+
+  const setupPeerConnection = () => {
+    peerConnection.current = new RTCPeerConnection();
+
+    peerConnection.current.onicecandidate = ({ candidate }) => {
+      if (candidate) {
+        ws.current.send(JSON.stringify({ candidate }));
+      }
+    };
+
+    peerConnection.current.ontrack = (event) => {
+      event.streams[0].getTracks().forEach((track) => {
+        remoteStream.current.addTrack(track);
+      });
+    };
+
+    if (localStream.current) {
+      localStream.current.getTracks().forEach((track) => {
+        peerConnection.current.addTrack(track, localStream.current);
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!loading) {
+      setupWebSocket();
+      setChatState("processing");
+    }
+
+    return () => {
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        ws.current.close();
+      }
+      if (peerConnection.current) {
+        peerConnection.current.close();
+      }
+    };
+  }, [session.id, chatMode, loading]);
+
+  useEffect(() => {
+    if (clearChat) {
+      setMessages([]);
+    }
+  }, [clearChat]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!isPlaying && audioQueue.length > 0) {
+      playNextAudio();
+    }
+    if (!isPlaying && !audioQueue.length) {
+      setMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages, ...textBufferRef.current];
+        return updatedMessages;
+      });
+    }
+  }, [audioQueue, isPlaying]);
+
+  const playNextAudio = () => {
+    if (audioQueue.length > 0) {
+      setIsPlaying(true);
+      setAudioState("speaking");
+      const nextAudioBlob = audioQueue[0];
+      const audioUrl = URL.createObjectURL(nextAudioBlob);
+      const audio = new Audio(audioUrl);
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        setAudioState("idle");
+        setAudioQueue((prevQueue) => prevQueue.slice(1));
+      };
+
+      audio.play().catch((error) => {
+        enqueueSnackbar("Error playing audio", { variant: "error" });
+        console.error("Error playing audio:", error);
+        setIsPlaying(false);
+        setAudioState("idle");
+        setAudioQueue((prevQueue) => prevQueue.slice(1));
+      });
+    }
+  };
+
+  const sendAudioMessage = (msg) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(msg.data);
+    } else {
+      enqueueSnackbar("WebSocket is not open", { variant: "error" });
+    }
+  };
+
+  const sendTextMessage = (msg) => {
+    setChatState("processing");
+
+    const userMessage = {
+      sender: "You",
+      message: msg,
+      id: "temp-" + Date.now(),
+    };
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
+
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ message: msg }));
+    } else {
+      enqueueSnackbar("WebSocket is not open", { variant: "error" });
+      console.error("WebSocket is not open");
+    }
+  };
+
+  return (
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      sx={{ width: "100%", height: "100%" }}
+    >
+      <Box
+        display="flex"
+        flexDirection="column"
+        height="100%"
+        width="100%"
+        maxWidth="800px"
+      >
+        <MessageList
+          messages={messages}
+          botName={botName}
+          botAvatar={botAvatar}
+          chatState={chatState}
+        />
+        <Box display="flex" alignItems="center" p={2}>
+          {chatMode !== "text" ? (
+            <PushToTalkButton
+              audioState={audioState}
+              setAudioState={setAudioState}
+              sendMessage={sendAudioMessage}
+              chatMode={chatMode}
+            />
+          ) : (
+            <MessageInput
+              message={message}
+              setMessage={setMessage}
+              sendMessage={sendTextMessage}
+              chatState={chatState}
+            />
+          )}
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+export default ChatInterface;
+
+
+# File: components/CurrentTime.js
+import React, { useState, useEffect } from "react";
+import { fetchData } from "../utils/api";
+import { Box, Typography } from "@mui/material";
+
+function CurrentTime() {
+  const [time, setTime] = useState("");
+  const apiUrl = process.env.REACT_APP_API_URL;
+
+  useEffect(() => {
+    const fetchTime = async () => {
+      try {
+        const response = await fetchData(`${apiUrl}/time/`);
+        setTime(response.current_time);
+      } catch (error) {
+        console.error("Error fetching time:", error);
+      }
+    };
+
+    fetchTime();
+  }, []);
+
+  return (
+    <Box textAlign="center" py={2}>
+      <Typography variant="h5">Current Time</Typography>
+      <Typography variant="h6">{time}</Typography>
+    </Box>
+  );
+}
+
+export default CurrentTime;
+
+
+# File: components/FileUpload.js
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  Grid,
+  IconButton,
+  Card,
+  CardContent,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import { getPresignedUrl, uploadToS3, postFile } from "../utils/api";
+
+const FileUpload = ({ existingFiles = [], onFileUploaded, onFileRemoved }) => {
+  const [uploadedFiles, setUploadedFiles] = useState(existingFiles);
+
+  useEffect(() => {
+    setUploadedFiles(existingFiles);
+  }, [existingFiles]);
+
+  const handleFileChange = async (e) => {
+    const files = [...e.target.files];
+    for (const file of files) {
+      try {
+        const fileName = file.name;
+        const fileType = file.type;
+
+        // Step 1: Get presigned URL (non-avatar files)
+        const presignedData = await getPresignedUrl(fileName, fileType);
+
+        if (presignedData.url === "local") {
+          const formData = new FormData();
+          formData.append("file", file);
+          // Handle local upload
+          const response = await postFile("/local_upload/", formData);
+          setUploadedFiles((prevFiles) => [...prevFiles, response.file_path]);
+          onFileUploaded(response.file_path);
+        } else {
+          // Handle S3 upload
+          const { url, fields } = presignedData;
+          await uploadToS3(url, fields, file);
+          const fileUrl = `${url}/${fields.key}`;
+          setUploadedFiles((prevFiles) => [...prevFiles, fileUrl]);
+          onFileUploaded(fileUrl);
+        }
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        alert("Failed to upload file. Please try again.");
+      }
+    }
+  };
+
+  const handleRemoveFile = (filePath) => {
+    setUploadedFiles(uploadedFiles.filter((file) => file !== filePath));
+    onFileRemoved(filePath);
+  };
+
+  return (
+    <Box>
+      <input
+        accept=".txt,.pdf,.doc,.docx,.json,.pptx,.html,.md,.tex,.c,.cpp,.cs,.java,.js,.php,.py,.rb,.sh,.ts,.css"
+        style={{ display: "none" }}
+        id="file-upload"
+        multiple
+        type="file"
+        onChange={handleFileChange}
+      />
+      <label htmlFor="file-upload">
+        <IconButton component="span">
+          <UploadFileIcon />
+        </IconButton>
+      </label>
+      <Grid container spacing={2} mt={2}>
+        {uploadedFiles.map((file, index) => (
+          <Grid item key={index}>
+            <Card>
+              <CardContent>
+                <Typography variant="body2">{file}</Typography>
+                <IconButton onClick={() => handleRemoveFile(file)}>
+                  <DeleteIcon />
+                </IconButton>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+};
+
+export default FileUpload;
+
+
+# File: components/HomePage.js
+import React from "react";
+import { Box, Typography, Button } from "@mui/material";
+import CurrentTime from "./CurrentTime";
+import { Link } from "react-router-dom";
+
+function HomePage({ isLoggedIn }) {
+  return (
+    <Box textAlign="center" py={5}>
+      <Typography variant="h2" gutterBottom>
+        Welcome to the Home
+      </Typography>
+      {isLoggedIn ? (
+        <CurrentTime />
+      ) : (
+        <Typography variant="h6">You are not logged in</Typography>
+      )}
+      {!isLoggedIn && (
+        <Button
+          variant="contained"
+          color="primary"
+          component={Link}
+          to="/login"
+        >
+          Login
+        </Button>
+      )}
+    </Box>
+  );
+}
+
+export default HomePage;
+
+
+# File: components/InteractionMode.js
+import React, { useState } from "react";
+import { useEffect } from "react";
+import {  fetchData } from "../utils/api";
+
+function InteractionMode({ selectedMode, handleModeChange }) {
+    const onModeChange = (e) => {
+        handleModeChange(e.target.value);
+      };
+    return (
+        <div>
+        <h2 style={{ fontSize: '1.25rem' }}>Interaction Mode</h2>
+        <div>
+        <label>
+            <input type="radio" value="text" checked={selectedMode === "text"} onChange={onModeChange}/>
+            Text
+        </label>
+        </div>
+        <div>
+        <label>
+            <input type="radio" value="audio" checked={selectedMode === "audio"} onChange={onModeChange}/>
+            Audio
+        </label>
+        </div>
+        <div>
+        <label>
+            <input type="radio" value="text-then-audio" checked={selectedMode === "text-then-audio"} onChange={onModeChange}/>
+            Text then Audio
+        </label>
+        </div> 
+        <div>
+        <label>
+            <input type="radio" value="audio-then-text" checked={selectedMode === "audio-then-text"} onChange={onModeChange}/>
+            Audio then Text
+        </label>
+        </div>
+        <div>
+        <label>
+            <input type="radio" value="audio-only" checked={selectedMode === "audio-only"} onChange={onModeChange}/>
+            Audio Only
+        </label>
+        </div>                                 
+        </div>
+    );
+    }
+
+export default InteractionMode;    
+
+# File: components/Login.js
+import React, { useState } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { postData } from "../utils/api";
+import { Container, TextField, Button, Box, Typography } from "@mui/material";
+import { useSnackbar } from "notistack";
+
+function Login({ setLoggedIn, setRole }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setSubmitted(true);
+
+    if (!username || !password) {
+      return;
+    }
+
+    try {
+      const response = await postData("/login/", { username, password });
+      if (response.message === "Login successful") {
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("role", response.role);
+        setLoggedIn(true);
+        setRole(response.role);
+
+        // Determine the dashboard based on the user's role
+        let dashboardPath;
+        switch (response.role) {
+          case "teacher":
+            dashboardPath = "/teacher-dashboard";
+            break;
+          default:
+            dashboardPath = "/student-dashboard";
+            break;
+        }
+
+        // Redirect to the dashboard or the intended page
+        navigate(from === "/" || from === "/login" ? dashboardPath : from, {
+          replace: true,
+        });
+        enqueueSnackbar("Login successful!", { variant: "success" });
+      } else {
+        throw new Error(response.message || "Failed to login!");
+      }
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
+  };
+
+  return (
+    <Container maxWidth="sm">
+      <Box py={5}>
+        <Typography variant="h4" gutterBottom>
+          Login
+        </Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="Username"
+            margin="normal"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            error={submitted && !username}
+            helperText={submitted && !username && "Username is required"}
+          />
+          <TextField
+            fullWidth
+            label="Password"
+            margin="normal"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            error={submitted && !password}
+            helperText={submitted && !password && "Password is required"}
+          />
+          <Button variant="contained" color="primary" type="submit">
+            Login
+          </Button>
+        </form>
+        <Box mt={2}>
+          <Typography variant="body2">
+            Don't have an account?{" "}
+            <Link to="/signup" state={{ from }}>
+              Sign Up
+            </Link>
+          </Typography>
+        </Box>
+      </Box>
+    </Container>
+  );
+}
+
+export default Login;
+
+
+# File: components/MessageInput.js
+// client-react-gritcoach/src/components/MessageInput.js
+import React, { useEffect, useRef } from "react";
+import { TextField, Button } from "@mui/material";
+import { useSnackbar } from "notistack";
+
+function MessageInput({ message, setMessage, sendMessage, chatState }) {
+  const { enqueueSnackbar } = useSnackbar();
+  const inputRef = useRef(null); 
+  
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [chatState]);
+
+  // Handle input field changes
+  const handleInputChange = (e) => {
+    setMessage(e.target.value);
+  };
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!message.trim()) {
+      enqueueSnackbar("Cannot send an empty message", { variant: "warning" });
+      return;
+    }
+    sendMessage(message);
+    setMessage("");
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  // Handle Enter key press
+  const onKeyPress = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      handleSubmit(e);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", width: "100%" }}>
+      <TextField
+        fullWidth
+        value={message}
+        onChange={handleInputChange}
+        onKeyDown={onKeyPress}
+        autoComplete="off"
+        disabled={chatState === "processing"}
+        multiline={false}
+        inputRef={inputRef}
+      />
+      <Button
+        type="submit"
+        color="primary"
+        variant="contained"
+        style={{ marginLeft: "8px", height: "48px" }}
+      >
+        Send
+      </Button>
+    </form>
+  );
+}
+
+export default MessageInput;
+
+
+# File: components/MessageItem.js
+import React from "react";
+import { Box, Typography } from "@mui/material";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import Avatar from "./Avatar";
+
+const MessageItem = ({ message, botName, avatar }) => {
+  const isBot = message.sender === botName;
+
+  return (
+    <Box
+      display="flex"
+      justifyContent={isBot ? "flex-start" : "flex-end"}
+      mb={2}
+    >
+      {isBot ? (
+        <Avatar
+          alt={`${botName} Avatar`}
+          src={avatar}
+          isBot={true}
+          style={{ marginRight: "8px" }}
+        />
+      ) : (
+        <Avatar
+          alt="User Avatar"
+          src={null}
+          isBot={false}
+          style={{ marginLeft: "8px" }}
+        />
+      )}
+      <Box
+        bgcolor={isBot ? "#f0f0f0" : "#cfe8fc"}
+        p={1}
+        borderRadius={2}
+        maxWidth="60%"
+      >
+        <Typography variant="body2" color="textSecondary">
+          <strong>{message.sender}:</strong>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {message.message}
+          </ReactMarkdown>
+        </Typography>
+      </Box>
+    </Box>
+  );
+};
+
+export default MessageItem;
+
+
+# File: components/MessageList.js
+import React, { useEffect, useRef } from "react";
+import { Box, Typography } from "@mui/material";
+import MessageItem from "./MessageItem";
+
+function MessageList({ messages, botName, botAvatar, chatState }) {
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, chatState]);
+
+  return (
+    <Box
+      flexGrow={1}
+      overflow="auto"
+      p={2}
+      sx={{
+        width: "100%",
+        height: "500px",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {messages.map((msg) => (
+        <MessageItem
+          key={msg.id}
+          message={msg}
+          botName={botName}
+          avatar={msg.sender === botName ? botAvatar : null}
+        />
+      ))}
+      {chatState === "processing" && (
+        <Typography
+          sx={{ color: "gray", fontStyle: "italic", textAlign: "left", mt: 1 }}
+        >
+          {botName} is thinking...
+        </Typography>
+      )}
+      <div ref={messagesEndRef} />
+    </Box>
+  );
+}
+
+export default MessageList;
+
+
+# File: components/ModuleForm.js
+import React, { useState, useEffect } from "react";
+import { postData, putData } from "../utils/api";
+import { Box, TextField, Button, Typography, Grid } from "@mui/material";
+import { useSnackbar } from "notistack";
+import FileUpload from "./FileUpload";
+
+const ModuleForm = ({ module, onModuleCreated }) => {
+  const initialModuleData = { name: "", content: "", files: [] };
+  const [moduleData, setModuleData] = useState(initialModuleData);
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    if (module.id) {
+      setModuleData({
+        name: module.name || "",
+        content: module.content || "",
+        files: module.files || [],
+      });
+    } else {
+      setModuleData(initialModuleData);
+    }
+  }, [module]);
+
+  const handleModuleChange = (e) => {
+    setModuleData({ ...moduleData, [e.target.name]: e.target.value });
+  };
+
+  const handleFileUploaded = (filePath) => {
+    setModuleData({ ...moduleData, files: [...moduleData.files, filePath] });
+  };
+
+  const handleFileRemoved = (filePath) => {
+    setModuleData({
+      ...moduleData,
+      files: moduleData.files.filter((file) => file !== filePath),
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+    if (!moduleData.name) {
+      enqueueSnackbar("Recitation name is required", { variant: "error" });
+      return;
+    }
+
+    try {
+      if (module.id) {
+        await putData(`/modules/${module.id}/`, { ...moduleData });
+        enqueueSnackbar("Recitation updated successfully!", { variant: "success" });
+      } else {
+        const newModule = await postData("/modules/", { ...moduleData });
+        enqueueSnackbar("Recitation created successfully!", { variant: "success" });
+        onModuleCreated(newModule);
+        return;
+      }
+      onModuleCreated();
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
+  };
+
+  return (
+    <Box py={5} display="flex" flexDirection="column" height="100%">
+      <Typography variant="h6" gutterBottom>
+        {module.id ? "Edit Recitation" : "Create Recitation"}
+      </Typography>
+      <form onSubmit={handleSubmit} style={{ flex: 1 }}>
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Name"
+              name="name"
+              value={moduleData.name}
+              onChange={handleModuleChange}
+              margin="normal"
+              autoComplete="off"
+              required
+              error={submitted && !moduleData.name}
+              helperText={submitted && !moduleData.name && "Name is required"}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="Content"
+              name="content"
+              value={moduleData.content}
+              onChange={handleModuleChange}
+              margin="normal"
+              multiline
+              rows={5}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <FileUpload
+              existingFiles={moduleData.files}
+              onFileUploaded={handleFileUploaded}
+              onFileRemoved={handleFileRemoved}
+            />
+          </Grid>
+        </Grid>
+        <Box display="flex" justifyContent="flex-end" mt={3}>
+          <Button variant="contained" color="primary" type="submit">
+            Save
+          </Button>
+        </Box>
+      </form>
+    </Box>
+  );
+};
+
+export default ModuleForm;
+
+
+# File: components/ModuleInteraction.js
+import React, { useState, useEffect } from "react";
+import { createChatSession } from "../utils/api";
+import ChatInterface from "./ChatInterface";
+import { Box, Typography } from "@mui/material";
+import { useSnackbar } from "notistack";
+
+function ModuleInteraction({ moduleId, selectedTask, clearChat }) {
+  const [error, setError] = useState(null);
+  const [chatSession, setChatSession] = useState(null);
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    if (selectedTask) {
+      startChatSession(selectedTask.id);
+    }
+  }, [selectedTask]);
+
+  const startChatSession = async (taskId) => {
+    try {
+      if (clearChat) {
+        setChatSession(null);
+      }
+      const session = await createChatSession(moduleId, taskId);
+      setChatSession(session);
+    } catch (error) {
+      console.error("Error creating chat session:", error.message);
+      enqueueSnackbar(error.message, { variant: "error" });
+      setError(error.message);
+    }
+  };
+
+  // const handleCompleteTask = () => {
+  //   enqueueSnackbar("Task completed!", { variant: "success" });
+  //   confetti({
+  //     particleCount: 100,
+  //     spread: 70,
+  //     origin: { y: 0.6 },
+  //   });
+  //   onCompleteTask(selectedTask.id);
+  // };
+
+  if (error) {
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography color="error">Error: {error}</Typography>
+      </Box>
+    );
+  }
+
+  if (!selectedTask) {
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography>No task selected</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        width: "100%",
+      }}
+    >
+      {chatSession ? (
+        <Box
+          display="flex"
+          flexDirection="column"
+          justifyContent="space-between"
+          flexGrow={1}
+          p={2}
+          sx={{ width: "100%" }}
+        >
+          <ChatInterface
+            session={chatSession}
+            clearChat={clearChat}
+            persona={selectedTask.persona}
+          />
+        </Box>
+      ) : (
+        <Typography>Loading chat session...</Typography>
+      )}
+    </Box>
+  );
+}
+
+export default ModuleInteraction;
+
+
+# File: components/ModuleList.js
+import React, { useState, useEffect } from "react";
+import { fetchData } from "../utils/api";
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Paper,
+} from "@mui/material";
+import { useSnackbar } from "notistack";
+import { useNavigate } from "react-router-dom";
+
+function ModuleList() {
+  const [modules, setModules] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { enqueueSnackbar } = useSnackbar();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchData("/modules/")
+      .then((data) => {
+        setModules(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        enqueueSnackbar(error.message, { variant: "error" });
+        setLoading(false);
+      });
+  }, [enqueueSnackbar]);
+
+  function handleModuleSelection(module) {
+    navigate(`/student-dashboard/module/${module.id}`);
+  }
+
+  if (loading) {
+    return (
+      <Box textAlign="center" py={5}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        flexGrow: 1,
+        padding: 2,
+        backgroundColor: "#ffffff",
+        borderRadius: 2,
+      }}
+    >
+      <Typography variant="h5" gutterBottom>
+        Recitations
+      </Typography>
+      {modules.length === 0 ? (
+        <Typography>No active modules assigned to you</Typography>
+      ) : (
+        <List>
+          {modules.map((module) => (
+            <React.Fragment key={module.id}>
+              <Paper
+                elevation={3}
+                sx={{
+                  backgroundColor: "white",
+                  borderRadius: "50px",
+                  margin: "10px 0",
+                  padding: "10px 20px",
+                }}
+              >
+                <ListItem button onClick={() => handleModuleSelection(module)}>
+                  <ListItemText
+                    primary={module.name}
+                    secondary={module.description}
+                  />
+                </ListItem>
+              </Paper>
+              <Divider component="li" />
+            </React.Fragment>
+          ))}
+        </List>
+      )}
+    </Box>
+  );
+}
+
+export default ModuleList;
+
+
+# File: components/ModuleTasks.js
+import React, { useState, useEffect } from "react";
+import { fetchData } from "../utils/api";
+import { useParams } from "react-router-dom";
+import {
+  Box,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  CircularProgress,
+  Paper,
+} from "@mui/material";
+import ModuleInteraction from "./ModuleInteraction";
+import { useSnackbar } from "notistack";
+import Grid from "@mui/material/Grid";
+import LockIcon from "@mui/icons-material/Lock";
+import RedoIcon from "@mui/icons-material/Redo";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import confetti from "canvas-confetti";
+import Checkbox from "@mui/material/Checkbox";
+
+function ModuleTasks() {
+  const { moduleId } = useParams();
+  const [tasks, setTasks] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [redoingTask, setRedoingTask] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    fetchData(`/modules/${moduleId}/tasks/`)
+      .then((taskData) => {
+        const updatedTasks = taskData.map((task, index) => ({
+          ...task,
+          locked: index !== 0,
+          completed: false,
+        }));
+        setTasks(updatedTasks);
+        setLoading(false);
+
+        // Auto-select the first task if tasks are available
+        if (updatedTasks.length > 0) {
+          setSelectedTask(updatedTasks[0]);
+        }
+      })
+      .catch((error) => {
+        enqueueSnackbar(error.message, { variant: "error" });
+        setLoading(false);
+      });
+  }, [moduleId]);
+
+  const handleTaskSelection = (task, event) => {
+    if (event.target.type === "checkbox") {
+      return;
+    }
+
+    if (!task.locked) {
+      setRedoingTask(task.completed ? task : null);
+      setSelectedTask(task);
+    }
+  };
+
+  const handleCompleteTask = (taskId) => {
+    enqueueSnackbar("Task completed!", { variant: "success" });
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+    });
+
+    const updatedTasks = tasks.map((task, index) => {
+      if (task.id === taskId) {
+        task.completed = true;
+      }
+      if (index === tasks.findIndex((t) => t.id === taskId) + 1) {
+        task.locked = false;
+      }
+      return task;
+    });
+    setTasks(updatedTasks);
+    const nextTask = updatedTasks.find(
+      (task, index) => index === tasks.findIndex((t) => t.id === taskId) + 1
+    );
+    setSelectedTask(nextTask);
+    setRedoingTask(null);
+  };
+
+  const handleUncheckedTask = (taskId) => {
+    updatingTasks(tasks, taskId, setTasks);
+  };
+
+  const toggleTask = (id) => {
+    tasks.map((task) => {
+      if (task.id === id) {
+        if (!task.completed) {
+          handleCompleteTask(id);
+        } else {
+          handleUncheckedTask(id);
+        }
+      }
+      return task;
+    });
+  };
+
+  if (loading) {
+    return (
+      <Box textAlign="center" py={5}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Grid container sx={{ height: "100vh" }}>
+      <Grid
+        item
+        xs={12}
+        md={3}
+        sx={{
+          backgroundColor: "white",
+          color: "black",
+          overflowY: "auto",
+          borderRight: "1px solid #e0e0e0",
+          height: "100%",
+        }}
+      >
+        {tasks.length === 0 ? (
+          <Typography>No tasks available</Typography>
+        ) : (
+          <List dense sx={{ p: 2 }}>
+            {tasks.map((task) => (
+              <Paper
+                elevation={3}
+                sx={{
+                  ":hover": {
+                    backgroundColor: task.locked
+                      ? "#f0f0f0"
+                      : task.completed
+                      ? "#d3d3d3"
+                      : "#e0e0e0",
+                    cursor: task.locked ? "default" : "pointer",
+                  },
+                  marginBottom: 2,
+                  padding: 2,
+                  borderRadius: 2,
+                  display: "flex",
+                  flexDirection: "row",
+                  justifyContent: "flex-start",
+                  alignItems: "center",
+                  height: "120px",
+                  backgroundColor:
+                    task === selectedTask
+                      ? "#cfe8fc"
+                      : task.locked
+                      ? "#f0f0f0"
+                      : task.completed
+                      ? "#d3d3d3"
+                      : "white",
+                  border: task === selectedTask ? "2px solid #1976d2" : "none",
+                  position: "relative",
+                  width: "100%",
+                  pointerEvents: task.locked ? "none" : "auto",
+                  color: task.locked ? "grey" : "black",
+                }}
+                onClick={(event) => handleTaskSelection(task, event)}
+                key={task.id}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    width: "15%",
+                  }}
+                >
+                  <Checkbox
+                    icon={<RadioButtonUncheckedIcon />}
+                    checkedIcon={<CheckCircleIcon />}
+                    checked={task.completed}
+                    onChange={(event) => {
+                      event.stopPropagation();
+                      toggleTask(task.id);
+                    }}
+                    disabled={task.locked}
+                    sx={{
+                      padding: 0,
+                      marginRight: "10px",
+                    }}
+                  />
+                  <div
+                    style={{
+                      flex: 1,
+                      textAlign: "center",
+                      alignSelf: "center",
+                    }}
+                  >
+                    {task.name}
+                  </div>
+                </div>
+                {task.locked && (
+                  <LockIcon style={{ position: "absolute", top: 8, left: 8 }} />
+                )}
+                {redoingTask && task === redoingTask && (
+                  <RedoIcon
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      left: 8,
+                      color: "orange",
+                    }}
+                  />
+                )}
+                <ListItem>
+                  <ListItemText
+                    primary={task.title}
+                    sx={{ textAlign: "center" }}
+                  />
+                </ListItem>
+              </Paper>
+            ))}
+          </List>
+        )}
+      </Grid>
+      <Grid item xs={12} md={9} sx={{ height: "100%" }}>
+        {selectedTask ? (
+          <ModuleInteraction
+            moduleId={moduleId}
+            selectedTask={selectedTask}
+            onCompleteTask={handleCompleteTask}
+            clearChat={true}
+          />
+        ) : (
+          <Box
+            p={2}
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
+            <Typography variant="h5">
+              Please select the first task to begin!
+            </Typography>
+          </Box>
+        )}
+      </Grid>
+    </Grid>
+  );
+}
+
+export default ModuleTasks;
+
+function updatingTasks(tasks, taskId, setTasks) {
+  const updatedTasks = tasks.map((task) => {
+    if (task.id === taskId) {
+      task.completed = !task.completed;
+      task.selected = false;
+    }
+    return task;
+  });
+  setTasks(updatedTasks);
+}
+
+
+# File: components/NavBar.js
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Menu,
+  MenuItem,
+  IconButton,
+  Avatar,
+  Box,
+} from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import DescriptionIcon from "@mui/icons-material/Description";
+import DownloadIcon from "@mui/icons-material/Download";
+import { postData } from "../utils/api";
+import { useSnackbar } from "notistack";
+
+function NavBar({
+  isLoggedIn,
+  role,
+  isStudentView,
+  setIsStudentView,
+  handleLogout,
+}) {
+  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = React.useState(null);
+  const { enqueueSnackbar } = useSnackbar();
+
+  const onLogout = () => {
+    handleLogout();
+    enqueueSnackbar("Logged out successfully", { variant: "info" });
+    navigate("/login");
+  };
+
+  const toggleView = async () => {
+    try {
+      const path = isStudentView
+        ? "/switch_to_teacher_view/"
+        : "/switch_to_student_view/";
+      await postData(path);
+      setIsStudentView(!isStudentView);
+      if (isStudentView) {
+        navigate("/teacher-dashboard");
+      } else {
+        navigate("/student-dashboard");
+      }
+      window.location.reload(); // Force a full page refresh to ensure correct rendering
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+      console.error("Error toggling view", error);
+    }
+  };
+
+  const handleMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <AppBar position="static" style={{ backgroundColor: "#d30000" }}>
+      <Toolbar>
+        <Typography
+          variant="h6"
+          component={Link}
+          to={
+            role === "teacher"
+              ? isStudentView
+                ? "/student-dashboard"
+                : "/teacher-dashboard"
+              : "/student-dashboard"
+          }
+          style={{
+            flexGrow: 1,
+            color: "white",
+            textDecoration: "none",
+            fontWeight: "bold",
+          }}
+        >
+          GritCoach
+        </Typography>
+        {isLoggedIn ? (
+          <>
+            <IconButton
+              color="inherit"
+              component={Link}
+              to={
+                role === "teacher"
+                  ? isStudentView
+                    ? "/student-dashboard"
+                    : "/teacher-dashboard"
+                  : "/student-dashboard"
+              }
+            >
+              <HomeIcon />
+            </IconButton>
+            {role === "teacher" && (
+              <>
+                <IconButton
+                  color="inherit"
+                  component={Link}
+                  to="/system-prompt"
+                >
+                  <DescriptionIcon />
+                </IconButton>
+                <IconButton
+                  color="inherit"
+                  component={Link}
+                  to="/transcript-download"
+                >
+                  <DownloadIcon />
+                </IconButton>
+                <Box
+                  onClick={toggleView}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    border: "1px solid white",
+                    borderRadius: 4,
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                    marginLeft: 10,
+                  }}
+                >
+                  {isStudentView ? "Student" : "Teacher"}
+                  <SwapHorizIcon fontSize="small" style={{ marginLeft: 5 }} />
+                </Box>
+              </>
+            )}
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <IconButton
+                edge="end"
+                color="inherit"
+                onClick={handleMenu}
+                size="medium"
+              >
+                <Avatar sx={{ bgcolor: "red", color: "white" }} />
+              </IconButton>
+              <Menu
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
+                open={Boolean(anchorEl)}
+                onClose={handleClose}
+                sx={{
+                  "& .MuiPaper-root": {
+                    width: "200px", // Adjust the width as needed
+                    marginTop: "10px", // Ensure the menu appears just below the navbar
+                  },
+                }}
+              >
+                <MenuItem component={Link} to="/profile" onClick={handleClose}>
+                  Profile
+                </MenuItem>
+                <MenuItem onClick={onLogout}>Logout</MenuItem>
+              </Menu>
+            </Box>
+          </>
+        ) : (
+          <Button color="inherit" component={Link} to="/login">
+            Login
+          </Button>
+        )}
+      </Toolbar>
+    </AppBar>
+  );
+}
+
+export default NavBar;
+
+
+# File: components/PushToTalkButton.js
+import React, { useRef, useEffect } from "react";
+import { Box, IconButton } from "@mui/material";
+import MicIcon from "@mui/icons-material/Mic";
+import EarIcon from "@mui/icons-material/Hearing";
+import BrainIcon from "@mui/icons-material/Memory";
+import MouthIcon from "@mui/icons-material/RecordVoiceOver";
+import { useSnackbar } from "notistack";
+
+function PushToTalkButton({
+  audioState,
+  setAudioState,
+  sendMessage,
+  chatMode,
+}) {
+  const localStream = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const { enqueueSnackbar } = useSnackbar();
+
+  const handlePTTMouseDown = () => {
+    navigator.mediaDevices
+      .getUserMedia({ audio: { sampleRate: 48000, channelCount: 1 } })
+      .then((stream) => {
+        localStream.current = stream;
+        mediaRecorderRef.current = new MediaRecorder(stream, {
+          mimeType: "audio/webm;codecs=opus",
+        });
+        mediaRecorderRef.current.start();
+
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          sendMessage(event);
+        };
+
+        mediaRecorderRef.current.onstop = () => {
+          stream.getTracks().forEach((track) => track.stop());
+          setAudioState("idle");
+        };
+
+        setAudioState("recording");
+      })
+      .catch((error) => {
+        enqueueSnackbar("Error accessing media devices.", { variant: "error" });
+        console.error("Error accessing media devices:", error);
+      });
+  };
+
+  const handlePTTMouseUp = () => {
+    if (mediaRecorderRef.current?.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      setAudioState("processing");
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === "Space" && chatMode === "audio" && audioState === "idle") {
+        e.preventDefault();
+        handlePTTMouseDown();
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (
+        e.code === "Space" &&
+        chatMode === "audio" &&
+        audioState === "recording"
+      ) {
+        e.preventDefault();
+        handlePTTMouseUp();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [chatMode, audioState]);
+
+  // Function to determine which icon to display based on audioState
+  const getAudioStateIcon = () => {
+    switch (audioState) {
+      case "recording":
+        return <EarIcon style={{ position: "absolute", top: "-30px" }} />;
+      case "processing":
+        return <BrainIcon style={{ position: "absolute", top: "-30px" }} />;
+      case "speaking":
+        return <MouthIcon style={{ position: "absolute", top: "-30px" }} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Box
+      display="flex"
+      justifyContent="center"
+      flexGrow={1}
+      position="relative"
+    >
+      <IconButton
+        onMouseDown={handlePTTMouseDown}
+        onMouseUp={handlePTTMouseUp}
+        color={audioState === "recording" ? "secondary" : "default"}
+        aria-label="push-to-talk"
+        sx={{
+          width: 80,
+          height: 80,
+          fontSize: "2rem",
+          position: "relative",
+        }}
+      >
+        <MicIcon sx={{ fontSize: "4rem" }} />
+        {getAudioStateIcon()}
+        <svg
+          width="120"
+          height="120"
+          viewBox="0 0 120 120"
+          style={{ position: "absolute", top: -50, left: -20 }}
+        >
+          <path
+            id="circlePath"
+            d="M 60, 60
+               m -50, 0
+               a 50,50 0 1,1 100,0
+               a 50,50 0 1,1 -100,0"
+            fill="transparent"
+          />
+          <text fontSize="12" fill="#000">
+            <textPath
+              href="#circlePath"
+              startOffset="25%"
+              textAnchor="middle"
+              transform="rotate(180 60 60)"
+            >
+              hold to talk
+            </textPath>
+          </text>
+        </svg>
+      </IconButton>
+    </Box>
+  );
+}
+
+export default PushToTalkButton;
+
+
+# File: components/Signup.js
+import React, { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { postData } from "../utils/api";
+import {
+  Container,
+  TextField,
+  Button,
+  Box,
+  Typography,
+  MenuItem,
+  Slider,
+} from "@mui/material";
+import { useSnackbar } from "notistack";
+
+function Signup({ setLoggedIn, setRole }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRoleState] = useState("student");
+  const [authPassword, setAuthPassword] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [preferred_name, setPreferredName] = useState("");
+  const { enqueueSnackbar } = useSnackbar();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || "/";
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setSubmitted(true);
+
+    if (
+      !username ||
+      !password ||
+      !role ||
+      (["teacher", "admin"].includes(role) && !authPassword)
+    ) {
+      return;
+    }
+
+    try {
+      const response = await postData("/register/", {
+        username,
+        password,
+        role,
+        preferred_name,
+        authPassword,
+      });
+      if (response.message === "User created successfully") {
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("role", role);
+        setLoggedIn(true);
+        setRole(role);
+        navigate(
+          role === "teacher" ? "/teacher-dashboard" : "/student-dashboard"
+        );
+        enqueueSnackbar("User created successfully!", { variant: "success" });
+      } else {
+        throw new Error(response.message || "Failed to register!");
+      }
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
+  };
+
+  return (
+    <Container maxWidth="sm">
+      <Box py={5}>
+        <Typography variant="h4" gutterBottom>
+          Sign Up
+        </Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="Username"
+            margin="normal"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            error={submitted && !username}
+            helperText={submitted && !username && "Required"}
+          />
+          <TextField
+            fullWidth
+            label="Preferred Name"
+            margin="normal"
+            value={preferred_name}
+            onChange={(e) => setPreferredName(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            label="Password"
+            margin="normal"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            error={submitted && !password}
+            helperText={submitted && !password && "Required"}
+          />
+          <TextField
+            select
+            fullWidth
+            label="Role"
+            margin="normal"
+            value={role}
+            onChange={(e) => setRoleState(e.target.value)}
+            required
+            error={submitted && !role}
+            helperText={submitted && !role && "Required"}
+          >
+            <MenuItem value="student">Student</MenuItem>
+            <MenuItem value="teacher">Teacher</MenuItem>
+            <MenuItem value="admin">Admin</MenuItem>
+          </TextField>
+
+          {(role === "teacher" || role === "admin") && (
+            <TextField
+              fullWidth
+              label="Authentication Password"
+              margin="normal"
+              type="password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              required
+              error={submitted && !authPassword}
+              helperText={submitted && !authPassword && "Required"}
+            />
+          )}
+          <Button variant="contained" color="primary" type="submit">
+            Sign Up
+          </Button>
+        </form>
+      </Box>
+    </Container>
+  );
+}
+
+export default Signup;
+
+
+# File: components/StudentDashboard.js
+import React, { useState, useEffect } from "react";
+import { Box, Typography } from "@mui/material";
+import { Routes, Route, useParams } from "react-router-dom";
+import ModuleList from "./ModuleList";
+import ModuleTasks from "./ModuleTasks";
+import { fetchData } from "../utils/api"; 
+
+function StudentDashboard() {
+  return (
+    <Box sx={{ display: "flex", height: "100vh", flexDirection: "column" }}>
+      <Box sx={{ borderBottom: "1px solid #e0e0e0", padding: 2 }}>
+        <Routes>
+          <Route path="/module/:moduleId" element={<ModuleHeader />} />
+        </Routes>
+      </Box>
+      <Box sx={{ display: "flex", flexGrow: 1 }}>
+        <Routes>
+          <Route path="/" element={<ModuleList />} />
+          <Route path="/module/:moduleId" element={<ModuleTasks />} />
+        </Routes>
+      </Box>
+    </Box>
+  );
+}
+
+function ModuleHeader() {
+  const { moduleId } = useParams();
+  const [module, setModule] = useState(null);
+
+  useEffect(() => {
+    fetchData(`/modules/${moduleId}/`).then((data) => setModule(data));
+  }, [moduleId]);
+
+  return (
+    <Typography variant="h5">{module ? module.name : "Module Name"}</Typography>
+  );
+}
+
+export default StudentDashboard;
+
+
+# File: components/SystemPromptForm.js
+import React, { useState, useEffect } from "react";
+import { fetchData, putData, postData } from "../utils/api";
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  CircularProgress,
+} from "@mui/material";
+import { useSnackbar } from "notistack";
+
+function SystemPromptForm() {
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    fetchData("/system_prompts/")
+      .then((data) => {
+        if (data.length > 0) {
+          setSystemPrompt(data[0].prompt);
+        }
+        setLoading(false);
+      })
+      .catch((error) => {
+        enqueueSnackbar(error.message, { variant: "error" });
+        setLoading(false);
+      });
+  }, []);
+
+  const handleChange = (e) => {
+    setSystemPrompt(e.target.value);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+    if (!systemPrompt) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetchData("/system_prompts/");
+      if (response.length > 0) {
+        await putData(`/system_prompts/${response[0].id}/`, {
+          prompt: systemPrompt,
+        });
+      } else {
+        await postData("/system_prompts/", { prompt: systemPrompt });
+      }
+      enqueueSnackbar("System prompt saved successfully!", {
+        variant: "success",
+      });
+      setLoading(false);
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box textAlign="center" py={5}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box my={3}>
+      <Typography variant="h6" gutterBottom>
+        System Prompt
+      </Typography>
+      <form onSubmit={handleSubmit}>
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          variant="outlined"
+          value={systemPrompt}
+          onChange={handleChange}
+          margin="normal"
+          required
+          error={submitted && !systemPrompt}
+          helperText={submitted && !systemPrompt && "System prompt is required"}
+        />
+        <Button variant="contained" color="primary" type="submit">
+          Save
+        </Button>
+      </form>
+    </Box>
+  );
+}
+
+export default SystemPromptForm;
+
+
+# File: components/SystemPromptPage.js
+import React from "react";
+import SystemPromptForm from "./SystemPromptForm";
+
+function SystemPromptPage() {
+  return (
+    <div>
+      <SystemPromptForm />
+    </div>
+  );
+}
+
+export default SystemPromptPage;
+
+
+# File: components/TaskForm.js
+import React, { useState, useEffect } from "react";
+import { postData, putData, fetchData } from "../utils/api";
+import {
+  TextField,
+  Box,
+  Button,
+  Grid,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+  Typography,
+  Paper,
+} from "@mui/material";
+import { useSnackbar } from "notistack";
+import FileUpload from "./FileUpload";
+import AvatarUpload from "./AvatarUpload";
+
+const TaskForm = ({ task, moduleId, onTaskCreated }) => {
+  const initialTaskData = {
+    title: "",
+    content: "",
+    persona: {
+      id: "",
+      name: "",
+      instructions: "",
+      avatar_url: "",
+    },
+    files: [],
+  };
+
+  const [taskData, setTaskData] = useState(initialTaskData);
+  const [personas, setPersonas] = useState([]);
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    // Fetch existing personas and task details
+    const fetchPersonas = async () => {
+      try {
+        const response = await fetchData("/personas/");
+        setPersonas(response || []);
+      } catch (error) {
+        enqueueSnackbar("Failed to fetch personas", { variant: "error" });
+      }
+    };
+    fetchPersonas();
+
+    // If task exists, populate the fields
+    if (task.id) {
+      setTaskData({
+        title: task.title,
+        content: task.content,
+        persona: task.persona || {
+          id: "",
+          name: "",
+          instructions: "",
+          avatar_url: "",
+        },
+        files: task.files || [],
+      });
+    } else {
+      setTaskData(initialTaskData);
+    }
+  }, [task]);
+
+  const handleTaskChange = (e) => {
+    const { name, value } = e.target;
+    setTaskData({ ...taskData, [name]: value });
+  };
+
+  const handlePersonaChange = (e) => {
+    const { name, value } = e.target;
+    setTaskData({
+      ...taskData,
+      persona: { ...taskData.persona, [name]: value },
+    });
+  };
+
+  const handlePersonaSelect = (e) => {
+    const selectedPersonaId = e.target.value;
+    if (selectedPersonaId) {
+      const selectedPersona = personas.find((p) => p.id === selectedPersonaId);
+      setTaskData({
+        ...taskData,
+        persona: {
+          id: selectedPersona.id,
+          name: selectedPersona.name,
+          instructions: selectedPersona.instructions,
+          avatar_url: selectedPersona.avatar_url, // Load avatar if it exists
+        },
+      });
+    } else {
+      setTaskData({
+        ...taskData,
+        persona: { id: "", name: "", instructions: "", avatar_url: "" },
+      });
+    }
+  };
+
+  const handleFileUploaded = (filePath) => {
+    const fileName = filePath.split("/").pop();
+    setTaskData({ ...taskData, files: [...taskData.files, fileName] });
+  };
+
+  const handleFileRemoved = (fileName) => {
+    setTaskData({
+      ...taskData,
+      files: taskData.files.filter((file) => file !== fileName),
+    });
+  };
+
+  const handleAvatarUploaded = (filePath) => {
+    let fullUrl = filePath;
+    if (!filePath.startsWith("http")) {
+      const baseUrl = process.env.REACT_APP_API_URL;
+      fullUrl = `${baseUrl}${filePath}`;
+    }
+    setTaskData({
+      ...taskData,
+      persona: { ...taskData.persona, avatar_url: fullUrl },
+    });
+  };
+
+  const handleAvatarRemoved = () => {
+    setTaskData({
+      ...taskData,
+      persona: { ...taskData.persona, avatar_url: "" },
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+    if (!taskData.title || !taskData.content) {
+      enqueueSnackbar("Task title and content are required", {
+        variant: "error",
+      });
+      return;
+    }
+
+    try {
+      let personaId = taskData.persona.id;
+
+      // Step 1: Create or Update Persona
+      if (personaId) {
+        await putData(`/personas/${personaId}/`, {
+          name: taskData.persona.name,
+          instructions: taskData.persona.instructions,
+          avatar_url: taskData.persona.avatar_url,
+        });
+      } else {
+        const personaResponse = await postData("/personas/", {
+          name: taskData.persona.name,
+          instructions: taskData.persona.instructions,
+          avatar_url: taskData.persona.avatar_url,
+        });
+
+        if (!personaResponse || !personaResponse.id) {
+          enqueueSnackbar("Failed to create persona.", { variant: "error" });
+          return;
+        }
+
+        personaId = personaResponse.id;
+      }
+
+      // Step 2: Create or Update Task
+      const taskPayload = {
+        ...taskData,
+        persona_id: personaId,
+        module: moduleId,
+      };
+
+      if (task.id) {
+        await putData(`/tasks/${task.id}/`, taskPayload);
+        enqueueSnackbar("Task updated successfully!", { variant: "success" });
+      } else {
+        await postData(`/modules/${moduleId}/add_task/`, taskPayload);
+        enqueueSnackbar("Task created successfully!", { variant: "success" });
+      }
+
+      onTaskCreated();
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
+  };
+
+  return (
+    <Box py={5} display="flex" flexDirection="column" height="100%">
+      <form onSubmit={handleSubmit} style={{ flex: 1 }}>
+        <Grid container spacing={3}>
+          {/* Section 1: Task Details */}
+          <Grid item xs={12}>
+            <Typography variant="h6">Task Details</Typography>
+            <Paper variant="outlined" style={{ padding: 16 }}>
+              <TextField
+                fullWidth
+                label="Title"
+                name="title"
+                value={taskData.title}
+                onChange={handleTaskChange}
+                autoComplete="off"
+                margin="normal"
+                required
+                error={submitted && !taskData.title}
+                helperText={submitted && !taskData.title && "Title is required"}
+              />
+
+              <FileUpload
+                existingFiles={taskData.files}
+                onFileUploaded={handleFileUploaded}
+                onFileRemoved={handleFileRemoved}
+              />
+
+              <TextField
+                fullWidth
+                label="Content"
+                name="content"
+                value={taskData.content}
+                onChange={handleTaskChange}
+                margin="normal"
+                multiline
+                rows={5}
+                required
+                error={submitted && !taskData.content}
+                helperText={
+                  submitted && !taskData.content && "Content is required"
+                }
+              />
+            </Paper>
+          </Grid>
+
+          {/* Section 2: Persona Details */}
+          <Grid item xs={12}>
+            <Typography variant="h6">Persona Details</Typography>
+            <Paper variant="outlined" style={{ padding: 16 }}>
+              {/* Persona Dropdown */}
+              <FormControl fullWidth>
+                <InputLabel shrink>Select Persona</InputLabel>
+                <Select
+                  value={taskData.persona.id || ""}
+                  onChange={handlePersonaSelect}
+                  displayEmpty
+                >
+                  <MenuItem value="">
+                    <em>Create New Persona</em>
+                  </MenuItem>
+                  {personas.map((persona) => (
+                    <MenuItem key={persona.id} value={persona.id}>
+                      {persona.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* Persona Details */}
+              <TextField
+                fullWidth
+                label="Persona Name"
+                name="name"
+                value={taskData.persona.name}
+                onChange={handlePersonaChange}
+                margin="normal"
+                required
+                helperText={
+                  submitted &&
+                  !taskData.persona.name &&
+                  "Persona name is required"
+                }
+              />
+              <TextField
+                fullWidth
+                label="Persona Instructions"
+                name="instructions"
+                value={taskData.persona.instructions}
+                onChange={handlePersonaChange}
+                margin="normal"
+                multiline
+                rows={3}
+              />
+
+              {/* Avatar Upload */}
+              <AvatarUpload
+                existingAvatar={taskData.persona.avatar_url}
+                onAvatarUploaded={handleAvatarUploaded}
+                onAvatarRemoved={handleAvatarRemoved}
+              />
+            </Paper>
+          </Grid>
+        </Grid>
+        <Box display="flex" justifyContent="flex-end" mt={3}>
+          <Button variant="contained" color="primary" type="submit">
+            Save
+          </Button>
+        </Box>
+      </form>
+    </Box>
+  );
+};
+
+export default TaskForm;
+
+
+# File: components/TeacherDashboard.js
+import React, { useState, useEffect } from "react";
+import { fetchData, deleteData, postData } from "../utils/api";
+import ModuleForm from "./ModuleForm";
+import TaskForm from "./TaskForm";
+import {
+  Box,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  IconButton,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import FileCopyIcon from "@mui/icons-material/FileCopy";
+import { useSnackbar } from "notistack";
+
+const cardStyle = {
+  width: "100%",
+  height: "100px",
+  backgroundColor: "#909090",
+  borderRadius: 2,
+  cursor: "pointer",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  position: "relative",
+};
+
+const selectedCardStyle = {
+  ...cardStyle,
+  backgroundColor: "#d30000",
+};
+
+const columnStyle = {
+  borderRight: "2px solid rgba(0,0,0,0.1)",
+  paddingRight: "10px",
+};
+
+function TeacherDashboard() {
+  const [modules, setModules] = useState([]);
+  const [selectedModule, setSelectedModule] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [deleteType, setDeleteType] = useState(""); // 'module' or 'task'
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    fetchData("/modules/")
+      .then((data) => setModules(data))
+      .catch((error) => enqueueSnackbar(error.message, { variant: "error" }));
+  }, []);
+
+  const handleModuleSelect = async (module) => {
+    if (module.id) {
+      try {
+        const tasks = await fetchData(`/modules/${module.id}/tasks/`);
+        setSelectedModule({ ...module, tasks });
+        setSelectedTask(null);
+      } catch (error) {
+        enqueueSnackbar(error.message, { variant: "error" });
+      }
+    } else {
+      setSelectedModule({ id: null, name: "", tasks: [] });
+      setSelectedTask(null);
+    }
+  };
+
+  const handleTaskSelect = (task) => {
+    setSelectedTask(task);
+  };
+
+  const handleModuleCreated = async () => {
+    try {
+      const data = await fetchData("/modules/");
+      setModules(data);
+      const newModule =
+        data.find((mod) => mod.id === selectedModule.id) || null;
+      setSelectedModule(newModule);
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
+  };
+
+  const handleTaskCreated = async () => {
+    if (selectedModule && selectedModule.id) {
+      try {
+        const tasks = await fetchData(`/modules/${selectedModule.id}/tasks/`);
+        const updatedModule = { ...selectedModule, tasks };
+        setSelectedModule(updatedModule);
+        setSelectedTask(null);
+        const data = await fetchData("/modules/");
+        setModules(data);
+        const updatedModuleData =
+          data.find((mod) => mod.id === selectedModule.id) || null;
+        setSelectedModule(updatedModuleData);
+      } catch (error) {
+        enqueueSnackbar(error.message, { variant: "error" });
+      }
+    }
+  };
+
+  const handleDeleteClick = (item, type) => {
+    setDeleteItem(item);
+    setDeleteType(type);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      if (deleteType === "module") {
+        await deleteData(`/modules/${deleteItem.id}/`);
+        setModules(modules.filter((module) => module.id !== deleteItem.id));
+        setSelectedModule(null);
+      } else if (deleteType === "task") {
+        await deleteData(`/tasks/${deleteItem.id}/`);
+        const updatedTasks = selectedModule.tasks.filter(
+          (task) => task.id !== deleteItem.id
+        );
+        setSelectedModule({ ...selectedModule, tasks: updatedTasks });
+      }
+      enqueueSnackbar(
+        `${
+          deleteType.charAt(0).toUpperCase() + deleteType.slice(1)
+        } deleted successfully!`,
+        { variant: "success" }
+      );
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteItem(null);
+      setDeleteType("");
+    }
+  };
+
+  const handleDuplicateModule = async () => {
+    if (selectedModule && selectedModule.id) {
+      try {
+        const duplicatedModule = await postData(
+          `/modules/${selectedModule.id}/duplicate/`
+        );
+        setModules([...modules, duplicatedModule]);
+        enqueueSnackbar("Recitation duplicated successfully!", {
+          variant: "success",
+        });
+      } catch (error) {
+        enqueueSnackbar(error.message, { variant: "error" });
+      }
+    }
+  };
+
+  const handleDuplicateTask = async (task) => {
+    try {
+      const duplicatedTask = await postData(`/tasks/${task.id}/duplicate/`);
+      const tasks = await fetchData(`/modules/${task.module}/tasks/`);
+      setSelectedModule({ ...selectedModule, tasks });
+      enqueueSnackbar("Task duplicated successfully!", { variant: "success" });
+    } catch (error) {
+      enqueueSnackbar(error.message, { variant: "error" });
+    }
+  };
+
+  return (
+    <Grid container spacing={3} py={5} px={3}>
+      <Grid item xs={12} md={3} sx={columnStyle}>
+        <Typography variant="h5" gutterBottom>
+          Recitations
+        </Typography>
+        <Grid container spacing={3}>
+          {modules.map((module) => (
+            <Grid item xs={12} key={module.id}>
+              <Card
+                sx={
+                  selectedModule && selectedModule.id === module.id
+                    ? selectedCardStyle
+                    : cardStyle
+                }
+                onClick={() => handleModuleSelect(module)}
+              >
+                <CardContent>
+                  <Typography variant="h6">{module.name}</Typography>
+                </CardContent>
+                <IconButton
+                  sx={{ position: "absolute", top: 4, left: 4 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDuplicateModule(module);
+                  }}
+                >
+                  <FileCopyIcon />
+                </IconButton>
+                <IconButton
+                  sx={{ position: "absolute", bottom: 4, right: 4 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteClick(module, "module");
+                  }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Card>
+            </Grid>
+          ))}
+          <Grid item xs={12}>
+            <Card
+              sx={
+                selectedModule && selectedModule.id === null
+                  ? selectedCardStyle
+                  : cardStyle
+              }
+              onClick={() => handleModuleSelect({})}
+            >
+              <CardContent>
+                <Typography variant="h2" textAlign="center">
+                  +
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Grid>
+      <Grid item xs={12} md={3} sx={columnStyle}>
+        <Typography variant="h5" gutterBottom>
+          Tasks
+        </Typography>
+        {selectedModule && (
+          <Grid container spacing={3}>
+            {selectedModule.tasks?.map((task, index) => (
+              <Grid item xs={12} key={index}>
+                <Card
+                  sx={
+                    selectedTask && selectedTask.id === task.id
+                      ? selectedCardStyle
+                      : cardStyle
+                  }
+                  onClick={() => handleTaskSelect(task)}
+                >
+                  <CardContent>
+                    <Typography variant="h6">{task.title}</Typography>
+                  </CardContent>
+                  <IconButton
+                    sx={{ position: "absolute", top: 4, left: 4 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicateTask(task);
+                    }}
+                  >
+                    <FileCopyIcon />
+                  </IconButton>
+                  <IconButton
+                    sx={{ position: "absolute", bottom: 4, right: 4 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteClick(task, "task");
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Card>
+              </Grid>
+            ))}
+            <Grid item xs={12}>
+              <Card
+                sx={
+                  selectedTask && selectedTask.id === null
+                    ? selectedCardStyle
+                    : cardStyle
+                }
+                onClick={() => handleTaskSelect({})}
+              >
+                <CardContent>
+                  <Typography variant="h2" textAlign="center">
+                    +
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        )}
+      </Grid>
+      <Grid item xs={12} md={6}>
+        {selectedModule && !selectedTask && (
+          <ModuleForm
+            module={selectedModule}
+            onModuleCreated={handleModuleCreated}
+          />
+        )}
+        {selectedModule && selectedTask && (
+          <TaskForm
+            task={selectedTask}
+            moduleId={selectedModule.id}
+            onTaskCreated={handleTaskCreated}
+          />
+        )}
+      </Grid>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this {deleteType}?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            No
+          </Button>
+          <Button onClick={handleDeleteConfirm} color="primary" autoFocus>
+            Yes
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Grid>
+  );
+}
+
+export default TeacherDashboard;
+
+
+# File: components/TranscriptDownloadPage.js
+import React, { useState, useEffect } from "react";
+import {
+  Button,
+  TextField,
+  Box,
+  Typography,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  CircularProgress,
+} from "@mui/material";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { fetchData, postData, deleteData, fetchFile } from "../utils/api";
+
+const TranscriptDownloadPage = () => {
+  const [modules, setModules] = useState([]);
+  const [moduleId, setModuleId] = useState("");
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [error, setError] = useState("");
+  const [csvList, setCSVList] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchModules = async () => {
+      try {
+        const data = await fetchData("/modules/");
+        setModules(data);
+      } catch (error) {
+        console.error("Error fetching modules", error);
+        setError("Failed to load modules.");
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    fetchModules();
+    fetchUserCSVFiles();
+  }, []);
+
+  const fetchUserCSVFiles = async () => {
+    try {
+      const data = await fetchData("/csv_transcripts/list/");
+      console.log("Fetched CSV files:", data);
+      setCSVList(data);
+    } catch (error) {
+      console.error("Error fetching CSV files", error);
+      setError("Failed to load CSV files.");
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!moduleId) {
+      setError("Please select a module.");
+      return;
+    }
+    if (startDate && endDate && startDate > endDate) {
+      setError("End date must be greater than start date.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const response = await postData("/csv_transcripts/", {
+        module_id: moduleId,
+        start_date: startDate.toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
+      });
+      console.log("CSV creation response:", response);
+      fetchUserCSVFiles();
+    } catch (error) {
+      console.error("Error starting CSV creation", error);
+      setError("Failed to start CSV creation.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCSVDownload = async (csvId, filename) => {
+    try {
+      const blob = await fetchFile(`/csv_transcripts/download/${csvId}/`);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Error downloading CSV file", error);
+      setError("Failed to download CSV file.");
+    }
+  };
+
+  const handleCSVDelete = async (csvId) => {
+    try {
+      await deleteData(`/csv_transcripts/list/${csvId}/`);
+      console.log(`CSV file ${csvId} deleted successfully`);
+      fetchUserCSVFiles();
+    } catch (error) {
+      console.error("Error deleting CSV file", error);
+      setError("Failed to delete CSV file.");
+    }
+  };
+
+  if (initialLoading) {
+    return <CircularProgress />;
+  }
+
+  return (
+    <Box
+      className="transcript-download-page"
+      sx={{ p: 3, border: "1px solid #ccc", borderRadius: 2 }}
+    >
+      <Typography variant="h4" component="h1" gutterBottom>
+        Download Transcript
+      </Typography>
+      <Box
+        component="form"
+        sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+      >
+        <FormControl variant="outlined">
+          <InputLabel id="module-select-label">Module</InputLabel>
+          <Select
+            labelId="module-select-label"
+            id="module-select"
+            value={moduleId}
+            onChange={(e) => setModuleId(e.target.value)}
+            label="Module"
+          >
+            {modules.map((module) => (
+              <MenuItem key={module.id} value={module.id}>
+                {module.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <DatePicker
+            label="Start Date"
+            value={startDate}
+            onChange={(newValue) => setStartDate(newValue)}
+            renderInput={(params) => <TextField {...params} />}
+          />
+          <DatePicker
+            label="End Date"
+            value={endDate}
+            onChange={(newValue) => setEndDate(newValue)}
+            renderInput={(params) => <TextField {...params} />}
+          />
+        </LocalizationProvider>
+        {error && <Typography color="error">{error}</Typography>}
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleDownload}
+          disabled={loading || !moduleId || !startDate || !endDate}
+        >
+          {loading ? <CircularProgress size={24} /> : "Start CSV Creation"}
+        </Button>
+      </Box>
+      <Typography variant="h6" component="h2" gutterBottom>
+        Available CSV Files
+      </Typography>
+      <Box>
+        {csvList.map((csv, index) => (
+          <Box
+            key={index}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
+            <Button
+              onClick={() =>
+                handleCSVDownload(
+                  csv.id,
+                  `transcript_module_${csv.module_id}_${csv.start_date}_to_${csv.end_date}.zip`
+                )
+              }
+            >
+              Download CSV for {csv.module_name} from {csv.start_date} to{" "}
+              {csv.end_date}
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => handleCSVDelete(csv.id)}
+            >
+              Delete
+            </Button>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
+export default TranscriptDownloadPage;
+
+
+# File: components/UserProfile.js
+import React, { useState, useEffect } from "react";
+import { fetchData, putData } from "../utils/api";
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
+  CircularProgress,
+  Container,
+  Slider,
+} from "@mui/material";
+import InteractionMode from "./InteractionMode";
+import { useSnackbar } from "notistack";
+
+function UserProfile() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    fetchData("/profile/")
+      .then((data) => {
+        setUser(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        enqueueSnackbar("Error fetching user data!", { variant: "error" });
+        setLoading(false);
+      });
+  }, []);
+
+  const handleChange = (e) => {
+    setUser({
+      ...user,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSliderChange = (e, value) => {
+    setUser({
+      ...user,
+      voice_speed: value,
+    });
+  };
+
+  const handleModeChange = (mode) => {
+    setUser({
+      ...user,
+      interaction_mode: mode,
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+
+    if (!user.username) {
+      return;
+    }
+
+    putData("/profile/", user)
+      .then(() => {
+        enqueueSnackbar("Profile updated successfully!", {
+          variant: "success",
+        });
+      })
+      .catch((error) => {
+        const message =
+          error.response?.data?.detail || "Error updating profile!";
+        enqueueSnackbar(message, { variant: "error" });
+      });
+  };
+
+  if (loading) {
+    return (
+      <Box textAlign="center" py={5}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Box textAlign="center" py={5}>
+        <Typography color="error">Error loading user data</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Container maxWidth="sm" sx={{ py: 5 }}>
+      <Typography variant="h4" gutterBottom>
+        User Profile
+      </Typography>
+      <form onSubmit={handleSubmit}>
+        <TextField
+          fullWidth
+          label="Username"
+          name="username"
+          value={user.username}
+          onChange={handleChange}
+          margin="normal"
+          required
+          error={submitted && !user.username}
+          helperText={submitted && !user.username && "Username is required"}
+        />
+        <TextField
+          fullWidth
+          label="Preferred Name"
+          name="preferred_name"
+          value={user.preferred_name}
+          onChange={handleChange}
+          margin="normal"
+        />
+        <TextField
+          fullWidth
+          label="Email"
+          name="email"
+          value={user.email}
+          onChange={handleChange}
+          margin="normal"
+        />
+        <Typography gutterBottom>Voice Speed</Typography>
+        <Slider
+          name="voice_speed"
+          label="Voice Speed"
+          value={user.voice_speed || 1.0}
+          onChange={handleSliderChange}
+          valueLabelDisplay="auto"
+          step={0.5}
+          min={0.5}
+          max={2.0}
+        />
+        <TextField
+          fullWidth
+          label="Role"
+          name="role"
+          value={user.role}
+          disabled
+          margin="normal"
+        />
+        {user.role === "student" && (
+          <>
+            <TextField
+              fullWidth
+              label="Grade"
+              name="grade"
+              value={user.grade}
+              onChange={handleChange}
+              margin="normal"
+            />
+            <TextField
+              fullWidth
+              label="Preferred Language"
+              name="preferred_language"
+              value={user.preferred_language}
+              onChange={handleChange}
+              margin="normal"
+            />
+          </>
+        )}
+        <InteractionMode
+          selectedMode={user.interaction_mode}
+          handleModeChange={handleModeChange}
+        />
+
+        <Box mt={3} display="flex" justifyContent="flex-end">
+          <Button variant="contained" color="primary" type="submit">
+            Update Profile
+          </Button>
+        </Box>
+      </form>
+    </Container>
+  );
+}
+
+export default UserProfile;
+
+
+# File: index.css
+/* frontend/app/src/index.css */
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-Demi.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/Neutra-Text-TF.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-BoldItalic.otf') format('opentype');
+  font-weight: bold;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-Book.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'NeutraText';
+  src: url('assets/fonts/NeutraText-BookItalic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+body {
+  margin: 0;
+  font-family: 'NeutraText';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+
+# File: index.js
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import App from "./App";
+import reportWebVitals from "./reportWebVitals";
+import { getCSRFToken } from "./utils/api";
+import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: "#d32f2f", // Red
+    },
+    secondary: {
+      main: "#757575", // Gray
+    },
+  },
+});
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+
+getCSRFToken().then(() => {
+  root.render(
+    <React.StrictMode>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <App />
+      </ThemeProvider>
+    </React.StrictMode>
+  );
+});
+
+reportWebVitals();
+
+
+# File: reportWebVitals.js
+const reportWebVitals = onPerfEntry => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals;
+
+
+# File: setupTests.js
+// jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
+import '@testing-library/jest-dom';
+
+
+# File: theme.js
+import { createTheme } from "@mui/material/styles";
+
+const theme = createTheme({
+  typography: {
+    fontFamily: "NeutraText",
+  },
+});
+
+export default theme;
+
+
+# File: utils/api.js
+import axios from "axios";
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + "=") {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL,
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers["Authorization"] = `Token ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+api.interceptors.request.use(
+  (config) => {
+    const token = getCookie("csrftoken");
+    if (token) {
+      config.headers["X-CSRFToken"] = token;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+export async function getCSRFToken() {
+  try {
+    const response = await api.get("/csrf/");
+    const csrfToken = response.data.csrfToken;
+    document.cookie = `csrftoken=${csrfToken}; path=/`;
+  } catch (error) {
+    console.error("Error fetching CSRF token:", error);
+  }
+}
+
+export async function fetchData(url = "") {
+  try {
+    const response = await api.get(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    throw error;
+  }
+}
+
+export async function postData(url = "", body = {}) {
+  try {
+    const response = await api.post(url, body);
+    return response.data;
+  } catch (error) {
+    console.error("Error posting data:", error);
+    throw error;
+  }
+}
+
+export async function putData(url = "", body = {}) {
+  try {
+    const response = await api.put(url, body);
+    return response.data;
+  } catch (error) {
+    console.error("Error putting data:", error);
+    throw error;
+  }
+}
+
+export async function deleteData(url = "") {
+  try {
+    const response = await api.delete(url);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting data:", error);
+    throw error;
+  }
+}
+
+export async function createChatSession(moduleId, taskId) {
+  try {
+    const response = await postData("/chat_sessions/", {
+      module: moduleId,
+      task: taskId,
+    });
+    return response;
+  } catch (error) {
+    console.error("Error creating chat session:", error.message);
+    throw error;
+  }
+}
+
+export async function sendMessage(sessionId, message, sender) {
+  try {
+    const response = await postData("/chat_messages/", {
+      session: sessionId,
+      message,
+      sender,
+    });
+    return response;
+  } catch (error) {
+    console.error("Error sending message:", error.message);
+    throw error;
+  }
+}
+
+export const createWebSocket = (sessionId, isAudioMode) => {
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = process.env.REACT_APP_API_URL.replace(
+    /^https?/,
+    protocol
+  ).replace("/api/v1", "");
+  const endpoint = isAudioMode
+    ? `/ws/audio/${sessionId}/`
+    : `/ws/chat/${sessionId}/`;
+  return new WebSocket(`${wsUrl}${endpoint}`);
+};
+
+export const postFile = async (filePath, formData) => {
+  try {
+    const response = await api.post(filePath, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error posting file:", error);
+    throw error;
+  }
+};
+
+export async function fetchFile(url = "") {
+  try {
+    const response = await api.get(url, { responseType: "blob" });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching file:", error);
+    throw error;
+  }
+}
+
+export async function getPresignedUrl(fileName, fileType, isAvatar = false) {
+  try {
+    const urlPath = isAvatar ? "/get-avatar-url/" : "/generate_presigned_url/";
+    const response = await api.post(urlPath, {
+      file_name: fileName,
+      file_type: fileType,
+      is_avatar: isAvatar,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error getting presigned URL:", error);
+    throw error;
+  }
+}
+
+export async function uploadToS3(url, fields, file) {
+  const formData = new FormData();
+  Object.entries({ ...fields, file }).forEach(([key, value]) => {
+    formData.append(key, value);
+  });
+
+  await axios.post(url, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+}
+
+export default api;
+
+
