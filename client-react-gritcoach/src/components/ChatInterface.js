@@ -121,7 +121,7 @@ function ChatInterface({ session, clearChat, persona }) {
       //     }
       //   );
       // }
-      enqueueSnackbar("WebSocket connection closed", { variant: "warning" });
+      // enqueueSnackbar("WebSocket connection closed", { variant: "warning" });
     };
   };
 
