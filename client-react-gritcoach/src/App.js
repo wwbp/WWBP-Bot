@@ -26,7 +26,7 @@ function RequireAuth({ children }) {
   const token = localStorage.getItem("token");
 
   if (!token) {
-    // For teacher routes only; auto login should cover students.
+    // For teacher routes only; auto login covers students
     return <Navigate to="/login" state={{ from: location }} />;
   }
 
@@ -44,7 +44,6 @@ function App() {
     let userRole = localStorage.getItem("role");
 
     if (!token) {
-      // Auto-login for students if no token exists
       fetch(process.env.REACT_APP_API_URL + "/auto_login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

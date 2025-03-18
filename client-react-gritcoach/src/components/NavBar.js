@@ -29,14 +29,22 @@ function NavBar({
   const [anchorEl, setAnchorEl] = React.useState(null);
   const { enqueueSnackbar } = useSnackbar();
 
-  const onLogout = () => {
+  const onLogout = async () => {
+    try {
+      await fetch(process.env.REACT_APP_API_URL + "/logout/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // send cookies for session logout
+      });
+    } catch (error) {
+      console.error("Backend logout error:", error);
+    }
+    // Clear tokens and reset state
     handleLogout();
     enqueueSnackbar("Logged out successfully", { variant: "info" });
-    if (role === "student") {
-      window.location.reload();
-    } else {
-      navigate("/login");
-    }
+    // Force full reload so auto-login is triggered
+    window.location.reload();
+    navigate("/");
   };
 
   const toggleView = async () => {
@@ -168,7 +176,9 @@ function NavBar({
                 <MenuItem component={Link} to="/profile" onClick={handleClose}>
                   Profile
                 </MenuItem>
-                <MenuItem onClick={onLogout}>Logout</MenuItem>
+                {role === "teacher" && (
+                  <MenuItem onClick={onLogout}>Logout</MenuItem>
+                )}
               </Menu>
             </Box>
           </>
