@@ -814,9 +814,6 @@ class AudioConsumer(BaseWebSocketConsumer):
         loop = asyncio.get_event_loop()
         try:
             audio_bytes = await loop.run_in_executor(None, sync_generate)
-            with open("sample.mp3", "wb") as f:
-                f.write(audio_bytes)
-
             return audio_bytes
         except Exception as e:
             logger.error(f"ElevenLabs TTS error: {e}")
