@@ -26,6 +26,11 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
+# create a singleton ElevenLabs client (so you don’t re-init on every call)
+ELEVEN_API_KEY = os.getenv("ELEVEN_API_KEY", 'your-elevenlabs-api-key')
+# your Angela voice ID (set this in env or Django settings)
+ANGELA_VOICE_ID = os.getenv("ANGELA_VOICE_ID", "WvmJaCvBVuLLhVPeLiPQ")
+
 STT_LANGUAGE_CODE = os.getenv('STT_LANGUAGE_CODE', 'en-US')
 # Append Elastic Beanstalk Load Balancer Health Check requests since the source host IP address keeps changing
 try:

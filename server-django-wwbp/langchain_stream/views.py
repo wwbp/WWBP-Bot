@@ -16,6 +16,8 @@ from google.cloud import speech, texttospeech
 from langchain_stream.tasks import save_message_to_transcript, get_file_streams, save_usage_stats
 from openai import OpenAI
 from openai._compat import model_dump
+from django.conf import settings
+from elevenlabs import ElevenLabs
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -764,27 +766,55 @@ class AudioConsumer(BaseWebSocketConsumer):
 
         return voice_speed
 
-    async def text_to_speech(self, text):
-        client = texttospeech.TextToSpeechClient()
-        ssml_text = f"<speak>{text}</speak>"
-        input_text = texttospeech.SynthesisInput(ssml=ssml_text)
-        voice = texttospeech.VoiceSelectionParams(
-            language_code="en-US",
-            name="en-US-Standard-F",
-            ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
-        )
-        voice_speed = 1.0
-        voice_speed = await self.fetch_voice_speed()
+    # async def text_to_speech(self, text):
+    #     client = texttospeech.TextToSpeechClient()
+    #     ssml_text = f"<speak>{text}</speak>"
+    #     input_text = texttospeech.SynthesisInput(ssml=ssml_text)
+    #     voice = texttospeech.VoiceSelectionParams(
+    #         language_code="en-US",
+    #         name="en-US-Standard-F",
+    #         ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
+    #     )
+    #     voice_speed = 1.0
+    #     voice_speed = await self.fetch_voice_speed()
 
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3,
-            speaking_rate=voice_speed if voice_speed else 1.0,
-            pitch=0.0,
-        )
+    #     audio_config = texttospeech.AudioConfig(
+    #         audio_encoding=texttospeech.AudioEncoding.MP3,
+    #         speaking_rate=voice_speed if voice_speed else 1.0,
+    #         pitch=0.0,
+    #     )
+    #     try:
+    #         response = client.synthesize_speech(
+    #             input=input_text, voice=voice, audio_config=audio_config)
+    #         return response.audio_content
+    #     except Exception as e:
+    #         logger.error(f"Error during text-to-speech synthesis: {e}")
+    #         return b""
+
+    async def text_to_speech(self, text: str) -> bytes:
+        """
+        Replace Google TTS with Eleven Labs TTS (Prof. Angela voice).
+        Runs the synchronous generate() in a thread so it doesn't block the event loop.
+        """
+        # strip any characters you still want removed
+        # processed = self.process_text_for_tts(text)
+        ELEVEN_CLIENT = ElevenLabs(api_key=settings.ELEVEN_API_KEY)
+
+        def sync_generate():
+            # generate() yields chunks of raw mp3 bytes
+            chunks = ELEVEN_CLIENT.text_to_speech.convert(
+                text=text,
+                voice_id=settings.ANGELA_VOICE_ID,
+                output_format="mp3_44100_128",
+                model_id="eleven_monolingual_v1"
+            )
+            return b"".join(chunks)
+
+        # run it off-thread
+        loop = asyncio.get_event_loop()
         try:
-            response = client.synthesize_speech(
-                input=input_text, voice=voice, audio_config=audio_config)
-            return response.audio_content
+            audio_bytes = await loop.run_in_executor(None, sync_generate)
+            return audio_bytes
         except Exception as e:
-            logger.error(f"Error during text-to-speech synthesis: {e}")
+            logger.error(f"ElevenLabs TTS error: {e}")
             return b""

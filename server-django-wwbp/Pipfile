@@ -30,6 +30,8 @@ pydub = "*"
 ffmpeg = "*"
 django-silk = "*"
 uvicorn = "*"
+elevenlabs = "*"
+typing-extensions = "*"
 
 [dev-packages]
 
