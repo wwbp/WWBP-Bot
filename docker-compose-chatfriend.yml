@@ -17,7 +17,7 @@ services:
     build:
       context: ./server-django-wwbp
       dockerfile: Dockerfile.local
-    command: sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+    command: sh -c "sleep 10 && python manage.py migrate && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
     volumes:
       - ./server-django-wwbp:/app
       - /app/__pycache__
