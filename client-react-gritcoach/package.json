@@ -2,6 +2,11 @@
   "name": "app",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "postcss": "8.4.31",
+    "nth-check": "2.1.1",
+    "webpack-dev-server": "5.2.1"
+  },
   "dependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@emotion/react": "^11.12.0",

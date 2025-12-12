@@ -21,7 +21,7 @@ google-cloud-texttospeech = "*"
 redis = "*"
 channels-redis = "*"
 django-redis = "*"
-boto3 = ">=1.34.0"
+boto3 = "*"
 pika = "*"
 jupyter = "*"
 pytz = "*"
@@ -38,5 +38,5 @@ urllib3 = "*"
 [dev-packages]
 
 [requires]
-python_version = "3.9"
-python_full_version = "3.9.6"
+python_version = "3.11"
+python_full_version = "3.11.14"
