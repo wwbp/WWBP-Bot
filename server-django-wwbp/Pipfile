@@ -4,13 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-django = ">=4.2.23"
+django = "*"
 djangorestframework = "*"
 django-cors-headers = "*"
 mysqlclient = "*"
 gunicorn = "*"
 openai = "*"
-requests = ">=2.32.4"
+requests = "*"
 langchain = "*"
 langchain-community = "*"
 langchain-openai = "*"
@@ -32,6 +32,8 @@ django-silk = "*"
 uvicorn = "*"
 elevenlabs = "*"
 typing-extensions = "*"
+langchain-core = "*"
+urllib3 = "*"
 
 [dev-packages]
 
